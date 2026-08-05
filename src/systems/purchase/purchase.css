@@ -1,0 +1,31 @@
+@reference "tailwindcss";
+
+@layer components {
+  .form-input {
+    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-[12.8px] outline-none focus:border-[#173254] focus:ring-1 focus:ring-[#173254];
+  }
+  .table-input {
+    @apply w-full rounded-md border border-gray-300 px-2 py-1 text-[12.6px] outline-none focus:border-[#173254];
+  }
+  .field-label {
+    @apply mb-1.5 block text-[11.2px] font-bold uppercase tracking-wide text-gray-500;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #po-print-area,
+  #po-print-area * {
+    visibility: visible;
+  }
+  #po-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+}
