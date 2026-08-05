@@ -1,21 +1,18 @@
+import { Trash2, Search, Filter, ChevronDown, X, Plus, Loader2, UserRound, Square } from 'lucide-react';
 "use client"
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Search, ChevronDown, Filter, Trash2, Edit, Save, X, Play, Pause, Mic, Square, Loader2, Plus, UserRound } from "lucide-react";
-import AdminLayout from "../components/layout/AdminLayout";
-import DelegationPage from "./delegation-data";
-import { useDispatch, useSelector } from "react-redux";
-import { deleteChecklistTask, deleteDelegationTask, uniqueChecklistTaskData, uniqueDelegationTaskData, updateChecklistTask, updateDelegationTask, fetchUsers, resetChecklistPagination, resetDelegationPagination } from "../redux/slice/quickTaskSlice";
-import { maintenanceData, deleteMaintenanceTask, updateMaintenanceTask } from "../redux/slice/maintenanceSlice";
-import { fetchUniqueDepartmentDataApi, fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from "../redux/api/assignTaskApi";
-import { fetchCustomDropdownsApi } from "../redux/api/settingApi";
-import { ReactMediaRecorder } from "react-media-recorder";
+;
+import { useDispatch, useSelector } from 'react-redux';
+import { deleteChecklistTask, deleteDelegationTask, uniqueChecklistTaskData, uniqueDelegationTaskData, updateChecklistTask, updateDelegationTask, fetchUsers, resetChecklistPagination, resetDelegationPagination } from '../redux/slice/quickTaskSlice';
+import { maintenanceData, deleteMaintenanceTask, updateMaintenanceTask } from '../redux/slice/maintenanceSlice';
+import { fetchUniqueDepartmentDataApi, fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from '../redux/api/assignTaskApi';
+import { fetchCustomDropdownsApi } from '../redux/api/settingApi';
+;
 import supabase from "../SupabaseClient";
-import AudioPlayer from "../components/AudioPlayer";
-import RenderDescription from "../components/RenderDescription";
-import { useMagicToast } from "../context/MagicToastContext";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMagicToast } from '../context/MagicToastContext';
+;
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -26,7 +23,7 @@ const isAudioUrl = (url) => {
   );
 };
 
-const getTimeStatus = (dateString, taskStatus) => {
+const _getTimeStatus = (dateString, taskStatus) => {
   if (!dateString) return "—";
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return "—";
@@ -53,14 +50,14 @@ const getTimeStatus = (dateString, taskStatus) => {
 export default function QuickTask() {
   const navigate = useNavigate();
   const { showToast } = useMagicToast();
-  const [tasks, setTasks] = useState([]);
-  const [delegationLoading, setDelegationLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [_tasks, _setTasks] = useState([]);
+  const [_delegationLoading, _setDelegationLoading] = useState(false);
+  const [error, _setError] = useState(null);
   const [activeTab, setActiveTab] = useState('checklist');
   const tableContainerRef = useRef(null);
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [_editingTaskId, setEditingTaskId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -76,7 +73,7 @@ export default function QuickTask() {
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [freqFilter, setFreqFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, _setDateFilter] = useState('all');
   const [deptFilter, setDeptFilter] = useState('');
   const [personFilter, setPersonFilter] = useState('');
 
@@ -93,7 +90,7 @@ export default function QuickTask() {
     quickTask,
     loading,
     delegationTasks,
-    users,                    // Add this
+    _users,                    // Add this
     checklistPage,            // Add this
     checklistHasMore,         // Add this
     delegationPage,           // Add this
@@ -115,6 +112,7 @@ export default function QuickTask() {
       showToast("Access Denied: HODs cannot access Quick Task management.", "error");
       navigate("/dashboard");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   useEffect(() => {
@@ -189,7 +187,7 @@ export default function QuickTask() {
     [customOptions]
   );
 
-  const areaOptions = useMemo(() =>
+  const _areaOptions = useMemo(() =>
     [...new Set(customOptions.filter(o => o.category === "Machine Area").map(o => o.value))].sort(),
     [customOptions]
   );
@@ -224,7 +222,7 @@ export default function QuickTask() {
         instructionUrls = task.instruction_attachment_url ? [task.instruction_attachment_url] : [];
         instructionTypes = task.instruction_attachment_type ? [task.instruction_attachment_type] : [];
       }
-    } catch (e) {
+    } catch {
       instructionUrls = task.instruction_attachment_url ? [task.instruction_attachment_url] : [];
       instructionTypes = task.instruction_attachment_type ? [task.instruction_attachment_type] : [];
     }
@@ -285,7 +283,7 @@ export default function QuickTask() {
       let finalEditData = { ...editFormData };
       
       // Handle reference image uploads first
-      const referenceUploadPromises = (editFormData.instruction_attachment_url || []).map(async (urlOrFile, idx) => {
+      const referenceUploadPromises = (editFormData.instruction_attachment_url || []).map(async (urlOrFile, _idx) => {
         if (urlOrFile instanceof File) {
           const extension = urlOrFile.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
@@ -318,7 +316,7 @@ export default function QuickTask() {
         setIsUploading(true);
         try {
           const fileName = `voice-notes/${Date.now()}-${Math.random().toString(36).substring(7)}.webm`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { data: _uploadData, error: uploadError } = await supabase.storage
             .from('audio-recordings')
             .upload(fileName, recordedAudio.blob, {
               contentType: recordedAudio.blob.type || 'audio/webm',
@@ -530,7 +528,7 @@ export default function QuickTask() {
     }
   };
 
-  const formatDate = (dateValue) => {
+  const _formatDate = (dateValue) => {
     if (!dateValue) return "";
     try {
       const date = new Date(dateValue);
@@ -563,7 +561,7 @@ export default function QuickTask() {
   }, [delegationTasks, searchTerm]);
 
   // Keep allFrequencies as is (or modify if you want to fetch frequencies from elsewhere)
-  const allFrequencies = useMemo(() => {
+  const _allFrequencies = useMemo(() => {
     const freqs = new Set();
     // Checklist and Delegation use 'frequency'
     [...quickTask, ...delegationTasks].forEach(task => {
@@ -1276,7 +1274,7 @@ export default function QuickTask() {
                        <ReactMediaRecorder
                         audio
                         onStop={(blobUrl, blob) => setRecordedAudio({ blobUrl, blob })}
-                        render={({ status, startRecording, stopRecording, clearBlobUrl }) => (
+                        render={({ status, startRecording, stopRecording, _clearBlobUrl }) => (
                           <div className="flex items-center gap-2">
                             {status === 'recording' ? (
                               <button

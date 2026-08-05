@@ -1,40 +1,10 @@
 // src/systems/inventory/components/StockDashboardView.jsx
-import React, { useState, useMemo } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import {
-  Search,
-  ChevronDown,
-  X,
-  History,
-  TrendingUp,
-  FileSpreadsheet,
-  ArrowRight,
-  Plus,
-  Download,
-  Upload,
-  Edit2,
-  Trash2,
-  ArrowDownLeft,
-  ArrowUpRight,
-} from "lucide-react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ReferenceLine,
-} from "recharts";
+import { useState, useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { Search, FileSpreadsheet, Download, Upload, Plus, Edit2, Trash2, History, X, TrendingUp, LineChart, ChevronDown } from 'lucide-react';
+import { ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, Line, ReferenceLine } from 'recharts';
 import Papa from "papaparse";
-import {
-  saveMaterial,
-  deleteMaterial,
-  saveSettings,
-  saveList,
-  postTransaction,
-} from "../redux/slice/inventorySlice";
+import { saveMaterial, deleteMaterial, saveSettings, saveList, postTransaction,  } from '../redux/slice/inventorySlice';
 
 const BAND_STYLES = {
   "Excess Stock": {
@@ -195,7 +165,7 @@ export default function StockDashboardView({ activeUser }) {
             else added++;
           });
           alert(`Import complete: ${added} added, ${updated} updated.`);
-        } catch (err) {
+        } catch {
           alert("Failed to parse file. Please verify CSV headers.");
         }
       },
@@ -432,6 +402,7 @@ export default function StockDashboardView({ activeUser }) {
     return allCategories.filter((c) =>
       c.toLowerCase().includes(formCategory.toLowerCase()),
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, formCategory]);
 
   const filteredNameSuggestions = useMemo(() => {

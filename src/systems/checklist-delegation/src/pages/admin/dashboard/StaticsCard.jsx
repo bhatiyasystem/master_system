@@ -1,7 +1,8 @@
-import { ListTodo, CheckCircle2, Clock, AlertTriangle, BarChart3, XCircle, Calendar } from "lucide-react"
+import { CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+
 
 export default function StatisticsCards({
-  dashboardType,
+  _dashboardType,
   totalTask,
   completeTask,
   pendingTask,
@@ -25,7 +26,7 @@ export default function StatisticsCards({
   const completedDash = completionRate * circumference / 100;
   const pendingDash = pendingRate * circumference / 100;
   const overdueDash = overdueRate * circumference / 100;
-  const notDoneDash = notDoneRate * circumference / 100;
+  const _notDoneDash = notDoneRate * circumference / 100;
 
   // Format date for display
   const formatDate = (dateString) => {

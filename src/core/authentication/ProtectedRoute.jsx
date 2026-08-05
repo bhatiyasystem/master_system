@@ -1,8 +1,7 @@
-import React from "react";
-import { Navigate, useLocation, Link } from "react-router-dom";
+import { useLocation, Navigate } from 'react-router-dom';
 import * as Lucide from "lucide-react";
 
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children, _allowedRoles = [] }) => {
     const location = useLocation();
     const path = location.pathname;
     

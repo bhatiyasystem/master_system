@@ -1,10 +1,9 @@
+import { Search, X, ArrowLeft, History, Loader2, Wrench } from 'lucide-react';
 "use client"
-import { useState, useEffect, useMemo, useRef } from "react"
-import { Search, Edit, X, Loader2, Save, Wrench, Calendar, Filter, History, ArrowLeft, Play, Pause } from "lucide-react"
-import { useDispatch, useSelector } from "react-redux"
-import { repairData, repairHistoryData, updateRepair } from "../../redux/slice/repairSlice"
-import AdminLayout from "../../components/layout/AdminLayout"
-import RenderDescription from "../../components/RenderDescription"
+import { useState, useEffect, useMemo } from 'react'
+
+import { useDispatch, useSelector } from 'react-redux'
+import { repairData, repairHistoryData, updateRepair } from '../../redux/slice/repairSlice'
 
 
 export default function RepairPendingPage({ showLayout = true }) {
@@ -23,7 +22,9 @@ export default function RepairPendingPage({ showLayout = true }) {
 
     const dispatch = useDispatch()
     const repairState = useSelector((state) => state.repair);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const repairList = repairState?.repair || [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const historyList = repairState?.history || [];
 
     useEffect(() => {

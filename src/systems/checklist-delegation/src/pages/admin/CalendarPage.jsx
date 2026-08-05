@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminLayout from '../../components/layout/AdminLayout';
-import { Plus, ClipboardList, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, X, Edit, Save, Loader2, Play, Pause, Search, Mic, Users, Filter, Check, ChevronDown, ShieldAlert } from 'lucide-react';
-import AudioPlayer from '../../components/AudioPlayer';
+import { Calendar as CalendarIcon, Play, Users, ChevronDown, Search, Check, ChevronLeft, ChevronRight, Loader2, Clock, Plus, X, ShieldAlert, ClipboardList } from 'lucide-react';
 import supabase from '../../SupabaseClient';
 
 const extractAudioUrl = (text) => {
@@ -41,7 +39,7 @@ const normalizeDate = (dateVal) => {
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         return `${y}-${m}-${day}`;
-    } catch (e) {
+    } catch {
         return null;
     }
 };
@@ -75,9 +73,9 @@ const CalendarPage = () => {
     const [showAssignTaskTypePopup, setShowAssignTaskTypePopup] = useState(false);
     const [expandedTaskId, setExpandedTaskId] = useState(null);
     const [holidayName, setHolidayName] = useState('');
-    const [editingTaskId, setEditingTaskId] = useState(null);
+    const [_editingTaskId, setEditingTaskId] = useState(null);
     const [editForm, setEditForm] = useState({ status: '', remark: '' });
-    const [isUpdating, setIsUpdating] = useState(false);
+    const [_isUpdating, setIsUpdating] = useState(false);
     const [userProfiles, setUserProfiles] = useState({}); // Map of username -> profile_url
     const [selectedImage, setSelectedImage] = useState(null); // Full-screen image URL
     const navigate = useNavigate();
@@ -154,6 +152,7 @@ const CalendarPage = () => {
     useEffect(() => {
         fetchTasks();
         fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDate]);
 
     const fetchUsers = async () => {
@@ -191,7 +190,7 @@ const CalendarPage = () => {
 
             const role = localStorage.getItem('role');
             const username = localStorage.getItem('user-name');
-            const userAccess = localStorage.getItem('user_access');
+            const _userAccess = localStorage.getItem('user_access');
 
             const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
@@ -255,8 +254,8 @@ const CalendarPage = () => {
             ]);
 
 
-            const finalRepairRes = repairRes;
-            const finalEARes = eaRes;
+            const _finalRepairRes = repairRes;
+            const _finalEARes = eaRes;
 
             const normalizedTasks = [
                 ...(checklistRes.data || []).map(t => ({
@@ -358,7 +357,7 @@ const CalendarPage = () => {
         setIsModalOpen(false);
     };
 
-    const handleEditClick = (task) => {
+    const _handleEditClick = (task) => {
         setEditingTaskId(task.id);
         setEditForm({
             status: task.status || '',
@@ -366,7 +365,7 @@ const CalendarPage = () => {
         });
     };
 
-    const handleUpdateTask = async (task) => {
+    const _handleUpdateTask = async (task) => {
         setIsUpdating(true);
         try {
             let tableName = '';

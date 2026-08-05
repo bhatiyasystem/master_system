@@ -1,5 +1,5 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { fetchChechListDataForHistory, fetchChechListDataSortByDate, postChecklistAdminDoneAPI, updateChecklistData } from "../api/checkListApi";
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { fetchChechListDataForHistory, fetchChechListDataSortByDate, postChecklistAdminDoneAPI, updateChecklistData } from '../api/checkListApi';
 
 
 export const checklistHistoryData = createAsyncThunk(
@@ -71,7 +71,7 @@ const checkListSlice = createSlice({
         state.currentPage = action.payload.page;
         
         // Calculate if there are more pages
-        const itemsPerPage = 50;
+        const _itemsPerPage = 50;
         state.hasMore = state.checklist.length < action.payload.totalCount;
       })
       .addCase(checklistData.rejected, (state, action) => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from 'react';
 
 const CalendarComponent = ({ date, onChange, onClose }) => {
     const [currentMonth, setCurrentMonth] = useState(date && !isNaN(new Date(date).getTime()) ? new Date(date) : new Date());

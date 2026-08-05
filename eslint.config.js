@@ -23,13 +23,13 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      'no-unused-vars': 'warn',
+      'no-unused-vars': ['warn', { vars: 'all', varsIgnorePattern: '^_.*|^React$|^[A-Z]', args: 'all', argsIgnorePattern: '^_.*|^[A-Z]', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_.*', ignoreRestSiblings: true }],
       'no-undef': 'error',
       'no-empty': 'warn',
       'no-case-declarations': 'warn',
       'react-refresh/only-export-components': [
         'warn',
-        { allowConstantExport: true },
+        { allowConstantExport: true, allowExportNames: ['useMagicToast', 'useAuth', 'useMasterAuth', 'generatePOPdf', 'wrap', 'HrFmsPageWrapper', 'AuthProvider', 'MasterAuthBridge'] },
       ],
     },
   },

@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from 'react';
+;
 import * as Lucide from "lucide-react";
 import supabase from "../../SupabaseClient";
-import hrSupabase from "../../systems/HR_fms/src/services/supabaseHRClient.js";
-import { useMagicToast } from "../../context/MagicToastContext";
+import { useMagicToast } from '../../context/MagicToastContext';
 import systemRegistry from "../../core/registry/systemRegistry";
-import MasterDataView from "../components/MasterDataView";
 
 export default function GlobalSettings() {
   const { showToast } = useMagicToast();
@@ -140,6 +138,7 @@ export default function GlobalSettings() {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Quick toggle active/inactive status

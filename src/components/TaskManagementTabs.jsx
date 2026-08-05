@@ -1,7 +1,6 @@
 "use client"
-import React from 'react'
-import { ClipboardCheck, Hammer, Wrench, Activity, Users } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ClipboardCheck, Hammer, Wrench, Users } from 'lucide-react'
+
 
 export default function TaskManagementTabs({ activeTab, setActiveTab }) {
     const role = (localStorage.getItem("role") || "").toLowerCase();

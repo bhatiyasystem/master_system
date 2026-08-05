@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { fetchStaffTasksDataApi, getStaffTasksCountApi, getTotalUsersCountApi } from "../../../redux/api/dashboardApi"
+import { useState, useEffect, useCallback } from 'react'
+import { fetchStaffTasksDataApi, getStaffTasksCountApi, getTotalUsersCountApi } from '../../../redux/api/dashboardApi'
 
 export default function StaffTasksTable({
   dashboardType,
   dashboardStaffFilter,
   departmentFilter,
-  parseTaskStartDate
+  _parseTaskStartDate
 }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [staffMembers, setStaffMembers] = useState([])
@@ -107,6 +107,7 @@ export default function StaffTasksTable({
     if (selectedMonth) {
       loadStaffData(1, false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType, dashboardStaffFilter, departmentFilter, selectedMonth])
 
   // Function to load more data when scrolling
@@ -139,6 +140,7 @@ export default function StaffTasksTable({
       tableContainer.addEventListener('scroll', handleScroll)
       return () => tableContainer.removeEventListener('scroll', handleScroll)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMoreData, isLoadingMore, currentPage])
 
   // Format month for display

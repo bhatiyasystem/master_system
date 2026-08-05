@@ -1,6 +1,6 @@
 
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { fetchMaintenanceDataSortByDate, fetchMaintenanceDataForHistory, updateMaintenanceData, deleteMaintenanceTasksApi, updateMaintenanceTaskApi } from "../api/maintenanceApi";
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchMaintenanceDataSortByDate, fetchMaintenanceDataForHistory, updateMaintenanceData, deleteMaintenanceTasksApi, updateMaintenanceTaskApi } from '../api/maintenanceApi';
 
 export const deleteMaintenanceTask = createAsyncThunk(
     "deleteMaintenanceTask",
@@ -104,7 +104,7 @@ const maintenanceSlice = createSlice({
         });
 
         // Update
-        builder.addCase(updateMaintenance.fulfilled, (state, action) => {
+        builder.addCase(updateMaintenance.fulfilled, (_state, _action) => {
             // We can filter out updated items from 'maintenance' state locally to update UI immediately
             // or rely on reload. 
             // Let's rely on reload or refetch as per existing patterns.

@@ -1,13 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  Gift, RefreshCw, CheckCircle2, XCircle, Clock, Calendar,
-  User, AlertCircle, Play, Cake,
-} from 'lucide-react';
-import {
-  fetchTodaysBirthdayUsers,
-  fetchTodaysBirthdayGreetings,
-  triggerBirthdayEdgeFunction,
-} from '../services/greetingsService';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { CheckCircle2, XCircle, Clock, Cake, AlertCircle, Gift, RefreshCw, Calendar, User } from 'lucide-react';
+import { fetchTodaysBirthdayUsers, fetchTodaysBirthdayGreetings, triggerBirthdayEdgeFunction,  } from '../services/greetingsService';
 
 const STATUS_STYLES = {
   Pending: 'bg-amber-50 text-amber-700 border border-amber-200',
@@ -41,7 +34,7 @@ const getISTDateISO = () => {
 export default function GreetingsAdmin() {
   const [rows, setRows] = useState([]);       // merged users + greeting status
   const [loading, setLoading] = useState(true);
-  const [triggering, setTriggering] = useState(false);
+  const [_triggering, setTriggering] = useState(false);
   const [toast, setToast] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
   const refreshTimer = useRef(null);
@@ -82,7 +75,7 @@ export default function GreetingsAdmin() {
     return () => clearInterval(refreshTimer.current);
   }, [load]);
 
-  const handleTrigger = async () => {
+  const _handleTrigger = async () => {
     setTriggering(true);
     try {
       const result = await triggerBirthdayEdgeFunction();
@@ -98,7 +91,7 @@ export default function GreetingsAdmin() {
     }
   };
 
-  const todayIST = getISTDateISO();
+  const _todayIST = getISTDateISO();
   const sentCount    = rows.filter((r) => r.greeting?.status === 'Sent').length;
   const pendingCount = rows.filter((r) => !r.greeting || r.greeting.status === 'Pending').length;
   const failedCount  = rows.filter((r) => r.greeting?.status === 'Failed').length;

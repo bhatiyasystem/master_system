@@ -1,17 +1,15 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { BellRing, FileCheck, Calendar, Wrench, X, Mic, Square, Trash2, Plus, Save, Loader2, CheckCircle2, Clock } from "lucide-react";
-import { ReactMediaRecorder } from "react-media-recorder";
-import AdminLayout from "../../components/layout/AdminLayout";
-import { useDispatch, useSelector } from "react-redux";
-import { uniqueDepartmentData, uniqueDoerNameData, uniqueGivenByData } from "../../redux/slice/assignTaskSlice";
-import { customDropdownDetails } from "../../redux/slice/settingSlice";
-import { maintenanceData } from "../../redux/slice/maintenanceSlice";
+import { X, Trash2, Calendar, Clock, CheckCircle2, Plus, Loader2, Wrench, Square, BellRing } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+;
+;
+import { useDispatch, useSelector } from 'react-redux';
+import { uniqueDepartmentData, uniqueDoerNameData, uniqueGivenByData } from '../../redux/slice/assignTaskSlice';
+import { customDropdownDetails } from '../../redux/slice/settingSlice';
+import { maintenanceData } from '../../redux/slice/maintenanceSlice';
 import supabase from "../../SupabaseClient";
-import CalendarComponent from "../../components/CalendarComponent";
-import { sendTaskAssignmentNotification, sendUrgentTaskNotification, isWhatsAppConnected } from "../../services/whatsappService";
-import AudioPlayer from "../../components/AudioPlayer";
-import { useMagicToast } from "../../context/MagicToastContext";
+import { sendTaskAssignmentNotification, sendUrgentTaskNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import { useMagicToast } from '../../context/MagicToastContext';
 
 const formatDateLong = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
@@ -23,7 +21,7 @@ const formatDateISO = (date) => {
 };
 
 // --- AUDIO UTILITIES ---
-const isAudioUrl = (url) => {
+const _isAudioUrl = (url) => {
     if (!url || typeof url !== 'string') return false;
     return url.startsWith('http') && (
         url.includes('audio-recordings') ||
@@ -60,7 +58,7 @@ const defaultTask = () => ({
 // Single Maintenance Task Card
 const MaintenanceTaskCard = ({
     task, index, total, department, doerName, givenBy,
-    customDropdowns, onUpdate, onRemove, dispatch
+    customDropdowns, onUpdate, onRemove, _dispatch
 }) => {
     const [lightboxImage, setLightboxImage] = useState(null); // { url, name }
     const handleChange = (e) => {

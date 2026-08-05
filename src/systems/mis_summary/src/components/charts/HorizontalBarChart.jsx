@@ -1,4 +1,3 @@
-import React from 'react';
 import './HorizontalBarChart.css';
 
 const HorizontalBarChart = ({ data, labels, colors, maxValue, subValues }) => {

@@ -1,11 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, X, Search, CheckCircle, AlertCircle, Trash2, DollarSign } from 'lucide-react';
-import {
-  fetchSalaryConfigs,
-  fetchSalaryConfigsPaginated,
-  upsertSalaryConfig,
-  deactivateSalaryConfig,
-} from '../services/supabaseHR';
+import { X, Plus, AlertCircle, Search, DollarSign, Edit3, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
+import { fetchSalaryConfigsPaginated, upsertSalaryConfig, deactivateSalaryConfig,  } from '../services/supabaseHR';
 
 const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 

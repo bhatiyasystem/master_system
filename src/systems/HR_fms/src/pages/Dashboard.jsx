@@ -1,25 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import {
-  Users,
-  UserCheck,
-  UserX,
-  UserPlus,
-  TrendingUp,
-  Clock
-} from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, XAxis, YAxis, Bar, CartesianGrid } from 'recharts';
+import { Users, UserCheck, Clock, UserX, TrendingUp, UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
+;
 import supabase from '../services/supabaseHRClient';
 
 const Dashboard = () => {
@@ -303,8 +286,8 @@ const Dashboard = () => {
                   nameKey="name"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
-                  {employeeStatusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {employeeStatusData.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={_entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -362,7 +345,7 @@ const Dashboard = () => {
                 }}
               />
               <Bar dataKey="employees" name="Employees">
-                {designationData.map((entry, index) => (
+                {designationData.map((_entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={index % 3 === 0 ? '#EF4444' : index % 3 === 1 ? '#10B981' : '#3B82F6'}

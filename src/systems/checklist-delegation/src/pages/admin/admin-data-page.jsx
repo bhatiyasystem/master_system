@@ -1,9 +1,8 @@
+import { Search, ArrowLeft, History, CheckCircle2, X, Upload } from 'lucide-react';
 "use client"
 
-import { useState, useEffect } from "react"
-import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Calendar, Check } from "lucide-react"
-import AdminLayout from "../../components/layout/AdminLayout"
-import ReactDOM from 'react-dom';
+import { useState, useEffect } from 'react'
+
 
 // Google Apps Script URL
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz47q4SiLvJJom8dRGteqjhufs0Iui4rYTLMeTYqOgY_MFrS0C0o0XkRCPzAOdEeg4jqg/exec"
@@ -20,7 +19,7 @@ function AccountDataPage({ showLayout = true }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [debugInfo, setDebugInfo] = useState([])
+  const [_debugInfo, setDebugInfo] = useState([])
   const [remarksData, setRemarksData] = useState({}) // New state for remarks
   const [historyData, setHistoryData] = useState([])
   const [showHistory, setShowHistory] = useState(false)
@@ -108,7 +107,7 @@ function AccountDataPage({ showLayout = true }) {
   }
 
   // Format date from yyyy-mm-dd to DD/MM/YYYY
-  const formatDateFromHTML = (dateStr) => {
+  const _formatDateFromHTML = (dateStr) => {
     if (!dateStr) return "";
     const parts = dateStr.split('-');
     if (parts.length !== 3) return "";
@@ -414,7 +413,7 @@ function AccountDataPage({ showLayout = true }) {
         // Safely get values from columns L, M, P, and Q
         const columnLValue = getCellValue(row, 11);
         const columnMValue = getCellValue(row, 12);
-        const columnPValue = getCellValue(row, 15);
+        const _columnPValue = getCellValue(row, 15);
         const columnQValue = getCellValue(row, 16);
 
         // Skip rows marked as DONE in column Q
@@ -498,6 +497,7 @@ function AccountDataPage({ showLayout = true }) {
   // Load data on component mount
   useEffect(() => {
     fetchSheetData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSelectItem = (id) => {

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Search, X, Check, Clock, Calendar, Plus } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
 import toast from 'react-hot-toast';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 
@@ -251,7 +252,7 @@ const handleLeaveAction = async (action) => {
     const allData = fullDataResult.data || fullDataResult;
 
     const headerRowIndex = 0;
-    const headers = allData[headerRowIndex].map(h => h?.toString().trim().toLowerCase());
+    const _headers = allData[headerRowIndex].map(h => h?.toString().trim().toLowerCase());
 
     const timestampIndex = 0;
     const employeeIdIndex = 2;
@@ -395,6 +396,7 @@ const handleLeaveAction = async (action) => {
   useEffect(() => {
     fetchLeaveData();
     fetchEmployees();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatDate = (dateString) => {

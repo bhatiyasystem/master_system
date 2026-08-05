@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../components/layout/AdminLayout';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, CheckCircle2, ShieldAlert, Loader2, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar as _CalendarIcon, ChevronLeft, ChevronRight, Loader2, ShieldAlert, CheckCircle2, List } from 'lucide-react';
 import supabase from '../../SupabaseClient';
 
 const WorkingDayCalendarPage = () => {
@@ -14,6 +13,7 @@ const WorkingDayCalendarPage = () => {
 
     useEffect(() => {
         fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDate]);
 
     const fetchData = async () => {
@@ -58,7 +58,7 @@ const WorkingDayCalendarPage = () => {
         }
     };
 
-    const toggleWorkingDay = async (dateStr, isWorking, isHoliday) => {
+    const _toggleWorkingDay = async (dateStr, isWorking, isHoliday) => {
         if (isHoliday || isProcessing) return;
 
         try {

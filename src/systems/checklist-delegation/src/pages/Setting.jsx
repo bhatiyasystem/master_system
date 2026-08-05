@@ -1,12 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, User, Building, X, Save, Edit, Trash2, Settings, Search, ChevronDown, Calendar, RefreshCw, Image } from 'lucide-react';
-import AdminLayout from '../components/layout/AdminLayout';
+import { useEffect, useState, useRef, useCallback } from 'react';
+;
+import { User, Building, Settings, Calendar, RefreshCw, Plus, Trash2, Search, ChevronDown, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails, customDropdownDetails, createCustomDropdown, deleteCustomDropdown, createAssignFrom, deleteDepartment, deleteAssignFrom, updateCustomDropdown, updateAssignFrom, createMachineEntries, uploadProfileImage } from '../redux/slice/settingSlice';
+import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails, customDropdownDetails, deleteCustomDropdown, createAssignFrom, deleteDepartment, deleteAssignFrom, updateCustomDropdown, updateAssignFrom, createMachineEntries, uploadProfileImage } from '../redux/slice/settingSlice';
 import { uploadPartImageApi } from '../redux/api/settingApi';
 import supabase from '../SupabaseClient';
-import CalendarComponent from '../components/CalendarComponent';
 import { createPortal } from 'react-dom';
 import { sendTaskReassignmentNotification, isWhatsAppConnected } from '../services/whatsappService';
 import { useMagicToast } from '../context/MagicToastContext';
@@ -46,8 +44,8 @@ const Setting = () => {
   const [shiftToPerson, setShiftToPerson] = useState('');
   const [leaveSubmitting, setLeaveSubmitting] = useState(false);
   const [leaveSuccess, setLeaveSuccess] = useState(false);
-  const [leaveUsernameFilter, setLeaveUsernameFilter] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [_leaveUsernameFilter, _setLeaveUsernameFilter] = useState('');
+  const [_selectedUsers, _setSelectedUsers] = useState([]);
   const [showStartCalendar, setShowStartCalendar] = useState(false);
   const [showEndCalendar, setShowEndCalendar] = useState(false);
   const [startCalendarPos, setStartCalendarPos] = useState({ top: 0, left: 0 });
@@ -69,7 +67,7 @@ const Setting = () => {
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [showDangerPopup, setShowDangerPopup] = useState(false);
 
-  const { userData, department, departmentsOnly, givenBy, customDropdowns, loading, error } = useSelector((state) => state.setting);
+  const { userData, department, _departmentsOnly, givenBy, customDropdowns, loading, error } = useSelector((state) => state.setting);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -112,7 +110,7 @@ const Setting = () => {
           } else if (response.status === 400) {
             encountered400 = true;
           }
-        } catch (e) {
+        } catch {
           // Network errors are caught here
         }
       }
@@ -163,7 +161,7 @@ const Setting = () => {
 
       await Promise.all(updatePromises);
       dispatch(userDetails());
-    } catch (error) {
+    } catch {
       // Final catch for logic errors
     } finally {
       setIsRefreshing(false);
@@ -182,7 +180,7 @@ const Setting = () => {
           schema: 'public',
           table: 'users'
         },
-        (payload) => {
+        (_payload) => {
           // console.log('Real-time update received:', payload);
           // Refresh user data when any change occurs
           dispatch(userDetails());
@@ -213,17 +211,17 @@ const Setting = () => {
     fetchDeviceLogsAndUpdateStatus();
   };
 
-  const handleUsernameFilterSelect = (username) => {
+  const _handleUsernameFilterSelect = (username) => {
     setUsernameFilter(username);
     setUsernameDropdownOpen(false);
   };
 
-  const clearUsernameFilter = () => {
+  const _clearUsernameFilter = () => {
     setUsernameFilter('');
     setUsernameDropdownOpen(false);
   };
 
-  const toggleUsernameDropdown = () => {
+  const _toggleUsernameDropdown = () => {
     setUsernameDropdownOpen(!usernameDropdownOpen);
   };
 
@@ -311,7 +309,7 @@ const Setting = () => {
       return;
     }
 
-    const isFullShift = tasksToShift.length === leaveTasks.length || leaveTasks.length === 0;
+    const _isFullShift = tasksToShift.length === leaveTasks.length || leaveTasks.length === 0;
 
     const confirmMsg = tasksToShift.length > 0
       ? `Shift ${tasksToShift.length} selected task(s) from "${leavePersonName}" to "${shiftToPerson}"?`
@@ -698,7 +696,7 @@ const Setting = () => {
           if (deptForm.givenBy) {
             try {
               await dispatch(createAssignFrom({ given_by: deptForm.givenBy })).unwrap();
-            } catch (e) { }
+            } catch { /* ignore */ }
           }
           resetDeptForm();
           setShowDeptModal(false);
@@ -799,7 +797,7 @@ const Setting = () => {
           if (deptForm.givenBy) {
             try {
               await dispatch(createAssignFrom({ given_by: deptForm.givenBy })).unwrap();
-            } catch (e) { }
+            } catch { /* ignore */ }
           }
 
           resetDeptForm();

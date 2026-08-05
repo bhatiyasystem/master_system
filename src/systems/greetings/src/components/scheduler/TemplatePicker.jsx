@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const OCCASIONS = ['Diwali', 'Holi', 'New Year', 'Eid', 'Christmas', 'Raksha Bandhan', 'Pongal', 'Dussehra', 'Custom'];
 

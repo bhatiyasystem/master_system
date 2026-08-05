@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Filter, Search, Clock, CheckCircle } from 'lucide-react';
+import { Search, Clock, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
 import useDataStore from '../store/dataStore';
 import toast from 'react-hot-toast';
 
@@ -12,6 +13,7 @@ const SocialSite = () => {
   // Initialize social site data from indent data
   useEffect(() => {
     initializeFromIndent();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indentData]);
 
   const pendingData = socialSiteData.filter(item => item.status === 'pending');

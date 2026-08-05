@@ -9,6 +9,7 @@
  * — without requiring the MIS sub-app's own login page or AuthProvider.
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const MasterAuthBridgeContext = createContext(undefined);

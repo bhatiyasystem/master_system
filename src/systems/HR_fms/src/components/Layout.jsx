@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { Menu } from 'lucide-react';
-import Sidebar from './Sidebar';
-import Header from './Header';
+import { Outlet, Menu } from 'lucide-react';
+import { useState } from 'react';
+;
+;
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

@@ -1,10 +1,10 @@
 "use client"
 import aceLogo from "../assets/Ace_Logoo.jpg";
 
-import { useState, useEffect } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import supabase from "../../SupabaseClient";
-import { Home, ClipboardList, CheckSquare, User as UserIcon, LogOut, Menu, X } from "lucide-react"
+import { User as _UserIcon, Home, ClipboardList, CheckSquare, UserIcon, Link, LogOut, Menu } from 'lucide-react'
 
 const UserLayout = ({ children }) => {
   const navigate = useNavigate()

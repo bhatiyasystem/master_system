@@ -1,15 +1,8 @@
+import { Search, SlidersHorizontal, FileSpreadsheet, CheckCircle, X, Clock } from 'lucide-react';
 // src/systems/inventory/components/IndentView.jsx
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Search,
-  SlidersHorizontal,
-  FileSpreadsheet,
-  X,
-  FileText,
-  CheckCircle,
-  Clock
-} from 'lucide-react';
+;
 import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import { updateIndentStatus } from '../redux/slice/inventorySlice';
@@ -97,7 +90,7 @@ export default function IndentView({ activeUser }) {
   };
 
   // Toggle Approved / Pending
-  const handleToggleStatus = () => {
+  const _handleToggleStatus = () => {
     if (!activeIndent) return;
     const newStatus = activeIndent.status === 'Approved' ? 'Pending' : 'Approved';
     dispatch(updateIndentStatus({

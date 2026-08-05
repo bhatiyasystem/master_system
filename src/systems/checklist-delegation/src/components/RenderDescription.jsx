@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Play, FileText, Image as ImageIcon, Link as LinkIcon, X, Maximize2, ExternalLink } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import AudioPlayer from './AudioPlayer';
+import { useState } from 'react';
+import { Play, FileText, Image as ImageIcon, Link as LinkIcon, X } from 'lucide-react';
+;
 
 const getYouTubeId = (url) => {
     if (!url || typeof url !== 'string') return null;
@@ -14,7 +13,7 @@ const MediaViewer = ({ isOpen, onClose, media }) => {
     const isYoutube = media.type === 'youtube';
     const isVideo = media.type === 'video';
     const isImage = media.type.startsWith('image') || media.type === 'image';
-    const isPdf = media.type === 'pdf' || (media.url && media.url.toLowerCase().endsWith('.pdf'));
+    const _isPdf = media.type === 'pdf' || (media.url && media.url.toLowerCase().endsWith('.pdf'));
 
     const modalSizeClass = "max-w-5xl";
 
@@ -179,7 +178,7 @@ const RenderDescription = ({ text, audioUrl, instructionUrl, instructionType }) 
                 urls = [instructionUrl];
                 types = [instructionType];
             }
-        } catch (e) {
+        } catch {
             urls = [instructionUrl];
             types = [instructionType];
         }

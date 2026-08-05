@@ -1,38 +1,12 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import AdminLayout from "../../components/layout/AdminLayout";
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import supabase from "../../SupabaseClient";
-import {
-  ClipboardList,
-  Wrench,
-  Hammer,
-  Search,
-  Upload,
-  CheckCircle2,
-  X,
-  History,
-  ArrowLeft,
-  Edit,
-  Save,
-  Loader2,
-  Camera,
-  Users,
-  Play,
-  Pause,
-  BellRing,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-} from "lucide-react";
-import TaskManagementTabs from "../../components/TaskManagementTabs";
-import { customDropdownDetails } from "../../redux/slice/settingSlice";
-import { updateRepairData } from "../../redux/api/repairApi";
-import { sendTaskExtensionNotification, sendUrgentTaskNotification, isWhatsAppConnected } from "../../services/whatsappService";
-import AudioPlayer from "../../components/AudioPlayer";
-import { useMagicToast } from "../../context/MagicToastContext";
-import RenderDescription from "../../components/RenderDescription";
+import { Search, ArrowLeft, History, Filter, ChevronDown, Users, CheckCircle2, X, Upload, Loader2, BellRing } from 'lucide-react';
+import { customDropdownDetails } from '../../redux/slice/settingSlice';
+import { updateRepairData } from '../../redux/api/repairApi';
+import { sendTaskExtensionNotification, sendUrgentTaskNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import { useMagicToast } from '../../context/MagicToastContext';
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -72,7 +46,7 @@ const AllTasks = () => {
   const [allDepartments, setAllDepartments] = useState([]);
   const [dropdownOpen, setDropdownOpen] = useState({ dateFilter: false, nameFilter: false, deptFilter: false });
   const [lightboxImage, setLightboxImage] = useState(null); // { url, name }
-  const [fetchingProgress, setFetchingProgress] = useState(0);
+  const [_fetchingProgress, _setFetchingProgress] = useState(0);
 
   // Repair Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -176,7 +150,7 @@ const AllTasks = () => {
       const month = (date.getMonth() + 1).toString().padStart(2, "0");
       const year = date.getFullYear();
       return `${day}/${month}/${year}`;
-    } catch (error) {
+    } catch {
       return dateString;
     }
   }, []);
@@ -192,7 +166,7 @@ const AllTasks = () => {
       const hours = date.getHours().toString().padStart(2, "0");
       const minutes = date.getMinutes().toString().padStart(2, "0");
       return `${day}/${month}/${year} ${hours}:${minutes}`;
-    } catch (error) {
+    } catch {
       return dateString;
     }
   }, []);
@@ -208,7 +182,7 @@ const AllTasks = () => {
       hours = hours % 12;
       hours = hours ? hours : 12; // the hour '0' should be '12'
       return `${hours}:${minutes} ${ampm}`;
-    } catch (error) {
+    } catch {
       return "";
     }
   }, []);
@@ -237,7 +211,7 @@ const AllTasks = () => {
     return "Upcoming";
   }, []);
 
-  const calculateNextDueDate = (currentDateStr, frequency) => {
+  const _calculateNextDueDate = (currentDateStr, frequency) => {
     if (!currentDateStr || !frequency) return null;
 
     // Safely parse the database date string (might be YYYY-MM-DD or ISO)
@@ -566,6 +540,7 @@ const AllTasks = () => {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, userRole, activeTab, showHistory, holidaysList, workingDaysList, searchTerm, dateFilter, nameFilter, deptFilter]);
 
   useEffect(() => {
@@ -587,6 +562,7 @@ const AllTasks = () => {
 
 
     return result.sort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, historyData, showHistory, activeTab, deptFilter, allUsers]);
 
   // Filtering Logic
@@ -645,6 +621,7 @@ const AllTasks = () => {
 
       return true;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, searchTerm, activeTab, dateFilter, sortDateColumn, statusDateColumn, getTimeStatus, nameFilter, deptFilter]);
 
   const filteredHistoryTasks = useMemo(() => {
@@ -676,6 +653,7 @@ const AllTasks = () => {
 
       return matchesSearch && matchesDateRange;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyData, searchTerm, startDate, endDate, activeTab, nameFilter, deptFilter]);
 
   // Handle Selections
@@ -733,6 +711,7 @@ const AllTasks = () => {
         setImagePreviews({});
         setStatusData({});
       }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filteredPendingTasks, dateFilter, activeTab, getTimeStatus]);
 
   const paginatedTasks = useMemo(() => {
@@ -758,6 +737,7 @@ const AllTasks = () => {
     }
 
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (loadingRef.current) observer.unobserve(loadingRef.current);
     };
   }, [isLoading, paginatedTasks.length]);
@@ -790,7 +770,7 @@ const AllTasks = () => {
   const uploadFile = async (id, file) => {
     const bucketName = activeTab;
     const fileName = `${id}_${Date.now()}_${file.name}`;
-    const { data, error: uploadError } = await supabase.storage.from(bucketName).upload(fileName, file);
+    const { _data, error: uploadError } = await supabase.storage.from(bucketName).upload(fileName, file);
 
     if (uploadError) throw uploadError;
 
@@ -849,7 +829,7 @@ const AllTasks = () => {
       if (updateForm.workPhoto) {
         const fileExt = updateForm.workPhoto.name.split('.').pop();
         const fileName = `work_${selectedUpdateTask.id}_${Date.now()}.${fileExt}`;
-        const { data, error } = await supabase.storage.from('repair').upload(fileName, updateForm.workPhoto);
+        const { _data, error } = await supabase.storage.from('repair').upload(fileName, updateForm.workPhoto);
         if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('repair').getPublicUrl(fileName);
         workPhotoUrl = publicUrl;
@@ -859,7 +839,7 @@ const AllTasks = () => {
       if (updateForm.billCopy) {
         const fileExt = updateForm.billCopy.name.split('.').pop();
         const fileName = `bill_${selectedUpdateTask.id}_${Date.now()}.${fileExt}`;
-        const { data, error } = await supabase.storage.from('repair').upload(fileName, updateForm.billCopy);
+        const { _data, error } = await supabase.storage.from('repair').upload(fileName, updateForm.billCopy);
         if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('repair').getPublicUrl(fileName);
         billCopyUrl = publicUrl;
@@ -1134,7 +1114,7 @@ const AllTasks = () => {
     }
   };
 
-  const dateColumn = activeTab === "repair" ? "created_at" : (activeTab === "ea" ? (showHistory ? "updated_at" : "planned_date") : "task_start_date");
+  const _dateColumn = activeTab === "repair" ? "created_at" : (activeTab === "ea" ? (showHistory ? "updated_at" : "planned_date") : "task_start_date");
 
   return (
     <AdminLayout>

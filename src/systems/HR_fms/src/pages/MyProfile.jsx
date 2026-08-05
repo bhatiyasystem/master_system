@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Building, Edit3, Save, X } from 'lucide-react';
+import { Edit3, X, Mail, Phone, Building, Calendar, MapPin } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const MyProfile = () => {

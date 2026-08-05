@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
 import { UploadCloud } from 'lucide-react';
+import { useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
+;
 import { importIndentRows } from '../services/purchaseService';
-import { CardPanel } from './ui';
+;
 import { findColIndex } from '../utils/helpers';
 
 export default function ImportView({ onImported }) {

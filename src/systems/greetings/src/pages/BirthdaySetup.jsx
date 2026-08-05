@@ -1,17 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  Users, Plus, Pencil, Trash2, Save, X, Settings2, Phone,
-  Calendar, RefreshCw, CheckCircle2, AlertCircle, ChevronUp, ChevronDown,
-} from 'lucide-react';
-import {
-  fetchEmployeeBirthdays,
-  addEmployeeBirthday,
-  updateEmployeeBirthday,
-  deleteEmployeeBirthday,
-  getGreetingsConfig,
-  upsertGreetingsConfig,
-  sendBirthdayGreeting,
-} from '../services/greetingsService';
+import { useEffect, useState, useCallback } from 'react';
+import { ChevronDown, AlertCircle, CheckCircle2, RefreshCw, Plus, Users, Calendar, Trash2, X, Phone, ChevronUp, Settings2, Pencil } from 'lucide-react';
+import { fetchEmployeeBirthdays, addEmployeeBirthday, updateEmployeeBirthday, deleteEmployeeBirthday, getGreetingsConfig, upsertGreetingsConfig, sendBirthdayGreeting,  } from '../services/greetingsService';
 
 const EMPTY_FORM = {
   employee_name: '',

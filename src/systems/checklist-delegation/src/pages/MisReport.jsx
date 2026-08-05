@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { fetchStaffTasksDataApi, getStaffTasksCountApi, getTotalUsersCountApi } from "../redux/api/dashboardApi"
-import AdminLayout from '../components/layout/AdminLayout';
+import { useState, useEffect, useCallback } from 'react'
+import { fetchStaffTasksDataApi, getStaffTasksCountApi, getTotalUsersCountApi } from '../redux/api/dashboardApi'
 
 function StaffTasksPage() {
     const [dashboardStaffFilter, setDashboardStaffFilter] = useState("all")
@@ -111,7 +110,7 @@ function StaffTasksPage() {
     }
 
     // Optimized data loading with parallel requests
-    const loadStaffData = useCallback(async (page = 1, append = false) => {
+    const loadStaffData = useCallback(async (page = 1, _append = false) => {
         if (isLoading) return;
 
         try {

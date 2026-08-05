@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { X, Users, ScrollText, AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+;
+import { Users, ScrollText, AlertTriangle, CheckCircle2, Clock, XCircle, X } from 'lucide-react';
 import { fetchRecipients, fetchLogs } from '../../services/festivalSchedulerService';
 
 const TABS = [

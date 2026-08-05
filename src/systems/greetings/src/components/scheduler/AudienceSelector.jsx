@@ -1,13 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Papa from 'papaparse';
-import {
-  Users, ListChecks, Upload, Download, Search, CheckSquare, Square, UserCog, Loader2, X,
-} from 'lucide-react';
+import { Users, ListChecks, Upload, Search, Loader2, CheckSquare, Download, X, UserCog, Square } from 'lucide-react';
 import supabase from '../../../../../SupabaseClient';
-import {
-  fetchContacts, fetchContactsCount, downloadContactsCsvTemplate,
-  fetchSystemUsers, upsertUsersAsContacts,
-} from '../../services/festivalSchedulerService';
+import { fetchContacts, fetchContactsCount, downloadContactsCsvTemplate, fetchSystemUsers, upsertUsersAsContacts,  } from '../../services/festivalSchedulerService';
 
 const TABS = [
   { id: 'all', label: 'All Clients', icon: Users },

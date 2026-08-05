@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
 
 const MyAttendance = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(false);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [_tableLoading, setTableLoading] = useState(false);
+  const [_error, setError] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
   const [userAttendanceData, setUserAttendanceData] = useState([]);
 
@@ -88,7 +89,7 @@ const MyAttendance = () => {
       const dataRows = rawData.length > headerRowIndex + 1 ? rawData.slice(headerRowIndex + 1) : [];
 
       // Map data using header names - use display values directly
-      const processedData = dataRows.map((row, index) => {
+      const processedData = dataRows.map((row, _index) => {
         const obj = {};
         headers.forEach((header, colIndex) => {
           // Keep the exact value as it appears in the sheet
@@ -206,7 +207,7 @@ const MyAttendance = () => {
           if (hours < 0) hours += 24;
           return sum + Math.max(0, hours - 8);
         }
-      } catch (e) {
+      } catch {
         console.log('Could not calculate overtime from In/Out times');
       }
     }
@@ -399,7 +400,7 @@ const MyAttendance = () => {
                           workingHours = workingHours > 0 ? workingHours : 0;
                           overtime = Math.max(0, workingHours - 8);
                         }
-                      } catch (e) {
+                      } catch {
                         console.log('Could not calculate hours from In/Out times');
                       }
                     }

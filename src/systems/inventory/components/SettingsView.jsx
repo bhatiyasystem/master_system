@@ -1,23 +1,10 @@
 // src/systems/inventory/components/SettingsView.jsx
-import React, { useState, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  Save,
-  Plus,
-  Trash2,
-  Lock,
-  Settings,
-  MapPin,
-  Scale,
-  Boxes,
-} from "lucide-react";
-import {
-  saveSettings,
-  saveList,
-  saveUsers,
-} from "../redux/slice/inventorySlice";
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Lock, Scale, MapPin, Boxes } from 'lucide-react';
+import { saveList, saveUsers,  } from '../redux/slice/inventorySlice';
 
-const ALL_PAGES = [
+const _ALL_PAGES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "stock", label: "IMS" },
   { id: "master", label: "Master Data" },
@@ -53,17 +40,17 @@ const DUMMY_MATERIAL_NAMES = [
   "LED Driver 24V",
 ];
 
-export default function SettingsView({ activeUser, onReloadUser }) {
+export default function SettingsView({ activeUser, _onReloadUser }) {
   const dispatch = useDispatch();
   const {
-    settings,
+    _settings,
     units,
     locations,
     users,
     materialNames = [],
   } = useSelector((state) => state.inventory);
 
-  const isSuperAdmin = activeUser.role === "Superadmin";
+  const _isSuperAdmin = activeUser.role === "Superadmin";
   const isAdminOrSuper =
     activeUser.role === "Admin" || activeUser.role === "Superadmin";
 
@@ -212,7 +199,7 @@ export default function SettingsView({ activeUser, onReloadUser }) {
   };
 
   // User list management
-  const handleSaveUser = () => {
+  const _handleSaveUser = () => {
     if (!formUserName || !formUserPass) {
       alert("Name and password are required.");
       return;
@@ -255,7 +242,7 @@ export default function SettingsView({ activeUser, onReloadUser }) {
     setFormUserPages("all");
   };
 
-  const handleEditUser = (idx) => {
+  const _handleEditUser = (idx) => {
     const u = users[idx];
     setUserEditIdx(idx);
     setFormUserName(u.name);
@@ -266,14 +253,14 @@ export default function SettingsView({ activeUser, onReloadUser }) {
     setFormUserPages(u.pages || "all");
   };
 
-  const handleDeleteUser = (idx) => {
+  const _handleDeleteUser = (idx) => {
     if (window.confirm(`Delete user "${users[idx].name}"?`)) {
       const copy = users.filter((_, i) => i !== idx);
       dispatch(saveUsers({ users: copy, currentUser: activeUser.name }));
     }
   };
 
-  const handlePageAccessToggle = (pageId) => {
+  const _handlePageAccessToggle = (pageId) => {
     if (formUserPages === "all") {
       setFormUserPages([pageId]);
     } else {

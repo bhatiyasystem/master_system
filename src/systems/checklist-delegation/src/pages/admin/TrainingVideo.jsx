@@ -1,11 +1,11 @@
+import { Video, Play, Info } from 'lucide-react';
 "use client"
-import { useState, useEffect } from "react"
-import { Play, Video, Info } from "lucide-react"
-import AdminLayout from "../../components/layout/AdminLayout"
+import { useState, useEffect } from 'react'
+
 
 function TrainingVideo() {
   const [userRole, setUserRole] = useState("")
-  const [username, setUsername] = useState("")
+  const [_username, setUsername] = useState("")
 
   useEffect(() => {
     const role = localStorage.getItem("role")

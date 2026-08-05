@@ -1,24 +1,7 @@
-import { useState, useEffect } from 'react';
+import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Search, DollarSign, Edit3 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import {
-  DollarSign, RefreshCw, Search, AlertCircle,
-  Play, Eye, X, Edit3, FileText, Download, Loader2,
-} from 'lucide-react';
-import {
-  fetchAttendanceMonthly,
-  fetchEmployees,
-  fetchPayroll,
-  fetchPayrollPaginated,
-  generatePayrollBatch,
-  updatePayrollStatus,
-  updatePayrollRow,
-  updateEmployeePutthaStatus,
-  savePayslip,
-  fetchPayslips,
-  fetchPayslipData,
-  MONTHS,
-} from '../services/supabaseHR';
-import PayslipPDF from '../components/PayslipPDF';
+import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, MONTHS,  } from '../services/supabaseHR';
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 const statusStyle = {
@@ -194,7 +177,7 @@ const PayslipsTab = ({ filterYear, filterMonth, notify }) => {
   const [generating, setGenerating] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
-  const loadPayslips = async () => {
+  const loadPayslips = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchPayslips({ year: filterYear, month: filterMonth });
@@ -204,9 +187,9 @@ const PayslipsTab = ({ filterYear, filterMonth, notify }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterYear, filterMonth, notify]);
 
-  useEffect(() => { loadPayslips(); }, [filterYear, filterMonth]);
+  useEffect(() => { loadPayslips(); }, [loadPayslips]);
 
   // Generate payslips for all paid employees this month
   const handleGenerateAll = async () => {

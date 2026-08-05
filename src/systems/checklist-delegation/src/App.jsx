@@ -1,38 +1,23 @@
 
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter as _Router, Navigate, Router, Routes, Route } from 'react-router-dom'
 import "./index.css"
 
 // --- Page Imports ---
-import LoginPage from "./pages/LoginPage"
-import AdminDashboard from "./pages/admin/Dashboard"
-import AdminAssignTask from "./pages/admin/AssignTask"
-import ChecklistTask from "./pages/admin/ChecklistTask"     // New
-import MaintenanceTask from "./pages/admin/MaintenanceTask" // New
-import RepairTask from "./pages/admin/RepairTask"           // New
-import EATask from "./pages/admin/EATask"                   // New
-import CalendarPage from "./pages/admin/CalendarPage"       // New
-import QuickTask from "./pages/QuickTask"
-import Demo from "./pages/user/Demo"
-import Setting from "./pages/Setting"
-import MisReport from "./pages/MisReport"
-import BulkImport from "./pages/BulkImport" // New
+     // New
+ // New
+           // New
+                   // New
+       // New
+ // New
 
 // --- Data & Delegation Imports ---
-import DataPage from "./pages/admin/DataPage"
-import AdminDataPage from "./pages/admin/admin-data-page"
-import AccountDataPage from "./pages/delegation"
-import AdminDelegationTask from "./pages/delegation-data"
-import AllTasks from "./pages/admin/AllTasks"
-import HolidayListPage from "./pages/admin/HolidayListPage"         // New
-import WorkingDayCalendarPage from "./pages/admin/WorkingDayCalendarPage" // New
-import AdminApprovalPage from "./pages/admin/AdminApprovalPage" // New
-import NotificationsPage from "./pages/admin/Notifications"
-import TrainingVideo from "./pages/admin/TrainingVideo"
+         // New
+ // New
+ // New
 
 // --- Components ---
-import RealtimeLogoutListener from "./components/RealtimeLogoutListener"
-import { MagicToastProvider } from "./context/MagicToastContext"
+
 
 // --- Auth Wrapper ---
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {

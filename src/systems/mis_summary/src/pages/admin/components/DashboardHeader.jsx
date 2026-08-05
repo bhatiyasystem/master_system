@@ -1,7 +1,6 @@
-import React from "react";
-import { Download } from "lucide-react";
-import { generateDashboardPDF } from "../../../utils/pdfGenerator";
-import DailyReportButton from "./DailyReportButton";
+import { Download } from 'lucide-react';
+;
+import { generateDashboardPDF } from '../../../utils/pdfGenerator';
 
 const DashboardHeader = ({
     user,

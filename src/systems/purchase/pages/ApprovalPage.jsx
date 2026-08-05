@@ -1,6 +1,3 @@
-import React from 'react';
-import PurchaseHeader from '../components/PurchaseHeader';
-import ApprovalView from '../components/ApprovalView';
 
 export default function ApprovalPage() {
   return (

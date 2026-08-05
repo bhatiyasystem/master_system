@@ -1,6 +1,7 @@
+import { Target, Download, Users, ChevronDown, CheckSquare, Award, Briefcase, PlayCircle, TrendingUp, Users2, MessageSquare, User, Database, Link } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { Video, Users, MessageSquare, Target, Award, Briefcase, CheckSquare, Users2, Database, Link, PlayCircle, ChevronDown, TrendingUp, User, Download } from 'lucide-react';
-import { useAuth } from "../../contexts/AuthContext";
+;
+import { useAuth } from '../../contexts/AuthContext';
 
 const designations = [
   'All',
@@ -57,7 +58,7 @@ const KpiKra = () => {
   const [keyPerson, setKeyPerson] = useState('');
   const [systemsData, setSystemsData] = useState([]);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
-  const currentData = defaultData;
+  const _currentData = defaultData;
 
   const fetchDashboardData = async (sheetOverride, currentDept) => {
     setIsLoadingDashboard(true);
@@ -213,6 +214,7 @@ const KpiKra = () => {
     } else {
       fetchDashboardData();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.name]);
 
   // Auto-submit 'All' for admins on initial load to show all data
@@ -220,6 +222,7 @@ const KpiKra = () => {
     if (userRole === 'admin' || userRole === 'superadmin') {
       handleSubmit('All');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole]);
 
   const ensureAbsoluteUrl = (url) => {

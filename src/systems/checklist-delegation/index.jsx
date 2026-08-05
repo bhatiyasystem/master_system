@@ -1,29 +1,28 @@
-import React from 'react';
 import systemRegistry from '../../core/registry/systemRegistry';
 
 // Import Checklist-Delegation pages
 import AdminDashboard from './src/pages/admin/Dashboard';
+import NotificationsPage from './src/pages/admin/Notifications';
+import QuickTask from './src/pages/QuickTask';
+import AdminAssignTask from './src/pages/admin/AssignTask';
+import AccountDataPage from './src/pages/admin/account-data-page';
+import AllTasks from './src/pages/admin/AllTasks';
+import CalendarPage from './src/pages/admin/CalendarPage';
+import HolidayListPage from './src/pages/admin/HolidayListPage';
+import WorkingDayCalendarPage from './src/pages/admin/WorkingDayCalendarPage';
+import AdminApprovalPage from './src/pages/admin/AdminApprovalPage';
+import Setting from './src/pages/Setting';
+import TrainingVideo from './src/pages/admin/TrainingVideo';
 import ChecklistTask from './src/pages/admin/ChecklistTask';
 import MaintenanceTask from './src/pages/admin/MaintenanceTask';
 import RepairTask from './src/pages/admin/RepairTask';
 import EATask from './src/pages/admin/EATask';
-import CalendarPage from './src/pages/admin/CalendarPage';
-import QuickTask from './src/pages/QuickTask';
-import Setting from './src/pages/Setting';
 import BulkImport from './src/pages/BulkImport';
 import DataPage from './src/pages/admin/DataPage';
 import AdminDataPage from './src/pages/admin/admin-data-page';
-import AccountDataPage from './src/pages/delegation';
 import AdminDelegationTask from './src/pages/delegation-data';
-import AllTasks from './src/pages/admin/AllTasks';
-import HolidayListPage from './src/pages/admin/HolidayListPage';
-import WorkingDayCalendarPage from './src/pages/admin/WorkingDayCalendarPage';
-import AdminApprovalPage from './src/pages/admin/AdminApprovalPage';
-import NotificationsPage from './src/pages/admin/Notifications';
-import TrainingVideo from './src/pages/admin/TrainingVideo';
-import AdminAssignTask from './src/pages/admin/AssignTask';
-import Demo from './src/pages/user/Demo';
 import MisReport from './src/pages/MisReport';
+import Demo from './src/pages/user/Demo';
 
 systemRegistry.register({
   id: 'checklist-delegation',

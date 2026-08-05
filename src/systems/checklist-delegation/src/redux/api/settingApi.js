@@ -381,7 +381,7 @@ export const fetchGivenByDataApi = async () => {
         try {
           const parsed = JSON.parse(name);
           name = parsed.given_by || parsed.name || name;
-        } catch (e) { }
+        } catch { /* ignore */ }
       }
       return { id: d.id, given_by: name };
     });

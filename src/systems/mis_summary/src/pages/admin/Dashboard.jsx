@@ -1,25 +1,9 @@
 // ============ DASHBOARD PAGE ============
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { LayoutDashboard, Users, Calendar, Clock, AlertTriangle, Search, ChevronDown, Download, Filter, MessageSquare, Briefcase, TrendingUp, X, MapPin, Phone, Mail, User, Info, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+;
 import { getDisplayableImageUrl } from '../../utils/imageUtils';
-import {
-  employees,
-  getTopScorers,
-  getLowestScorers,
-  getEmployeesByPendingTasks,
-  departments,
-  getWeeklyCommitmentComparison,
-} from "../../data/mockData";
-import EmployeesTable from "../../components/tables/EmployeesTable";
-import HalfCircleChart from "../../components/charts/HalfCircleChart";
-import HorizontalBarChart from "../../components/charts/HorizontalBarChart";
-import VerticalBarChart from "../../components/charts/VerticalBarChart";
-import DashboardHeader from "./components/DashboardHeader";
-import EmployeeListSection from "./components/EmployeeListSection";
-import UserDetailsModal from "./components/UserDetailsModal";
-import ChartsGrid from "./components/ChartsGrid";
-import DepartmentScoreChart from "../../components/charts/DepartmentScoreChart";
-import { useAuth } from "../../contexts/AuthContext";
+import { employees, getLowestScorers, getWeeklyCommitmentComparison,  } from '../../data/mockData';
+import { useAuth } from '../../contexts/AuthContext';
 
 const getCurrentWeek = () => {
   const today = new Date();
@@ -43,7 +27,7 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   // Dashboard Logic
-  const [dateRange, setDateRange] = useState(getCurrentWeek());
+  const [_dateRange, _setDateRange] = useState(getCurrentWeek());
 
   // New State for Sheet Data
   const [loading, setLoading] = useState(true);
@@ -111,7 +95,7 @@ const AdminDashboard = () => {
   const [expandedEmployee, setExpandedEmployee] = useState(null);
   const [filterName, setFilterName] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("");
-  const [filterHR, setFilterHR] = useState("");
+  const [_filterHR, _setFilterHR] = useState("");
   const [selectedUserDetails, setSelectedUserDetails] = useState(null);
 
   // Lock body scroll when popup is open
@@ -124,7 +108,7 @@ const AdminDashboard = () => {
     return () => { document.body.style.overflow = ''; };
   }, [selectedUserDetails]);
   const [activeDrillDown, setActiveDrillDown] = useState(null);
-  const [drillDownLoading, setDrillDownLoading] = useState(false);
+  const [_drillDownLoading, setDrillDownLoading] = useState(false);
 
   // New State for Data Editing
   const [editableData, setEditableData] = useState({});
@@ -339,7 +323,7 @@ const AdminDashboard = () => {
               const randomId = `emp-${100 + index}`;
               const empName = row[2] || "Unknown";
               const normalizedName = String(empName).trim().toLowerCase();
-              const archivedData = newArchivedMap[empName] ? newArchivedMap[empName].values : {};
+              const _archivedData = newArchivedMap[empName] ? newArchivedMap[empName].values : {};
 
               const rawImageUrl = imageMap[normalizedName];
               let finalImageUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(empName)}&background=0D8ABC&color=fff&size=128`;
@@ -438,7 +422,7 @@ const AdminDashboard = () => {
     topScorers,
     topBestPerformers,
     lowestScorers,
-    commitmentComparison
+    _commitmentComparison
   } = useMemo(() => {
     let topScorersList = [];
 
@@ -535,6 +519,7 @@ const AdminDashboard = () => {
       lowestScorers: getLowestScorers(5),
       commitmentComparison: getWeeklyCommitmentComparison()
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetEmployees, columnLabels]);
 
   const topScorersData = useMemo(() => topScorers.map((emp) => {
@@ -551,8 +536,8 @@ const AdminDashboard = () => {
     const val = emp.totalTasks ?? 0;
     return isNaN(val) ? 0 : val;
   }), [topBestPerformers]);
-  const lowestScorersData = useMemo(() => lowestScorers.map((emp) => isNaN(emp.score) ? 0 : (emp.score ?? 0)), [lowestScorers]);
-  const lowestScorersLabels = useMemo(() => lowestScorers.map((emp) => emp.name), [lowestScorers]);
+  const _lowestScorersData = useMemo(() => lowestScorers.map((emp) => isNaN(emp.score) ? 0 : (emp.score ?? 0)), [lowestScorers]);
+  const _lowestScorersLabels = useMemo(() => lowestScorers.map((emp) => emp.name), [lowestScorers]);
 
   // Pending Tasks by User — Column I (weekPending) sorted desc, Column D (target) as total
   const sortedPendingList = useMemo(() => {
@@ -1019,7 +1004,7 @@ const AdminDashboard = () => {
         try {
           const result = await response.json();
           if (result && !result.success) throw new Error(result.error || "Failed to submit");
-        } catch (e) {
+        } catch {
           console.warn("JSON parse failed (CORS), assuming success.");
         }
 

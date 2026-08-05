@@ -1,11 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { submitNewPO, revisePO } from '../services/purchaseService';
 import { sendPOCreatedNotification } from '../services/purchaseWhatsappService';
 import { generatePOPdfBlob } from '../utils/generatePOPdf';
 import { uploadPOPdf } from '../utils/uploadPOPdf';
-import { fmt } from '../utils/helpers';
-import PreviewModal from './PreviewModal';
-import EntitySelectInput from './EntitySelectInput';
+;
 import supabase from '../../../SupabaseClient';
 
 const DEFAULT_TERMS = `1. We deserve the right to cancel the purchase order anytime before product shipment.
@@ -65,7 +63,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
         vendorPaymentTerms: match.payment_terms || '',
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [form.vendorName, vendors]);
 
   useEffect(() => {

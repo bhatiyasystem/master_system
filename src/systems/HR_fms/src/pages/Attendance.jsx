@@ -1,21 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import {
-  Upload, Search, RefreshCw, CheckCircle, AlertCircle,
-  Eye, Edit3, X, FileSpreadsheet, Calendar, Users,
-} from 'lucide-react';
-import {
-  parseAttendanceExcel,
-  createUploadRecord,
-  updateUploadRecord,
-  saveAttendanceRows,
-  fetchAttendanceMonthly,
-  fetchAttendanceMonthlyPaginated,
-  updatePayableDaysOverride,
-  STATUS_COLORS,
-  STATUS_LABELS,
-  MONTHS,
-} from '../services/supabaseHR';
+import { FileSpreadsheet, X, Upload, Users, AlertCircle, CheckCircle, Search, RefreshCw, Calendar, Eye, Edit3 } from 'lucide-react';
+import { parseAttendanceExcel, createUploadRecord, updateUploadRecord, saveAttendanceRows, fetchAttendanceMonthlyPaginated, updatePayableDaysOverride, STATUS_COLORS, STATUS_LABELS, MONTHS,  } from '../services/supabaseHR';
 
 // ── Upload Zone ───────────────────────────────────────────────────────────────
 const UploadZone = ({ onFile, uploading }) => {

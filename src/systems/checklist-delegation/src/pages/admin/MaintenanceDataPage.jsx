@@ -1,11 +1,10 @@
+import { Search, ArrowLeft, History, Loader2, CheckCircle2, X, Upload } from 'lucide-react';
 "use client"
-import { useState, useEffect, useMemo } from "react"
-import AdminLayout from "../../components/layout/AdminLayout"
-import { useDispatch, useSelector } from "react-redux"
-import { maintenanceData, maintenanceHistoryData, updateMaintenance } from "../../redux/slice/maintenanceSlice"
-import { Search, History, ArrowLeft, CheckCircle2, X, Upload, Save, Loader2, Play, Pause } from "lucide-react"
-import { useRef } from "react"
-import RenderDescription from "../../components/RenderDescription"
+import { useState, useEffect, useMemo } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { maintenanceData, maintenanceHistoryData, updateMaintenance } from '../../redux/slice/maintenanceSlice'
+
+
 
 
 export default function MaintenanceDataPage({ showLayout = true }) {
@@ -20,7 +19,9 @@ export default function MaintenanceDataPage({ showLayout = true }) {
 
     const dispatch = useDispatch()
     const maintenanceState = useSelector((state) => state.maintenance);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const maintenance = maintenanceState?.maintenance || [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const history = maintenanceState?.history || [];
 
     useEffect(() => {

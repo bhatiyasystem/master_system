@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, Image as ImageIcon, Video, FileText, Loader2, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { Image as ImageIcon, Video, FileText, Loader2, CheckCircle2, Upload } from 'lucide-react';
 import supabase from '../../../../../SupabaseClient';
 
 const ACCEPT_BY_FORMAT = {

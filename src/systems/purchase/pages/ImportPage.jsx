@@ -1,7 +1,4 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import PurchaseHeader from '../components/PurchaseHeader';
-import ImportView from '../components/ImportView';
 
 export default function ImportPage() {
   const navigate = useNavigate();

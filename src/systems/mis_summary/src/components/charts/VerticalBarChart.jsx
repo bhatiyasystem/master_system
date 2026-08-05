@@ -1,5 +1,4 @@
 // components/charts/VerticalBarChart.jsx
-import React from 'react';
 
 const VerticalBarChart = ({ data, labels, colors, maxValue, subValues }) => {
   return (

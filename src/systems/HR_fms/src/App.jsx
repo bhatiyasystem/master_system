@@ -1,32 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Indent from './pages/Indent';
-import SocialSite from './pages/SocialSite';
-import FindEnquiry from './pages/FindEnquiry';
-import CallTracker from './pages/CallTracker';
-import AfterJoiningWork from './pages/AfterJoiningWork';
-import Leaving from './pages/Leaving';
-import AfterLeavingWork from './pages/AfterLeavingWork';
-import Employee from './pages/Employee';
-import MyProfile from './pages/MyProfile';
-import MyAttendance from './pages/MyAttendance';
-import LeaveRequest from './pages/LeaveRequest';
-import MySalary from './pages/MySalary';
-import CompanyCalendar from './pages/CompanyCalendar';
-import ProtectedRoute from './components/ProtectedRoute';
-import Attendance from './pages/Attendance';
-import LeaveManagement from './pages/LeaveManagement';
-import Attendancedaily from './pages/Attendancedaily';
-import Report from './pages/Report';
-import Payroll from './pages/Payroll';
-import SalaryConfig from './pages/SalaryConfig';
-import MisReport from './pages/MisReport';
-import Advance from './pages/Advance';
-import Puttha from './pages/Puttha';
+import { BrowserRouter as _Router, Router, Routes, Route, Navigate } from 'react-router-dom';
+;
 
 function App() {
   return (

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const AfterLeavingWork = () => {
@@ -7,8 +8,8 @@ const AfterLeavingWork = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingData, setPendingData] = useState([]);
-  const [historyData, setHistoryData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [_historyData, setHistoryData] = useState([]);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -394,7 +395,7 @@ const AfterLeavingWork = () => {
     }
   };
 
-  const formatDOB = (dateString) => {
+  const _formatDOB = (dateString) => {
     if (!dateString) return '';
     
     const date = new Date(dateString);

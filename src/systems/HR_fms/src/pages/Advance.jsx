@@ -1,22 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { UploadCloud, Plus, Clock, Check, X, Trash2, FileText, Table, Info, Download, IndianRupee, Pencil } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Check, X, Clock, FileText, IndianRupee, UploadCloud, Table, Info, Download, Pencil, Trash2 } from 'lucide-react';
+;
 import toast from 'react-hot-toast';
 import supabase from '../../../../SupabaseClient';
 import hrSupabase from '../services/supabaseHRClient';
-import {
-  fetchAdvances,
-  fetchAdvancesPaginated,
-  upsertAdvance,
-  updateAdvanceStatus,
-  deleteAdvance,
-  fetchEmployees,
-  fetchSalaryAdvances,
-  upsertSalaryAdvance,
-  updateSalaryAdvanceStatus,
-  deleteSalaryAdvance,
-  fetchSalaryConfigs
-} from '../services/supabaseHR';
+import { fetchAdvancesPaginated, upsertAdvance, updateAdvanceStatus, deleteAdvance, fetchEmployees, fetchSalaryAdvances, upsertSalaryAdvance, updateSalaryAdvanceStatus, deleteSalaryAdvance, fetchSalaryConfigs } from '../services/supabaseHR';
 
 const Advance = () => {
   const [activeTab, setActiveTab] = useState('Loan');
@@ -636,7 +625,7 @@ const Advance = () => {
     ? salaryAdvances
     : salaryAdvances.filter(adv => adv.employee_id === employeeId);
 
-  const liveTotalDebit = displayedSalaryAdvances.reduce(
+  const _liveTotalDebit = displayedSalaryAdvances.reduce(
     (sum, adv) => sum + (parseFloat(adv.amount) || 0),
     0
   );

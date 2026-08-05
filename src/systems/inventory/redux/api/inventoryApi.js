@@ -13,7 +13,7 @@ const defaultMaterialNames = [
   'Stainless Sheet 2mm', 'Cardboard Box (S)', 'Hydraulic Hose 1in', 'LED Driver 24V'
 ];
 
-const nowStr = () => new Date().toLocaleString();
+const _nowStr = () => new Date().toLocaleString();
 const today = () => new Date().toISOString().slice(0, 10);
 
 // Mappings between Database (snake_case) and Redux UI (camelCase)
@@ -261,7 +261,7 @@ export const fetchInventoryDataApi = async () => {
     if (local) {
       try {
         materialNames = JSON.parse(local);
-      } catch (e) {}
+      } catch { /* ignore */ }
     }
 
     return {

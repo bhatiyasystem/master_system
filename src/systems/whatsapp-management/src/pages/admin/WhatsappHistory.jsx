@@ -1,13 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import {
-    Search, RefreshCw, Clock, User, Phone, Eye, X, XCircle,
-    MoreVertical, Check, CheckCheck, Send, Paperclip,
-    Smile, Filter, ChevronLeft, LayoutGrid, List, Download
-} from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+;
 import { useMagicToast } from '@/context/MagicToastContext';
 import { whatsappLogService } from '@/services/whatsappService';
 import supabase from '@/SupabaseClient';
-import { Plus, FileText, Image as ImageIcon, CornerUpRight } from 'lucide-react';
+import { Image as _ImageIcon, Check, User, Download, RefreshCw, MoreVertical, Search, Clock, Phone, ChevronLeft, Smile, X, FileText, CornerUpRight, ImageIcon, Plus, Send, CheckCheck, XCircle } from 'lucide-react';
 
 const getDisplayableImageUrl = (url) => {
     if (!url) return null;
@@ -142,7 +138,7 @@ const WhatsappHistory = () => {
             const bucketName = 'task-instructions';
             
             // Upload to Supabase Storage
-            const { data, error: uploadError } = await supabase.storage
+            const { _data, error: uploadError } = await supabase.storage
                 .from(bucketName)
                 .upload(fileName, file);
 

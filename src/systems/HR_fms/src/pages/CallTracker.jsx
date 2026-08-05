@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { Search, Clock, CheckCircle, X, Upload } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const CallTracker = () => {
@@ -55,7 +56,7 @@ const CallTracker = () => {
     salarySlip: null,
     resumeCopy: null
   });
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [enquiryData, setEnquiryData] = useState([]);
   const [historyData, setHistoryData] = useState([]);
@@ -342,7 +343,7 @@ const postToSheet = async (rowData) => {
 };
 
 // utils/dateFormatter.js
- const formatDateTime=(isoString)=>{
+ const _formatDateTime=(isoString)=>{
   const d = new Date(isoString);
   const day = String(d.getDate()).padStart(2, "0");
   const month = String(d.getMonth() + 1).padStart(2, "0");

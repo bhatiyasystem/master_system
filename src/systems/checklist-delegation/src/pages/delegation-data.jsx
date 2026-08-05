@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { CheckCircle2, Trash2, X, Search, Play, Pause, Edit, Save, Mic, Square } from "lucide-react"
-import { useDispatch, useSelector } from "react-redux"
-import { deleteDelegationTask, uniqueDelegationTaskData, updateDelegationTask } from "../redux/slice/quickTaskSlice"
-import { ReactMediaRecorder } from "react-media-recorder"
-import supabase from "../SupabaseClient"
-import AudioPlayer from "../components/AudioPlayer"
-import { useMagicToast } from "../context/MagicToastContext"
+import { Trash2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
-import RenderDescription from '../components/RenderDescription';
+import { useDispatch, useSelector } from 'react-redux'
+import { deleteDelegationTask, uniqueDelegationTaskData, updateDelegationTask } from '../redux/slice/quickTaskSlice'
+
+import supabase from "../SupabaseClient"
+import { useMagicToast } from '../context/MagicToastContext'
+
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -28,31 +27,31 @@ const CONFIG = {
 function DelegationPage({
   searchTerm = "",
   freqFilter = "",
-  setFreqFilter,
+  _setFreqFilter,
   departmentFilter = "",
-  showLayout = true,
+  _showLayout = true,
   externalSelectedTasks = null,
   onSelectionChange = null,
   onDelete = null,
   isExternalDeleting = false,
-  departments = [],
-  givenByList = [],
-  doersList = [],
+  _departments = [],
+  _givenByList = [],
+  _doersList = [],
   onEdit = null,
   skipFetch = false
 }) {
   const { showToast } = useMagicToast();
-  const [error, setError] = useState(null)
-  const [userRole, setUserRole] = useState("")
-  const [username, setUsername] = useState("")
+  const [_error, _setError] = useState(null)
+  const [_userRole, setUserRole] = useState("")
+  const [_username, setUsername] = useState("")
   const [isInitialized, setIsInitialized] = useState(false)
   const [internalSelectedTasks, setInternalSelectedTasks] = useState([])
   const [internalIsDeleting, setInternalIsDeleting] = useState(false)
-  const [editingTaskId, setEditingTaskId] = useState(null)
+  const [_editingTaskId, setEditingTaskId] = useState(null)
   const [editFormData, setEditFormData] = useState({})
-  const [isSaving, setIsSaving] = useState(false)
+  const [_isSaving, setIsSaving] = useState(false)
   const [recordedAudio, setRecordedAudio] = useState(null)
-  const [isUploading, setIsUploading] = useState(false)
+  const [_isUploading, setIsUploading] = useState(false)
 
   const isControlled = externalSelectedTasks !== null;
   const selectedTasks = isControlled ? externalSelectedTasks : internalSelectedTasks;
@@ -127,7 +126,7 @@ function DelegationPage({
           instructionUrls = task.instruction_attachment_url ? [task.instruction_attachment_url] : [];
           instructionTypes = task.instruction_attachment_type ? [task.instruction_attachment_type] : [];
         }
-      } catch (e) {
+      } catch {
         instructionUrls = task.instruction_attachment_url ? [task.instruction_attachment_url] : [];
         instructionTypes = task.instruction_attachment_type ? [task.instruction_attachment_type] : [];
       }
@@ -153,13 +152,13 @@ function DelegationPage({
     }
   };
 
-  const handleCancelEdit = () => {
+  const _handleCancelEdit = () => {
     setEditingTaskId(null);
     setEditFormData({});
     setRecordedAudio(null);
   };
 
-  const handleSaveEdit = async () => {
+  const _handleSaveEdit = async () => {
     if (!editFormData.id) return;
 
     setIsSaving(true);
@@ -176,7 +175,7 @@ function DelegationPage({
         setIsUploading(true);
         try {
           const fileName = `voice-notes/${Date.now()}-${Math.random().toString(36).substring(7)}.webm`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { data: _uploadData, error: uploadError } = await supabase.storage
             .from('audio-recordings')
             .upload(fileName, recordedAudio.blob, {
               contentType: recordedAudio.blob.type || 'audio/webm',
@@ -243,14 +242,14 @@ function DelegationPage({
     }
   };
 
-  const handleInputChange = (field, value) => {
+  const _handleInputChange = (field, value) => {
     setEditFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleAttachmentChange = (index, field, value) => {
+  const _handleAttachmentChange = (index, field, value) => {
     setEditFormData(prev => {
       const urls = [...(prev.instruction_attachment_url || [])];
       const types = [...(prev.instruction_attachment_type || [])];
@@ -266,7 +265,7 @@ function DelegationPage({
     });
   };
 
-  const addAttachment = () => {
+  const _addAttachment = () => {
     setEditFormData(prev => ({
       ...prev,
       instruction_attachment_url: [...(prev.instruction_attachment_url || []), ''],
@@ -274,7 +273,7 @@ function DelegationPage({
     }));
   };
 
-  const removeAttachment = (index) => {
+  const _removeAttachment = (index) => {
     setEditFormData(prev => {
       const urls = (prev.instruction_attachment_url || []).filter((_, i) => i !== index);
       const types = (prev.instruction_attachment_type || []).filter((_, i) => i !== index);

@@ -1,4 +1,3 @@
-import React from 'react';
 
 const HalfCircleChart = ({ data, labels, colors }) => {
   const total = data.reduce((sum, value) => sum + value, 0);

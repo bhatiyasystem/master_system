@@ -55,7 +55,7 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
               const fileName = `delegation_${taskData.id}_${timestamp}_${taskImage.name}`;
 
               // Upload to Supabase storage using 'checklist' bucket as 'delegation' bucket doesn't exist
-              const { data: uploadData, error: uploadError } = await supabase.storage
+              const { data: _uploadData, error: uploadError } = await supabase.storage
                 .from('checklist')
                 .upload(fileName, taskImage);
 
@@ -212,7 +212,7 @@ export const fetchDelegationHistory = fetchDelegation_DoneDataSortByDate;
 
 export const updateDelegationDoneStatus = createAsyncThunk(
   'delegation/updateDelegationDoneStatus',
-  async ({ id, status, taskId }, { rejectWithValue }) => {
+  async ({ id, _status, taskId }, { rejectWithValue }) => {
     try {
       const username = localStorage.getItem("user-name") || "Admin";
       const now = new Date(new Date().getTime() + (330 * 60000)).toISOString().replace('Z', '+05:30');
@@ -280,7 +280,7 @@ export const fetchPendingApprovals = async () => {
         original_task_id: doneItem.task_id
       };
     });
-  } catch (error) {
+  } catch {
     return [];
   }
 };

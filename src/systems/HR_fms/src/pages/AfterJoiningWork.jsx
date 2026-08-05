@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Filter, Search, Clock, CheckCircle, X } from 'lucide-react';
-import useDataStore from '../store/dataStore';
+import { Search, Clock, CheckCircle, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
 import toast from 'react-hot-toast';  
 
 const AfterJoiningWork = () => {
@@ -10,7 +10,7 @@ const AfterJoiningWork = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingData, setPendingData] = useState([]);
   const [historyData, setHistoryData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);

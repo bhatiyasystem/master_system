@@ -1,7 +1,4 @@
-import React from "react";
-import HalfCircleChart from "../../../components/charts/HalfCircleChart";
-import VerticalBarChart from "../../../components/charts/VerticalBarChart";
-import { Clock, User as UserIcon, CheckCircle2, Loader2 } from "lucide-react";
+import { User as _UserIcon, Loader2, UserIcon, CheckCircle2 } from 'lucide-react';
 
 const ChartsGrid = ({
     user,

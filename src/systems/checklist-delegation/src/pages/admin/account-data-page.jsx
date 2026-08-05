@@ -1,9 +1,9 @@
+import { Search, ArrowLeft, History, CheckCircle2, X, Upload } from 'lucide-react';
 //RKL Tasks Page
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { CheckCircle2, Upload, X, Search, History, ArrowLeft } from "lucide-react"
-import AdminLayout from "../../components/layout/AdminLayout"
+import { useState, useEffect, useCallback, useMemo } from 'react'
+
 
 // Configuration object - Move all configurations here
 const CONFIG = {
@@ -126,6 +126,7 @@ function AccountDataPage() {
       : accountData
 
     return filtered.sort(sortDateWise)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountData, searchTerm])
 
   const filteredHistoryData = useMemo(() => {
@@ -226,7 +227,7 @@ function AccountDataPage() {
 
       try {
         data = JSON.parse(text)
-      } catch (parseError) {
+      } catch {
         const jsonStart = text.indexOf("{")
         const jsonEnd = text.lastIndexOf("}")
         if (jsonStart !== -1 && jsonEnd !== -1) {
@@ -362,6 +363,7 @@ function AccountDataPage() {
       setError("Failed to load account data: " + error.message)
       setLoading(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

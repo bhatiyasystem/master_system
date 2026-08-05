@@ -1,19 +1,6 @@
 
 
-import { useParams } from "react-router-dom"
-import AdminLayout from "../../components/layout/AdminLayout.jsx"
-import SalesDataPage from "./SalesDataPage.jsx"
-import ServiceDataPage from "./service-data-page.jsx"
-import JockeyDataPage from "./jockey-data-page.jsx"
-import AccountDataPage from "./account-data-page.jsx"
-import WarehouseDataPage from "./ware-house-data.jsx"
-import PurchaseDataPage from "./purchase-data-page.jsx"
-import DirectorDataPage from "./director-data-page.jsx"
-import ManagingDirector from "./managingDirector-data-page.jsx"
-import AdminDataPage from "./admin-data-page.jsx"
-import MaintenanceDataPage from "./MaintenanceDataPage.jsx"
-import RepairDataPage from "./RepairDataPage.jsx"
-import Coo from "./coo-data-page.jsx"
+import { useParams } from 'react-router-dom'
 
 export default function DataPage() {
   const { category } = useParams()

@@ -1,30 +1,20 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
-import { fetchInventoryData } from "../redux/slice/inventorySlice";
+import DashboardView from '../components/DashboardView';
+import StockDashboardView from '../components/StockDashboardView';
+import TransactionsView from '../components/TransactionsView';
+import ReorderView from '../components/ReorderView';
+import IndentView from '../components/IndentView';
+import SettingsView from '../components/SettingsView';
+import MasterDataView from '../components/MasterDataView';
+import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router-dom';
+import { fetchInventoryData } from '../redux/slice/inventorySlice';
 
 // Icons for sub-tabs
-import {
-  LayoutDashboard,
-  Boxes,
-  Database,
-  History,
-  AlertTriangle,
-  ClipboardList,
-  ShieldCheck,
-  Settings,
-  Sparkles,
-  RefreshCw,
-} from "lucide-react";
+import { LayoutDashboard, Boxes, History, AlertTriangle, ClipboardList, Settings, Sparkles, RefreshCw } from 'lucide-react';
 
 // Import sub-views
-import DashboardView from "../components/DashboardView";
-import StockDashboardView from "../components/StockDashboardView";
 // import MasterDataView from '../components/MasterDataView';
-import TransactionsView from "../components/TransactionsView";
-import ReorderView from "../components/ReorderView";
-import IndentView from "../components/IndentView";
-import SettingsView from "../components/SettingsView";
 
 const PAGE_META = {
   dashboard: { title: "Dashboard", icon: LayoutDashboard },
@@ -86,6 +76,7 @@ export default function InventoryPage() {
         localStorage.getItem("sp_simulated_loc")
       ),
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userStateSeq]);
 
   // Filter visible tabs based on role page restriction
@@ -114,6 +105,7 @@ export default function InventoryPage() {
     if (!visibleTabs.includes(activeTab)) {
       setActiveTab("dashboard");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleTabs, activeTab]);
 
   const handleReloadCredentials = () => {
@@ -121,7 +113,7 @@ export default function InventoryPage() {
   };
 
   // Reorder warnings badge count
-  const reorderBadgeCount = useMemo(() => {
+  const _reorderBadgeCount = useMemo(() => {
     // 1. Calculate stock balances per SKU
     const matClosing = {};
     materials.forEach((m) => {

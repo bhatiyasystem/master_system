@@ -1,7 +1,7 @@
-// src/systems/inventory/components/AuditLogView.jsx
-import React from 'react';
-import { useSelector } from 'react-redux';
 import { ShieldAlert, Info } from 'lucide-react';
+// src/systems/inventory/components/AuditLogView.jsx
+import { useSelector } from 'react-redux';
+;
 
 export default function AuditLogView() {
   const { audit } = useSelector((state) => state.inventory);
@@ -20,7 +20,7 @@ export default function AuditLogView() {
       const ss = String(date.getSeconds()).padStart(2, '0');
 
       return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
-    } catch (e) {
+    } catch {
       return ts;
     }
   };

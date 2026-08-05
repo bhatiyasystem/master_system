@@ -1,5 +1,5 @@
-import React from "react";
-import { Filter, ChevronDown, Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Filter, ChevronDown } from 'lucide-react';
+;
 
 const EmployeeListSection = ({
     user,
@@ -42,7 +42,7 @@ const EmployeeListSection = ({
     employeeCommitments,
     handleCommitmentChange,
 }) => {
-    const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+    const _isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-3 md:p-4 border-b border-gray-200">

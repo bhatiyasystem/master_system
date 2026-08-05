@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { FileText, Loader2 } from 'lucide-react';
+import { Loader2, FileText } from 'lucide-react';
+import { useState } from 'react';
+;
 import { pdf } from '@react-pdf/renderer';
-import AllModulesPDF from '../../../utils/AllModulesPDF';
 
 const DailyReportButton = ({ dataSheetRows }) => {
   const [generating, setGenerating] = useState(false);
@@ -17,7 +17,7 @@ const DailyReportButton = ({ dataSheetRows }) => {
       const modulesMap = {};
 
       // Group tasks by Module Name (Column C / Index 2)
-      dataSheetRows.forEach((row, idx) => {
+      dataSheetRows.forEach((row, _idx) => {
         const groupName = String(row[2] || "").trim();
         // Skip empty group names or "Other" modules completely
         if (!groupName || groupName.toLowerCase() === "other") return;

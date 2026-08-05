@@ -13,7 +13,7 @@ const IS_WHATSAPP_ENABLED = true; // Set to true to enable WhatsApp messages
 const WHATSAPP_API_URL = import.meta.env.VITE_WHATSAPP_API_URL || 'https://graph.facebook.com/v21.0';
 const WHATSAPP_PHONE_NUMBER_ID = import.meta.env.VITE_WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_ACCESS_TOKEN = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN;
-const WHATSAPP_WABA_ID = import.meta.env.VITE_WHATSAPP_WABA_ID;
+const _WHATSAPP_WABA_ID = import.meta.env.VITE_WHATSAPP_WABA_ID;
 
 const APP_LINK = "https://checklistdelegation.vercel.app/login";
 
@@ -494,10 +494,10 @@ export const sendUrgentTaskNotification = async (taskDetails) => {
             description,
             dueDate,
             givenBy,
-            taskType,
-            machineName,
-            partName,
-            department
+            _taskType,
+            _machineName,
+            _partName,
+            _department
         } = taskDetails;
 
         const phoneNumber = await getUserPhoneNumber(doerName);
@@ -674,7 +674,7 @@ export const sendEATaskNotification = async (taskDetails) => {
  */
 export const sendDelegationTaskNotification = async (taskDetails) => {
     try {
-        const { doerName, taskId, description, startDate, givenBy, department, duration } = taskDetails;
+        const { doerName, taskId, description, startDate, givenBy, department, _duration } = taskDetails;
         const phoneNumber = await getUserPhoneNumber(doerName);
         if (!phoneNumber) return false;
 
@@ -814,7 +814,7 @@ export const sendTaskAssignmentNotification = async (taskDetails) => {
 /**
  * DEPRECATED - use sendTaskAssignmentNotification
  */
-const formatTaskMessage = (taskDetails) => {
+const _formatTaskMessage = (_taskDetails) => {
     return "Please use specific notification functions";
 };
 
@@ -887,7 +887,7 @@ export const sendTaskCompletionNotification = async (taskDetails) => {
  */
 export const sendTaskRejectionNotification = async (taskDetails) => {
     try {
-        const { doerName, taskId, description, taskType, reason } = taskDetails;
+        const { doerName, taskId, description, _taskType, reason } = taskDetails;
         const phoneNumber = await getUserPhoneNumber(doerName);
 
         if (!phoneNumber) {
@@ -966,7 +966,7 @@ export const sendPasswordResetOTP = async (username, otp) => {
             `👤 User: *${username}*\n` +
             `🔢 OTP Code: *${otp}*\n\n` +
             `Please provide this code to the user if the request is valid.\n\n` +
-            `_Acemark Stationers_`;
+            `Acemark Stationers_`;
 
         return await sendWhatsAppMessage(adminNumber, message);
     } catch (error) {

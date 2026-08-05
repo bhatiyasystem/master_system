@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
 import { Search, Clock, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+;
 
 // Employee data
 const employees = [

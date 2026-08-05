@@ -1,16 +1,14 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import "./index.css";
 
-// --- Core Pages & Layouts ---
+import { MagicToastProvider } from "./context/MagicToastContext";
+import RealtimeLogoutListener from "./components/RealtimeLogoutListener";
 import LoginPage from "./pages/LoginPage";
+import MasterLayout from "./core/layout/MasterLayout";
 import CoreDashboard from "./core/components/CoreDashboard";
 import GlobalSettings from "./core/pages/GlobalSettings";
-import MasterLayout from "./core/layout/MasterLayout";
 import ProtectedRoute from "./core/authentication/ProtectedRoute";
 import SuperAdminRoute from "./core/authentication/SuperAdminRoute";
-import RealtimeLogoutListener from "./components/RealtimeLogoutListener";
-import { MagicToastProvider } from "./context/MagicToastContext";
 import systemRegistry from "./core/registry/systemRegistry";
 
 // --- System Module Registrations ---

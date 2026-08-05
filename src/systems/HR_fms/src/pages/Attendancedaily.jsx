@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
 import { Search, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
 
 const Attendancedaily = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [attendanceData, setAttendanceData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -38,7 +39,7 @@ const Attendancedaily = () => {
       }
 
       // Process data - assuming first row contains headers
-      const headers = rawData[0]; // First row as headers
+      const _headers = rawData[0]; // First row as headers
       const dataRows = rawData.length > 1 ? rawData.slice(1) : [];
 
       const processedData = dataRows.map((row) => ({

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bell, Search, User } from 'lucide-react';
+import { Search, User, Bell } from 'lucide-react';
+;
 import useAuthStore from '../store/authStore';
 
 const Header = ({ children }) => {

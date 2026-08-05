@@ -1,4 +1,3 @@
-import React from 'react';
 import { TrendingUp } from 'lucide-react';
 
 const StatsCard = ({ title, value, icon: Icon = TrendingUp, color = 'blue', trend }) => {

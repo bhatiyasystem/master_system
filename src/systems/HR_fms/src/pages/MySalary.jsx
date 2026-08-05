@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { DollarSign, Download, Eye, Calendar, TrendingUp } from 'lucide-react';
-import useAuthStore from '../store/authStore';
-import useDataStore from '../store/dataStore';
+import { DollarSign, TrendingUp, Eye, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const MySalary = () => {
   // const { user } = useAuthStore();
   // const { getFilteredData } = useDataStore();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [salaryData, setSalaryData] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [_submitting, _setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 //  const salaryData = getFilteredData('salaryData', user);
  
@@ -138,12 +137,12 @@ const totalOvertime = filteredSalary.reduce((sum, record) => {
 
   const years = [2023, 2024, 2025];
 
-  const handleDownloadPayslip = (salaryRecord) => {
+  const _handleDownloadPayslip = (salaryRecord) => {
     // In a real app, this would generate and download a PDF payslip
     alert(`Downloading payslip for ${salaryRecord.month}`);
   };
 
-  const handleViewPayslip = (salaryRecord) => {
+  const _handleViewPayslip = (salaryRecord) => {
     // In a real app, this would open a detailed payslip view
     alert(`Viewing payslip for ${salaryRecord.month}`);
   };

@@ -1,32 +1,12 @@
 "use client";
 import bhatiyaLogo from "../../assets/bhatiya_Logo.jpg";
 
-import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchNotifications } from "../../redux/slice/notificationSlice";
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchNotifications } from '../../redux/slice/notificationSlice';
 import supabase from "../../SupabaseClient";
-import {
-  CheckSquare,
-  ClipboardList,
-  Home,
-  LogOut,
-  Menu,
-  Database,
-  ChevronDown,
-  ChevronRight,
-  Zap,
-  Settings,
-  CirclePlus,
-  UserRound,
-  CalendarCheck,
-  Calendar as CalendarIcon,
-  BookmarkCheck,
-  CrossIcon,
-  X,
-  Bell,
-  Video,
-} from "lucide-react";
+import { CheckSquare, ClipboardList, Database, Zap, Settings, CalendarCheck, Calendar as CalendarIcon, BookmarkCheck, Bell, Video, Link, ChevronDown, ChevronRight, LogOut, Home, X, Menu, UserRound } from 'lucide-react';
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode, showLayout = true }) {
   const location = useLocation();
@@ -148,7 +128,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     setProfileImage(cachedImage || "");
 
     // Fetch reporting users for HOD role check
-    let reportingUsers = [storedUsername?.toLowerCase()];
+    let _reportingUsers = [storedUsername?.toLowerCase()];
     const currentUserRole = (localStorage.getItem("role") || "").toLowerCase();
     if (currentUserRole === "hod") {
       const fetchReportingUsers = async () => {
@@ -157,7 +137,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
           .select("user_name")
           .eq("reported_by", storedUsername);
         if (reports) {
-          reportingUsers = [storedUsername.toLowerCase(), ...reports.map(r => (r.user_name || "").toLowerCase())];
+          _reportingUsers = [storedUsername.toLowerCase(), ...reports.map(r => (r.user_name || "").toLowerCase())];
         }
       };
       fetchReportingUsers();
@@ -329,7 +309,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     },
   ];
 
-  const getAccessibleDepartments = () => {
+  const _getAccessibleDepartments = () => {
     return [];
   };
 

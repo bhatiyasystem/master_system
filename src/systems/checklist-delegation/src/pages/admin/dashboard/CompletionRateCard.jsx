@@ -1,4 +1,5 @@
-import { BarChart3 } from "lucide-react"
+import { BarChart3 } from 'lucide-react';
+
 
 export default function CompletionRateCard({ completionRate, completedTasks, totalTasks }) {
   return (

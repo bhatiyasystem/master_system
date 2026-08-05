@@ -1,21 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { X, CalendarClock, MessageSquareText, Users2 } from 'lucide-react';
+import { X, CalendarClock, Users2, MessageSquareText } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+;
+;
 import supabase from '../../../../../SupabaseClient';
-import {
-  fetchApprovedTemplates,
-  createSchedule,
-  updateSchedule,
-  resolveAndScheduleRecipients,
-  reResolveRecipients,
-} from '../../services/festivalSchedulerService';
+import { fetchApprovedTemplates, createSchedule, updateSchedule, resolveAndScheduleRecipients, reResolveRecipients,  } from '../../services/festivalSchedulerService';
 import { useMagicToast } from '../../../../../context/MagicToastContext';
-import TemplatePicker from './TemplatePicker';
-import VariableMapper from './VariableMapper';
-import MediaUploader from './MediaUploader';
-import TemplatePreview from './TemplatePreview';
-import AudienceSelector from './AudienceSelector';
-import ScheduleSummary from './ScheduleSummary';
 
 const emptyForm = {
   occasion: '',

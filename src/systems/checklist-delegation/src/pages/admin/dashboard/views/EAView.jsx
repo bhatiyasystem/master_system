@@ -1,6 +1,7 @@
-import { useRef, useEffect, useState, useMemo } from "react";
-import { Users, Phone, Calendar, FileText, CheckCircle, Clock, AlertCircle, ArrowUpRight, TrendingUp, UserCheck, PieChart, Play, Pause, Save, X } from "lucide-react";
-import AudioPlayer from "../../../../components/AudioPlayer";
+import { PieChart } from 'recharts';
+import { TrendingUp, CheckCircle, Clock, AlertCircle, Phone, Calendar, X } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+;
 import supabase from "../../../../SupabaseClient";
 
 const isAudioUrl = (url) => {
@@ -25,12 +26,12 @@ export default function EAView() {
         extended: 0,
         doersCount: 0
     });
-    const [doerStats, setDoerStats] = useState([]);
+    const [_doerStats, setDoerStats] = useState([]);
 
     // Editing State
     const [editingTaskId, setEditingTaskId] = useState(null);
     const [editFormData, setEditFormData] = useState({});
-    const [isSaving, setIsSaving] = useState(false);
+    const [_isSaving, setIsSaving] = useState(false);
 
     const handleEditClick = (task) => {
         setEditingTaskId(task.task_id);
@@ -78,7 +79,7 @@ export default function EAView() {
     };
 
     // Admin approval function
-    const handleApproveTask = async (taskId) => {
+    const _handleApproveTask = async (taskId) => {
         try {
             const { error } = await supabase
                 .from('ea_tasks')
@@ -98,6 +99,7 @@ export default function EAView() {
 
     useEffect(() => {
         fetchEATasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchEATasks = async () => {
@@ -240,7 +242,7 @@ export default function EAView() {
     const getStatusStyles = (status, plannedDate, adminDone, taskStartDate) => {
         const todayStr = new Date().toISOString().split('T')[0];
         const plannedStr = plannedDate ? new Date(plannedDate).toISOString().split('T')[0] : '';
-        const startStr = taskStartDate ? new Date(taskStartDate).toISOString().split('T')[0] : plannedStr;
+        const _startStr = taskStartDate ? new Date(taskStartDate).toISOString().split('T')[0] : plannedStr;
 
         // If it's extended, we follow the new planned date for overdue check
         const isOverdue = (status === 'pending' || status === 'extended' || status === 'extend') && plannedStr && plannedStr < todayStr;

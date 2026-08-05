@@ -1,38 +1,8 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  FileText,
-  Globe,
-  Search,
-  Phone,
-  UserCheck,
-  UserX,
-  UserMinus,
-  AlarmClockCheck,
-  Users,
-  Calendar,
-  DollarSign,
-  FileText as LeaveIcon,
-  User as ProfileIcon,
-  Clock,
-  LogOut as LogOutIcon,
-  X,
-  User,
-  Menu,
-  ChevronDown,
-  ChevronUp,
-  NotebookPen,
-  Book,
-  BadgeDollarSign,
-  BookPlus,
-  Settings,
-  IndianRupee,
-  Package
-} from 'lucide-react';
-import useAuthStore from '../store/authStore';
+import { useState } from 'react';
+import { useNavigate, NavLink } from 'react-router-dom';
+import { User, LayoutDashboard, FileText, Search, Phone, UserCheck, UserX, UserMinus, Users, Calendar, DollarSign, FileText as LeaveIcon, Clock, LogOut as LogOutIcon, Book, BadgeDollarSign, BookPlus, IndianRupee, Package, X, ChevronDown, ChevronUp, Menu } from 'lucide-react';
 
-const Sidebar = ({ onClose }) => {
+const Sidebar = ({ _onClose }) => {
   // const { logout, user } = useAuthStore();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -76,7 +46,7 @@ const Sidebar = ({ onClose }) => {
 
   const employeeMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/my-profile', icon: ProfileIcon, label: 'My Profile' },
+    { path: '/my-profile', icon: User, label: 'My Profile' },
     { path: '/my-attendance', icon: Clock, label: 'My Attendance' },
     { path: '/leave-request', icon: LeaveIcon, label: 'Leave Request' },
     { path: '/my-salary', icon: DollarSign, label: 'My Salary' },

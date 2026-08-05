@@ -1,24 +1,9 @@
 // src/systems/inventory/components/MasterDataView.jsx
-import React, { useState, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  Plus,
-  Search,
-  SlidersHorizontal,
-  ChevronDown,
-  Download,
-  Upload,
-  Edit2,
-  Trash2,
-  X,
-  FileSpreadsheet,
-} from "lucide-react";
+import { useState, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Search, SlidersHorizontal, Download, Upload, FileSpreadsheet, Plus, Edit2, Trash2, X, ChevronDown } from 'lucide-react';
 import Papa from "papaparse";
-import {
-  saveMaterial,
-  deleteMaterial,
-  saveList,
-} from "../redux/slice/inventorySlice";
+import { saveMaterial, deleteMaterial, saveList,  } from '../redux/slice/inventorySlice';
 
 export default function MasterDataView({ activeUser }) {
   const dispatch = useDispatch();
@@ -84,6 +69,7 @@ export default function MasterDataView({ activeUser }) {
     return allCategories.filter((c) =>
       c.toLowerCase().includes(formCategory.toLowerCase()),
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, formCategory]);
 
   const filteredNameSuggestions = useMemo(() => {
@@ -417,7 +403,7 @@ export default function MasterDataView({ activeUser }) {
             else added++;
           });
           alert(`Import complete: ${added} added, ${updated} updated.`);
-        } catch (err) {
+        } catch {
           alert("Failed to parse file. Please verify CSV headers.");
         }
       },

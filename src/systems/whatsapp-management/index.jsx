@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React from 'react';
 import systemRegistry from '../../core/registry/systemRegistry';
 import WhatsappHistory from './src/pages/admin/WhatsappHistory';

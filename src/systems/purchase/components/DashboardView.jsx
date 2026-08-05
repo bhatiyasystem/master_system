@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { BarChart } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import { CardPanel, BarChart } from './ui';
+import { useEffect, useMemo, useState } from 'react';
+;
+;
 import { fmt } from '../utils/helpers';
 import { fetchIndents, fetchPOs } from '../services/purchaseService';
 

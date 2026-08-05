@@ -1,11 +1,10 @@
-import React, { useMemo, useState, useRef } from "react"
-import { FileText, CheckCircle, IndianRupee, PieChart as PieIcon, Search, X, Loader2, Save, Wrench, Play, Pause } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { useDispatch } from "react-redux"
-import AudioPlayer from "../../../../components/AudioPlayer"
-import { updateRepair } from "../../../../redux/slice/repairSlice"
+import { ResponsiveContainer, XAxis, YAxis, Tooltip, Line, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+import { useMemo, useState } from 'react'
+import { FileText, CheckCircle, IndianRupee, LineChart, Search, X, Loader2, Wrench } from 'lucide-react'
 
-import RenderDescription from "../../../../components/RenderDescription"
+import { useDispatch } from 'react-redux'
+import { updateRepair } from '../../../../redux/slice/repairSlice'
+
 
 const isAudioUrl = (url) => {
     if (!url || typeof url !== 'string') return false;
@@ -75,7 +74,7 @@ export default function RepairView({ tasks = [], onCardClick }) {
         }
     };
 
-    const getStatusColor = (status, admin_done) => {
+    const getStatusColor = (status, _admin_done) => {
         if (!status) return "bg-gray-100 text-gray-700 border-gray-200";
         const s = status.toLowerCase();
         if (s.includes("approved") || s.includes("complete") || s === "done") {

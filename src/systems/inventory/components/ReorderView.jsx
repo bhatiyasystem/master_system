@@ -1,15 +1,8 @@
+import { Search, ClipboardList, X, ChevronDown } from 'lucide-react';
 // src/systems/inventory/components/ReorderView.jsx
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Search,
-  CheckSquare,
-  Square,
-  FileSpreadsheet,
-  X,
-  ClipboardList,
-  ChevronDown
-} from 'lucide-react';
+;
 import { createIndents } from '../redux/slice/inventorySlice';
 
 export default function ReorderView({ activeUser, onTabChange }) {
@@ -153,7 +146,7 @@ export default function ReorderView({ activeUser, onTabChange }) {
   };
 
   // Handle select requester dropdown
-  const handleUserSelect = (name) => {
+  const _handleUserSelect = (name) => {
     const selected = users.find(u => u.name === name);
     if (selected) {
       setReqName(selected.name);

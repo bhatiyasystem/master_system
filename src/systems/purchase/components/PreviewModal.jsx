@@ -1,6 +1,3 @@
-import React from 'react';
-import Modal from './Modal';
-import POSheet from './POSheet';
 
 export default function PreviewModal({ po, revisionNote, onClose }) {
   return (

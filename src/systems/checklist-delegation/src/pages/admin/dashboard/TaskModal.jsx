@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Search, ListTodo, CheckCircle2, Clock, AlertTriangle, User, Calendar, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, AlertTriangle, Clock, X, Search, Loader2, User, Calendar } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+;
+;
 import { fetchDashboardDataApi } from '../../../redux/api/dashboardApi';
 
 const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, departmentFilter, dateRange }) => {
@@ -8,7 +9,7 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, _setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const scrollRef = useRef(null);
   const limit = 20;
@@ -29,6 +30,7 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
       setHasMore(true);
       fetchTasks(1, debouncedSearch, true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, type, dashboardType, staffFilter, departmentFilter, dateRange, debouncedSearch]);
 
   const fetchTasks = async (pageNum, search, reset = false) => {
@@ -79,6 +81,7 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
       setPage(nextPage);
       fetchTasks(nextPage, debouncedSearch);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, isLoading, hasMore, debouncedSearch]);
 
   const getStatusIcon = (status) => {

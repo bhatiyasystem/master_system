@@ -1,21 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, X, Calendar, Clock, CheckCircle, AlertCircle, Filter, Search } from 'lucide-react';
-import useAuthStore from '../store/authStore';
-import useDataStore from '../store/dataStore';
+import { Plus, Filter, Calendar, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const LeaveRequest = () => {
   const employeeId = localStorage.getItem("employeeId");
   const rawUser = localStorage.getItem("user");
   const user = rawUser ? JSON.parse(rawUser) : {}; 
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [leavesData, setLeavesData] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [_error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('all');
-  const [employees, setEmployees] = useState([]);
+  const [_employees, setEmployees] = useState([]);
   const [formData, setFormData] = useState({
     employeeId: employeeId,
     employeeName: user.Name || '',
@@ -71,6 +70,7 @@ const LeaveRequest = () => {
 useEffect(() => {
   fetchLeaveData();
   fetchEmployeeData(); // Add this line
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
   // Fetch employees from JOINING sheet
@@ -252,6 +252,7 @@ useEffect(() => {
   useEffect(() => {
     fetchLeaveData();
     fetchEmployees();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e) => {

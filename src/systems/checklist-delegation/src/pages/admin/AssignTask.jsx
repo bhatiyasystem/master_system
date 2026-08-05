@@ -1,7 +1,6 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import AdminLayout from "../../components/layout/AdminLayout";
-import { ClipboardList, Wrench, Hammer, Plus, ArrowUpRight, LayoutGrid, Users } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { ClipboardList, Wrench, Hammer, Users, ArrowUpRight, Plus } from 'lucide-react';
 
 export default function AssignTask() {
   const navigate = useNavigate();
@@ -17,7 +16,7 @@ export default function AssignTask() {
   }, [navigate]);
 
   const role = (localStorage.getItem("role") || "").toLowerCase();
-  const canSelfAssign = localStorage.getItem("can_self_assign") === "true";
+  const _canSelfAssign = localStorage.getItem("can_self_assign") === "true";
   const designation = (localStorage.getItem("designation") || "").toLowerCase();
   const isMachineOperator = designation.includes("machin") || designation.includes("operat") || designation.includes("oprat");
 

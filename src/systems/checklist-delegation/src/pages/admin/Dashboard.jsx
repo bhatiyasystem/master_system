@@ -1,45 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
+import { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import supabase from "../../SupabaseClient"
-import AdminLayout from "../../components/layout/AdminLayout.jsx"
-import DashboardHeader from "./dashboard/DashboardHeader.jsx"
-import StatisticsCards from "./dashboard/StaticsCard.jsx"
-import TaskNavigationTabs from "./dashboard/TaskNavigationTab.jsx"
-import CompletionRateCard from "./dashboard/CompletionRateCard.jsx"
-import TasksOverviewChart from "./dashboard/Chart/TaskOverviewChart.jsx"
-import TasksCompletionChart from "./dashboard/Chart/TaskCompletionChart.jsx"
-import StaffTasksTable from "./dashboard/StaffTaskTable.jsx"
-import {
-  completeTaskInTable,
-  overdueTaskInTable,
-  pendingTaskInTable,
-  totalTaskInTable,
-} from "../../redux/slice/dashboardSlice.js"
-import {
-  fetchDashboardDataApi,
-  getUniqueDepartmentsApi,
-  getStaffNamesByDepartmentApi,
-  fetchChecklistDataByDateRangeApi,
-  getChecklistDateRangeStatsApi
-} from "../../redux/api/dashboardApi.js"
-import { fetchMaintenanceDataSortByDate, fetchAllMaintenanceTasksForDashboard } from "../../redux/api/maintenanceApi.js"
-import { fetchRepairDataSortByDate, fetchAllRepairTasks } from "../../redux/api/repairApi.js"
-import DefaultView from "./dashboard/views/DefaultView.jsx"
-import MaintenanceView from "./dashboard/views/MaintenanceView.jsx"
-import RepairView from "./dashboard/views/RepairView.jsx"
-import EAView from "./dashboard/views/EAView.jsx"
-import TaskManagementTabs from "../../components/TaskManagementTabs.jsx"
-import TaskModal from "./dashboard/TaskModal.jsx"
+import { completeTaskInTable, overdueTaskInTable, pendingTaskInTable, totalTaskInTable,  } from '../../redux/slice/dashboardSlice.js'
+import { fetchDashboardDataApi, getUniqueDepartmentsApi, getStaffNamesByDepartmentApi, fetchChecklistDataByDateRangeApi, getChecklistDateRangeStatsApi } from '../../redux/api/dashboardApi.js'
+import { fetchAllMaintenanceTasksForDashboard } from '../../redux/api/maintenanceApi.js'
+import { fetchAllRepairTasks } from '../../redux/api/repairApi.js'
 
 export default function AdminDashboard() {
   const [dashboardType, setDashboardType] = useState("checklist")
   const [taskView, setTaskView] = useState("recent")
-  const [filterStatus, setFilterStatus] = useState("all")
+  const [filterStatus, _setFilterStatus] = useState("all")
   const [filterStaff, setFilterStaff] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("overview")
+  const [activeTab, _setActiveTab] = useState("overview")
   const [dashboardStaffFilter, setDashboardStaffFilter] = useState("all")
   const [availableStaff, setAvailableStaff] = useState([])
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
@@ -51,7 +26,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreData, setHasMoreData] = useState(true)
-  const [allTasks, setAllTasks] = useState([])
+  const [_allTasks, _setAllTasks] = useState([])
   const [batchSize] = useState(1000)
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [availableDepartments, setAvailableDepartments] = useState([])
@@ -89,7 +64,7 @@ export default function AdminDashboard() {
     completionRate: 0,
   })
 
-  const { dashboard, totalTask, completeTask, pendingTask, overdueTask } = useSelector((state) => state.dashBoard)
+  const { _dashboard, _totalTask, _completeTask, _pendingTask, _overdueTask } = useSelector((state) => state.dashBoard)
   const dispatch = useDispatch()
 
   // Handle date range change from DashboardHeader
@@ -210,7 +185,7 @@ export default function AdminDashboard() {
     let pendingTasks = 0;
     let overdueTasks = 0;
 
-    const process = (dataStream, statsObject) => {
+    const _process = (_dataStream, _statsObject) => {
         // ... nested processing logic or just call it after getReportees
     };
 
@@ -341,7 +316,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const fetchDepartmentDataWithDateRange = async (startDate, endDate, page = 1, append = false) => {
+  const fetchDepartmentDataWithDateRange = async (startDate, endDate, page = 1, _append = false) => {
     try {
       const data = await fetchDashboardDataApi(dashboardType, dashboardStaffFilter, page, batchSize, 'all', departmentFilter);
 
@@ -447,7 +422,7 @@ export default function AdminDashboard() {
   }
 
   // Helper function to format date from ISO format to DD/MM/YYYY
-  const formatLocalDate = (isoDate) => {
+  const _formatLocalDate = (isoDate) => {
     if (!isoDate) return ""
     const date = new Date(isoDate)
     return formatDateToDDMMYYYY(date)
@@ -484,7 +459,7 @@ export default function AdminDashboard() {
   }
 
   // Check if date is in the future (excluding today)
-  const isDateFuture = (date) => {
+  const _isDateFuture = (date) => {
     if (!date || !(date instanceof Date)) return false
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -494,7 +469,7 @@ export default function AdminDashboard() {
   }
 
   // Function to check if a date is tomorrow
-  const isDateTomorrow = (dateStr) => {
+  const _isDateTomorrow = (dateStr) => {
     const date = parseTaskStartDate(dateStr)
     if (!date) return false
     const tomorrow = new Date()
@@ -574,7 +549,7 @@ export default function AdminDashboard() {
       console.log(`✅ Fetched ${data.length} TOTAL records for ${mainTab || dashboardType}`);
 
       const username = localStorage.getItem("user-name")
-      const userRoleLower = (localStorage.getItem("role") || "").toLowerCase()
+      const _userRoleLower = (localStorage.getItem("role") || "").toLowerCase()
       // Reference point for all date comparisons
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -682,7 +657,7 @@ export default function AdminDashboard() {
 
           // FIXED: Use correct field name from your Supabase data - prefer planned_date
           const taskStartDate = parseTaskStartDate(task.planned_date || task.task_start_date || task.created_at);
-          const completionDate = task.submission_date ? parseTaskStartDate(task.submission_date) : null;
+          const _completionDate = task.submission_date ? parseTaskStartDate(task.submission_date) : null;
 
           // Robust completion check across all categories
           const statusLower = (task.status || "").toLowerCase();
@@ -891,6 +866,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDepartments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType, userRole]);
 
   // Reset staff filter when department filter changes
@@ -919,6 +895,7 @@ export default function AdminDashboard() {
       tableContainer.addEventListener('scroll', handleScroll)
       return () => tableContainer.removeEventListener('scroll', handleScroll)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadingMore, hasMoreData])
 
   useEffect(() => {
@@ -954,6 +931,7 @@ export default function AdminDashboard() {
         departmentFilter,
       }),
     )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType, dashboardStaffFilter, departmentFilter, mainTab, dispatch])
 
   // Sync mainTab when departmentFilter changes from other sources (like DashboardHeader)
@@ -968,6 +946,7 @@ export default function AdminDashboard() {
         setMainTab("default")
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departmentFilter])
 
   // Filter tasks based on criteria
@@ -1003,6 +982,7 @@ export default function AdminDashboard() {
       endDate: "",
       filtered: false
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType])
 
   const getTasksByView = (view) => {
@@ -1025,8 +1005,8 @@ export default function AdminDashboard() {
           // For checklist, show today's tasks but exclude completed ones
           return isDateToday(taskDate) && task.status !== "completed";
 
-        case "upcoming":
-          // For delegation, show tomorrow's tasks regardless of completion status
+        case "upcoming": {
+// For delegation, show tomorrow's tasks regardless of completion status
           if (dashboardType === "delegation") {
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1037,7 +1017,8 @@ export default function AdminDashboard() {
           tomorrow.setDate(tomorrow.getDate() + 1);
           return taskDateOnly.getTime() === tomorrow.getTime();
 
-        case "overdue":
+              }
+case "overdue":
           // For delegation, show tasks that are past due and have null submission_date
           if (dashboardType === "delegation") {
             return taskDateOnly < today && !task.submission_date;
@@ -1051,7 +1032,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const getStatusColor = (status) => {
+  const _getStatusColor = (status) => {
     switch (status) {
       case "completed":
         return "bg-green-500 hover:bg-green-600 text-white"
@@ -1090,7 +1071,7 @@ export default function AdminDashboard() {
   today.setHours(0, 0, 0, 0)
 
   // Calculate filtered stats for cards - same logic as table
-  const cardStats = (() => {
+  const _cardStats = (() => {
     // Filter tasks that are not upcoming (due today or before)
     const filteredTasks = departmentData.allTasks.filter((task) => {
       const taskDate = parseTaskStartDate(task.originalTaskStartDate)

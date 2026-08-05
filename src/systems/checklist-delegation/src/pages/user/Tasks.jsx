@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState } from 'react'
 
 const UserTasks = () => {
   const [filterStatus, setFilterStatus] = useState("all")
@@ -176,7 +176,7 @@ const UserTasks = () => {
       setErrors({})
 
       showToast(`${selectedTasks.length} tasks have been marked as completed.`, "success")
-    } catch (error) {
+    } catch {
       showToast("There was an error submitting the tasks. Please try again.", "error")
     } finally {
       setIsSubmitting(false)

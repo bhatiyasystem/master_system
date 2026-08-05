@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { StyleSheet } from '@react-pdf/renderer';
 import { MONTHS } from '../services/supabaseHR';
 
 const styles = StyleSheet.create({

@@ -1,15 +1,14 @@
+import { Search, ArrowLeft, History, Upload } from 'lucide-react';
 "use client"
 
-import { useState, useEffect } from "react"
-import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Calendar, Check } from "lucide-react"
-import AdminLayout from "../../components/layout/AdminLayout"
-import ReactDOM from 'react-dom';
+import { useState, useEffect } from 'react'
+
 
 // Google Apps Script URL
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz47q4SiLvJJom8dRGteqjhufs0Iui4rYTLMeTYqOgY_MFrS0C0o0XkRCPzAOdEeg4jqg/exec"
 // Google Drive folder ID
 const DRIVE_FOLDER_ID = "1TzjAIpRAoz017MfzZ0gZaN-v5jyKtg7E"
-import { useMagicToast } from "../../context/MagicToastContext"
+import { useMagicToast } from '../../context/MagicToastContext'
 
 function AccountDataPage() {
   const { showToast } = useMagicToast()
@@ -20,7 +19,7 @@ function AccountDataPage() {
   const [additionalData, setAdditionalData] = useState({})
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
-  const [debugInfo, setDebugInfo] = useState([])
+  const [_debugInfo, setDebugInfo] = useState([])
   const [historyData, setHistoryData] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const [membersList, setMembersList] = useState([])
@@ -107,7 +106,7 @@ function AccountDataPage() {
   }
 
   // Format date from yyyy-mm-dd to DD/MM/YYYY
-  const formatDateFromHTML = (dateStr) => {
+  const _formatDateFromHTML = (dateStr) => {
     if (!dateStr) return "";
     const parts = dateStr.split('-');
     if (parts.length !== 3) return "";
@@ -413,7 +412,7 @@ function AccountDataPage() {
         // Safely get values from columns L, M, P, and Q
         const columnLValue = getCellValue(row, 11);
         const columnMValue = getCellValue(row, 12);
-        const columnPValue = getCellValue(row, 15);
+        const _columnPValue = getCellValue(row, 15);
         const columnQValue = getCellValue(row, 16);
 
         // Skip rows marked as DONE in column Q
@@ -497,6 +496,7 @@ function AccountDataPage() {
   // Load data on component mount
   useEffect(() => {
     fetchSheetData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSelectItem = (id) => {

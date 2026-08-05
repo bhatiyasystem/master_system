@@ -1,13 +1,13 @@
-import React, { useMemo, useState, useRef, useEffect } from "react"
-import { isToday, isThisWeek, isThisMonth } from "date-fns"
-import { Settings, Calendar, CheckCircle, Clock, AlertTriangle, IndianRupee, FileText, Play, Pause, Edit, Save, X } from "lucide-react"
-import AudioPlayer from "../../../../components/AudioPlayer"
-import { useDispatch } from "react-redux"
-import { updateMaintenanceTask } from "../../../../redux/slice/maintenanceSlice"
-import { fetchUniqueDepartmentDataApi, fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from "../../../../redux/api/assignTaskApi"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+import { ResponsiveContainer, BarChart, XAxis, YAxis, Tooltip, Bar, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+import { useMemo, useState, useEffect } from 'react'
+import { isToday, isThisWeek, isThisMonth } from 'date-fns'
+import { Settings, Calendar, CheckCircle, Clock, AlertTriangle, IndianRupee, FileText, X } from 'lucide-react'
+import { useDispatch } from 'react-redux'
+import { updateMaintenanceTask } from '../../../../redux/slice/maintenanceSlice'
+import { fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from '../../../../redux/api/assignTaskApi'
 
-import RenderDescription, { MediaViewer } from "../../../../components/RenderDescription"
+
+import _RenderDescription, { MediaViewer } from "../../../../components/RenderDescription"
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -33,7 +33,7 @@ const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
     </div>
 )
 
-export default function MaintenanceView({ stats: originalStats, chartData, tasks = [], onCardClick }) {
+export default function MaintenanceView({ stats: _originalStats, _chartData, tasks = [], onCardClick }) {
     const [maintFilter, setMaintFilter] = useState('all');
     const [isSaving, setIsSaving] = useState(false);
     const [viewerOpen, setViewerOpen] = useState(false);

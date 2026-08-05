@@ -1,4 +1,3 @@
-import React from 'react';
 import { Image as ImageIcon, Video, FileText } from 'lucide-react';
 
 const SAMPLE_CONTACT = {

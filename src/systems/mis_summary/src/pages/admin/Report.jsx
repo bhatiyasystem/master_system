@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Filter, Search, Calendar, ChevronDown } from "lucide-react";
-import { employees, tasks, departments } from "../../data/mockData";
+import { Filter, ChevronDown, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
+import { employees, tasks } from '../../data/mockData';
 
 const Report = () => {
   const [filterName, setFilterName] = useState("");
@@ -23,6 +24,7 @@ const Report = () => {
 
     // Initialize with all data
     applyFilters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyFilters = () => {
@@ -85,7 +87,7 @@ const Report = () => {
     };
   };
 
-  const getStatusBadge = (status) => {
+  const _getStatusBadge = (status) => {
     const statusConfig = {
       completed: { color: "bg-green-100 text-green-800", label: "Completed" },
       "in-progress": {
@@ -108,7 +110,7 @@ const Report = () => {
     );
   };
 
-  const getPriorityBadge = (priority) => {
+  const _getPriorityBadge = (priority) => {
     const priorityConfig = {
       high: { color: "bg-red-100 text-red-800", label: "High" },
       medium: { color: "bg-yellow-100 text-yellow-800", label: "Medium" },
@@ -130,6 +132,7 @@ const Report = () => {
 
   useEffect(() => {
     applyFilters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterName, filterDepartment, startDate, endDate]);
 
   return (

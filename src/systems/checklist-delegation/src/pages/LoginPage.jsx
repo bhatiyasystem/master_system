@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 
-import { loginUser } from "../redux/slice/loginSlice"
-import { LoginCredentialsApi } from "../redux/api/loginApi"
-import { useMagicToast } from "../context/MagicToastContext"
+import { loginUser } from '../redux/slice/loginSlice'
+
+import { useMagicToast } from '../context/MagicToastContext'
 import supabase from "../SupabaseClient"
-import { sendPasswordResetOTP, isWhatsAppConnected } from "../services/whatsappService"
-import { KeyRound, ShieldCheck, User as UserIcon, ArrowLeft, RefreshCw, Smartphone } from "lucide-react"
+import { sendPasswordResetOTP, isWhatsAppConnected } from '../services/whatsappService'
+import { User as UserIcon, KeyRound, Eye, EyeOff, RefreshCw, ShieldCheck, Smartphone, ArrowLeft } from 'lucide-react'
 
 const LoginPage = () => {
   const navigate = useNavigate()
@@ -227,7 +227,7 @@ const LoginPage = () => {
                           await sendPasswordResetOTP(forgotData.username, otp);
                           setForgotData({ ...forgotData, generatedOtp: otp });
                           setForgotStep('otp');
-                        } catch (err) {
+                        } catch {
                           showToast("Error processing request", "error");
                         } finally {
                           setIsForgotLoading(false);
@@ -289,7 +289,7 @@ const LoginPage = () => {
                       setShowForgotModal(false);
                       setForgotStep('username');
                       setForgotData({ username: "", otp: "", newPassword: "", confirmPassword: "", generatedOtp: "" });
-                    } catch (err) {
+                    } catch {
                       showToast("Error resetting password", "error");
                     } finally {
                       setIsForgotLoading(false);

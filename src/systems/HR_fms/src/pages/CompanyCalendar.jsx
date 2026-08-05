@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const CompanyCalendar = () => {

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { Search, Clock, CheckCircle, X, Upload } from 'lucide-react';
-import useDataStore from '../store/dataStore';
+import { useState, useEffect } from 'react';
+;
 import toast from 'react-hot-toast';
 
 const FindEnquiry = () => {
@@ -10,10 +10,10 @@ const FindEnquiry = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [indentData, setIndentData] = useState([]);
   const [enquiryData, setEnquiryData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [_error, setError] = useState(null);
   const [generatedCandidateNo, setGeneratedCandidateNo] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);

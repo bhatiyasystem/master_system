@@ -1,5 +1,4 @@
-import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font, Svg, Path, Circle } from '@react-pdf/renderer';
+import { StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
@@ -191,7 +190,7 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 8, color: '#94a3b8' },
 });
 
-const AllModulesPDF = ({ modules = [], allData = {}, logoPath }) => {
+const AllModulesPDF = ({ modules = [], allData = {}, _logoPath }) => {
   const today = new Date().toLocaleDateString('en-US', {
     day: '2-digit',
     month: 'short',

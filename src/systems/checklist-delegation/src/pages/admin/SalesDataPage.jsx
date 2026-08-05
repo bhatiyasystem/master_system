@@ -1,11 +1,11 @@
+import { Search, ArrowLeft, History, Loader2, CheckCircle2, X, Upload } from 'lucide-react';
 "use client"
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Filter, Calendar, Save, Loader2 } from "lucide-react"
-import AdminLayout from "../../components/layout/AdminLayout"
-import { useDispatch, useSelector } from "react-redux"
-import { checklistData, checklistHistoryData, updateChecklist } from "../../redux/slice/checklistSlice"
-import { postChecklistAdminDoneAPI } from "../../redux/api/checkListApi"
-import { uniqueDoerNameData } from "../../redux/slice/assignTaskSlice";
+import { useState, useEffect, useMemo, useRef } from 'react'
+
+import { useDispatch, useSelector } from 'react-redux'
+import { checklistData, checklistHistoryData, updateChecklist } from '../../redux/slice/checklistSlice'
+import { postChecklistAdminDoneAPI } from '../../redux/api/checkListApi'
+import { uniqueDoerNameData } from '../../redux/slice/assignTaskSlice';
 
 export default function AccountDataPage({ showLayout = true, departmentFilter = "" }) {
   const [searchTerm, setSearchTerm] = useState("")
@@ -29,7 +29,7 @@ export default function AccountDataPage({ showLayout = true, departmentFilter = 
   const [markingAsDone, setMarkingAsDone] = useState(false)
 
   const dispatch = useDispatch();
-  const { checklist, loading, history, hasMore, currentPage } = useSelector((state) => state.checkList);
+  const { checklist, _loading, history, hasMore, _currentPage } = useSelector((state) => state.checkList);
 
   const userRole = localStorage.getItem("role") || "";
 

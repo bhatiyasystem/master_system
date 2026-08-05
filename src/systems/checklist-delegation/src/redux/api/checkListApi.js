@@ -9,10 +9,10 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
   const userAccess = localStorage.getItem('user_access');
 
   try {
-    const today = new Date();
+    const _today = new Date();
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
-    const endOfTodayISO = endOfToday.toISOString();
+    const _endOfTodayISO = endOfToday.toISOString();
 
     // Calculate range for pagination
     const from = (page - 1) * limit;
@@ -112,7 +112,7 @@ export const fetchChechListDataForHistory = async (page = 1, searchTerm = '') =>
       }
     }
 
-    const { data, error, count } = await query;
+    const { data, error, _count } = await query;
 
     if (error) {
       console.log("Error when fetching data", error);
@@ -261,7 +261,7 @@ export const bulkDeleteApprovedChecklists = async (days) => {
 
     console.log(`Cleaning up checklists older than ${days} days (Before ${cutoffDateString})`);
 
-    const { data, error, count } = await supabase
+    const { _data, error, count } = await supabase
       .from('checklist')
       .delete({ count: 'exact' })
       .eq('admin_done', true)

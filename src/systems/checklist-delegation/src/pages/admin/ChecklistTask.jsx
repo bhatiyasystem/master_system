@@ -1,18 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-    ClipboardList, Calendar, X, Mic, Square, Trash2, Plus, Save, Loader2, CheckCircle2, Clock, FileCheck, Play, Pause, ExternalLink, Database
-} from "lucide-react";
-import { ReactMediaRecorder } from "react-media-recorder";
-import AdminLayout from "../../components/layout/AdminLayout";
-import AudioPlayer from "../../components/AudioPlayer";
-import { useDispatch, useSelector } from "react-redux";
-import { assignTaskInTable, uniqueDepartmentData, uniqueDoerNameData, uniqueGivenByData } from "../../redux/slice/assignTaskSlice";
-import { customDropdownDetails } from "../../redux/slice/settingSlice";
+import { Trash2, Play, X, Calendar, Clock, ClipboardList, Database, CheckCircle2, Plus, Loader2, Square } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+;
+;
+import { useDispatch, useSelector } from 'react-redux';
+import { assignTaskInTable, uniqueDepartmentData, uniqueDoerNameData, uniqueGivenByData } from '../../redux/slice/assignTaskSlice';
+import { customDropdownDetails } from '../../redux/slice/settingSlice';
 import supabase from "../../SupabaseClient";
-import CalendarComponent from "../../components/CalendarComponent";
-import { sendTaskAssignmentNotification, isWhatsAppConnected } from "../../services/whatsappService";
-import { useMagicToast } from "../../context/MagicToastContext";
+import { sendTaskAssignmentNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import { useMagicToast } from '../../context/MagicToastContext';
 
 const formatDate = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
@@ -46,7 +42,7 @@ const defaultTask = () => ({
 });
 
 // --- AUDIO UTILITIES ---
-const isAudioUrl = (url) => {
+const _isAudioUrl = (url) => {
     if (!url || typeof url !== 'string') return false;
     return url.startsWith('http') && (
         url.includes('audio-recordings') ||
@@ -64,7 +60,7 @@ const getYouTubeId = (url) => {
 
 
 // Single Task Card
-function TaskCard({ task, index, total, department, doerName, givenBy, dispatch, onUpdate, onRemove }) {
+function TaskCard({ task, index, total, department, doerName, givenBy, _dispatch, onUpdate, onRemove }) {
     const handleChange = (e) => {
         onUpdate(task.id, { [e.target.name]: e.target.value });
     };
@@ -541,7 +537,7 @@ export default function ChecklistTask() {
 
         if (freqKey === "one-time") {
             const d = new Date(startDate);
-            const dateStr = getLocalDateString(d);
+            const _dateStr = getLocalDateString(d);
 
             // Check if it's a holiday OR not a working day
             if (isHoliday(d) || !isWorkingDay(d)) {

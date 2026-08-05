@@ -1,15 +1,10 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { Package, RefreshCw, UploadCloud, Plus, FileText, Check, X, Clock, Trash2, Table, Info, Download } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Plus, Check, X, Clock, FileText, Package, Trash2, RefreshCw, UploadCloud, Table, Info, Download } from 'lucide-react';
+;
 import toast from 'react-hot-toast';
 import supabase from '../../../../SupabaseClient';
-import {
-  fetchPutthas,
-  upsertPuttha,
-  updatePutthaStatus,
-  deletePuttha,
-  fetchEmployees,
-} from '../services/supabaseHR';
+import { fetchPutthas, upsertPuttha, updatePutthaStatus, deletePuttha, fetchEmployees,  } from '../services/supabaseHR';
 
 const Puttha = () => {
   const [putthas, setPutthas] = useState([]);
@@ -20,8 +15,8 @@ const Puttha = () => {
     remark: '',
     cashInHand: '',
   });
-  const [employeesList, setEmployeesList] = useState([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [_employeesList, setEmployeesList] = useState([]);
+  const [_selectedEmployeeId, _setSelectedEmployeeId] = useState('');
   const [importing, setImporting] = useState(false);
   const [showFormatModal, setShowFormatModal] = useState(false);
   const fileInputRef = useRef(null);
@@ -87,6 +82,7 @@ const Puttha = () => {
 
   useEffect(() => {
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Submit new puttha ─────────────────────────────────────────────────────────

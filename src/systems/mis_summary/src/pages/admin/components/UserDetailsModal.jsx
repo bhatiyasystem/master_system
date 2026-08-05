@@ -1,6 +1,7 @@
+import { Printer, X, Loader2 } from 'lucide-react';
 import React from "react";
 import ReactDOM from "react-dom";
-import { X, Loader2, Filter, Calendar, ChevronDown, Printer } from "lucide-react";
+;
 
 const UserDetailsModal = ({
     selectedUserDetails,
@@ -9,7 +10,7 @@ const UserDetailsModal = ({
     setActiveDrillDown,
     handleDrillDown,
 }) => {
-    const [timeFilter, setTimeFilter] = React.useState("all");
+    const [timeFilter, _setTimeFilter] = React.useState("all");
     const [statusFilter, setStatusFilter] = React.useState("all");
 
     const handlePrint = () => {

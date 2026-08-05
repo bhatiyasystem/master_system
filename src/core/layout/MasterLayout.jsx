@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate, Link, Outlet } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import * as Lucide from "lucide-react";
 import bhatiyaLogo from "../../assets/bhatiya_Logo.jpg";
 import supabase from "../../SupabaseClient";
-import { fetchNotifications } from "../../redux/slice/notificationSlice";
+import { fetchNotifications } from '../../redux/slice/notificationSlice';
 import systemRegistry from "../registry/systemRegistry";
-import { usePurchasePendingCounts } from "../../systems/purchase/hooks/usePurchasePendingCounts";
-import { useHrFmsPendingCounts } from "../../systems/HR_fms/src/hooks/useHrFmsPendingCounts";
-import { useChecklistDelegationPendingCounts } from "../../systems/checklist-delegation/src/hooks/usePendingCounts";
+import { usePurchasePendingCounts } from '../../systems/purchase/hooks/usePurchasePendingCounts';
+import { useHrFmsPendingCounts } from '../../systems/HR_fms/src/hooks/useHrFmsPendingCounts';
+import { useChecklistDelegationPendingCounts } from '../../systems/checklist-delegation/src/hooks/usePendingCounts';
 
-export default function MasterLayout({ darkMode, toggleDarkMode, showLayout = true }) {
+export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = true }) {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -64,7 +64,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, showLayout = tr
             localStorage.setItem("profile_image", userProfile.profile_image);
           }
 
-          const userId = userProfile.id;
+          const _userId = userProfile.id;
           const userRoleName = userProfile.role || storedRole || "user";
           setUserRole(userRoleName);
           localStorage.setItem("role", userRoleName);
@@ -297,6 +297,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, showLayout = tr
 
     setExpandedSystems(newExpandedSystems);
     setExpandedSubmenus(newExpandedSubmenus);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   const toggleSystem = (systemId) => {

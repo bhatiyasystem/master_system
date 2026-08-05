@@ -1,15 +1,13 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import AdminLayout from "../../components/layout/AdminLayout";
-import { Users, Calendar, Save, ArrowLeft, Loader2, Mic, Square, Trash2, Plus, CheckCircle2, X, Clock, Phone } from "lucide-react";
-import { ReactMediaRecorder } from "react-media-recorder";
-import AudioPlayer from "../../components/AudioPlayer";
+import { Trash2, Users, Phone, Calendar, Clock, Plus, ArrowLeft, CheckCircle2, X, Loader2, Square } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+;
+;
 import supabase from "../../SupabaseClient";
-import { useDispatch, useSelector } from "react-redux";
-import { userDetails } from "../../redux/slice/settingSlice";
-import CalendarComponent from "../../components/CalendarComponent";
-import { sendTaskAssignmentNotification, isWhatsAppConnected } from "../../services/whatsappService";
-import { useMagicToast } from "../../context/MagicToastContext";
+import { useDispatch, useSelector } from 'react-redux';
+import { userDetails } from '../../redux/slice/settingSlice';
+import { sendTaskAssignmentNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import { useMagicToast } from '../../context/MagicToastContext';
 
 
 
@@ -395,6 +393,7 @@ export default function EATask() {
         if (combined.length !== allDoers.length || allDoers.length === 0) {
             setAllDoers(combined);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [historicalDoers, userData]);
 
     const fetchUniqueDoers = async () => {

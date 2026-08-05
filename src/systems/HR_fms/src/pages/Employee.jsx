@@ -1,13 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Edit3, Trash2, Search, CheckCircle, AlertCircle, Clock, X, User, Upload, FileSpreadsheet } from 'lucide-react';
+import { X, FileSpreadsheet, Upload, Plus, Search, CheckCircle, Clock, AlertCircle, User, Edit3, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+;
 import * as XLSX from 'xlsx';
-import {
-  fetchEmployees,
-  fetchEmployeesPaginated,
-  upsertEmployee,
-  bulkUpsertEmployees,
-  deleteEmployee
-} from '../services/supabaseHR';
+import { fetchEmployeesPaginated, upsertEmployee, bulkUpsertEmployees, deleteEmployee } from '../services/supabaseHR';
 import supabase from '../services/supabaseHRClient';
 import toast from 'react-hot-toast';
 
@@ -550,8 +545,8 @@ const Employee = () => {
   };
 
   // Safe tab array access for compatibility
-  const activeEmployees = activeTab === 'joining' ? employees : [];
-  const leftEmployees = activeTab === 'leaving' ? employees : [];
+  const _activeEmployees = activeTab === 'joining' ? employees : [];
+  const _leftEmployees = activeTab === 'leaving' ? employees : [];
 
   // Data is filtered and paginated on server side
   const filteredData = employees;

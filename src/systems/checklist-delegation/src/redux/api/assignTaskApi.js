@@ -52,7 +52,7 @@ export const fetchUniqueGivenByDataApi = async () => {
         try {
           const parsed = JSON.parse(val);
           return parsed.given_by || parsed.name || val;
-        } catch (e) {
+        } catch {
           // Not valid JSON, keep as is
         }
       }

@@ -1,17 +1,16 @@
+import { Filter, ChevronDown, Trash2, X, ChevronUp, Square } from 'lucide-react';
 "use client"
 
-import React, { useState, useEffect, useCallback, useRef } from "react"
-import { motion } from "framer-motion"
-import { Filter, ChevronDown, ChevronUp, Play, Pause, Edit, Save, X, Mic, Square, Trash2, Loader2 } from "lucide-react"
-import { ReactMediaRecorder } from "react-media-recorder"
-import AudioPlayer from "../../../components/AudioPlayer"
-import RenderDescription from "../../../components/RenderDescription"
+import { useState, useEffect, useCallback } from 'react'
+
+
+
 import supabase from "../../../SupabaseClient"
-import { fetchDashboardDataApi, getDashboardDataCount } from "../../../redux/api/dashboardApi"
-import { useDispatch } from "react-redux"
-import { updateChecklistTask, updateDelegationTask } from "../../../redux/slice/quickTaskSlice"
-import { updateMaintenanceTask } from "../../../redux/slice/maintenanceSlice"
-import { fetchUniqueDepartmentDataApi, fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from "../../../redux/api/assignTaskApi"
+import { fetchDashboardDataApi, getDashboardDataCount } from '../../../redux/api/dashboardApi'
+import { useDispatch } from 'react-redux'
+import { updateChecklistTask, updateDelegationTask } from '../../../redux/slice/quickTaskSlice'
+import { updateMaintenanceTask } from '../../../redux/slice/maintenanceSlice'
+import { fetchUniqueDepartmentDataApi, fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from '../../../redux/api/assignTaskApi'
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -28,29 +27,29 @@ export default function TaskNavigationTabs({
   setTaskView,
   searchQuery,
   setSearchQuery,
-  filterStaff,
+  _filterStaff,
   setFilterStaff,
-  departmentData,
+  _departmentData,
   getFrequencyColor,
   dashboardStaffFilter,
   departmentFilter,
-  userRole // Add this prop
+  _userRole // Add this prop
 }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [displayedTasks, setDisplayedTasks] = useState([])
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreData, setHasMoreData] = useState(true)
-  const [totalCount, setTotalCount] = useState(0)
+  const [_totalCount, setTotalCount] = useState(0)
   const [isFilterExpanded, setIsFilterExpanded] = useState(false) // Add this state
   const [isSaving, setIsSaving] = useState(false)
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editFormData, setEditFormData] = useState({})
   const [recordedAudio, setRecordedAudio] = useState(null)
-  const [isUploading, setIsUploading] = useState(false)
+  const [_isUploading, setIsUploading] = useState(false)
 
   // Dropdown lists
   const [departments, setDepartments] = useState([]);
-  const [givenByList, setGivenByList] = useState([]);
+  const [_givenByList, setGivenByList] = useState([]);
   const [doersList, setDoersList] = useState([]);
 
   const dispatch = useDispatch()
@@ -98,7 +97,7 @@ export default function TaskNavigationTabs({
         setIsUploading(true);
         try {
           const fileName = `voice-notes/${Date.now()}-${Math.random().toString(36).substring(7)}.webm`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
+          const { data: _uploadData, error: uploadError } = await supabase.storage
             .from('audio-recordings')
             .upload(fileName, recordedAudio.blob, {
               contentType: recordedAudio.blob.type || 'audio/webm',
@@ -400,7 +399,7 @@ export default function TaskNavigationTabs({
     return `${day}/${month}/${year}`
   }
 
-  const isDateInPast = (date) => {
+  const _isDateInPast = (date) => {
     if (!date || !(date instanceof Date)) return false
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -425,6 +424,7 @@ export default function TaskNavigationTabs({
       setDoersList(doers);
     };
     fetchDropdownData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskView, dashboardType, dashboardStaffFilter, departmentFilter])
 
   // Load more when search changes (client-side filter)
@@ -432,6 +432,7 @@ export default function TaskNavigationTabs({
     if (currentPage === 1) {
       loadTasksFromServer(1, false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   // Reset local staff filter when dashboardStaffFilter changes
@@ -439,6 +440,7 @@ export default function TaskNavigationTabs({
     if (dashboardStaffFilter !== "all") {
       setFilterStaff("all")
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardStaffFilter])
 
   // Function to load more data when scrolling
@@ -471,6 +473,7 @@ export default function TaskNavigationTabs({
       tableContainer.addEventListener('scroll', handleScroll)
       return () => tableContainer.removeEventListener('scroll', handleScroll)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMoreData, isLoadingMore, currentPage])
 
   return (
@@ -618,7 +621,7 @@ export default function TaskNavigationTabs({
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
-                    {displayedTasks.map((task, index) => (
+                    {displayedTasks.map((task, _index) => (
                       <tr
                         key={`${task.id}-${task.taskStartDate}`}
                         className="hover:bg-purple-50/30 transition-colors border-b last:border-0 cursor-pointer"

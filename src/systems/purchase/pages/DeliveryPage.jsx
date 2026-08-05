@@ -1,6 +1,3 @@
-import React from 'react';
-import PurchaseHeader from '../components/PurchaseHeader';
-import DeliveryView from '../components/DeliveryView';
 
 export default function DeliveryPage() {
   return (

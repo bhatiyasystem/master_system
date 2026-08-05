@@ -1,17 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"
-import LoginPage from "./pages/LoginPage"
-import AdminDashboard from "./pages/admin/Dashboard"
-import AdminAssignTask from "./pages/admin/AssignTask"
-import UserDashboard from "./pages/user/Dashboard"
-import UserTasks from "./pages/user/Tasks"
-import AdminLayout from "./components/layout/AdminLayout"
-import UserLayout from "./components/layout/UserLayout"
-import AllTasks from "./pages/admin/AllTasks"
-import AdminQuickTask from "./pages/QuickTask"
-import AdminDelegationTask from "./pages/delegation-data"
+import { useState, useEffect } from 'react'
+import { BrowserRouter as Router, useLocation, Navigate, Routes, Route } from 'react-router-dom'
 import "./index.css"
 
 // Authentication wrapper component

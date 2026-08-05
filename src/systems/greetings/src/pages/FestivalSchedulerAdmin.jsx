@@ -1,14 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  CalendarClock, Plus, RefreshCw, Search, Clock, Loader, PauseCircle,
-  CheckCircle2, Ban, XCircle, FileEdit, Copy, Pencil, Trash2, PlayCircle, Eye,
-} from 'lucide-react';
-import {
-  fetchSchedules, pauseSchedule, resumeSchedule, cancelSchedule, deleteSchedule, duplicateSchedule,
-} from '../services/festivalSchedulerService';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Clock, Loader, PauseCircle, CheckCircle2, Ban, XCircle, FileEdit, CalendarClock, RefreshCw, Plus, Search, Eye, PlayCircle, Trash2, Pencil, Copy } from 'lucide-react';
+import { fetchSchedules, pauseSchedule, resumeSchedule, cancelSchedule, deleteSchedule, duplicateSchedule,  } from '../services/festivalSchedulerService';
 import { useMagicToast } from '../../../../context/MagicToastContext';
-import CreateScheduleModal from '../components/scheduler/CreateScheduleModal';
-import ScheduleProgressPanel from '../components/scheduler/ScheduleProgressPanel';
 
 const STATUS_STYLES = {
   Draft: 'bg-gray-50 text-gray-600 border border-gray-200',

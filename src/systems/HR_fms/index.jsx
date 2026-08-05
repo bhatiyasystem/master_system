@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { useEffect, useState } from 'react';
 import systemRegistry from '../../core/registry/systemRegistry';
 
 // Import HR FMS pages
@@ -63,7 +64,7 @@ function HrFmsPageWrapper({ children }) {
               empId = data.employee_id;
               localStorage.setItem("employeeId", empId);
             }
-          } catch (e) {
+          } catch (_e) {
             // ignore fallback
           }
         }

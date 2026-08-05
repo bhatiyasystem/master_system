@@ -1,9 +1,8 @@
+import { Search, ArrowLeft, History, CheckCircle2, X, Upload } from 'lucide-react';
 "use client"
 
-import { useState, useEffect } from "react"
-import { CheckCircle2, Upload, X, Search, History, ArrowLeft, Calendar, Check } from "lucide-react"
-import AdminLayout from "../../components/layout/AdminLayout"
-import ReactDOM from 'react-dom';
+import { useState, useEffect } from 'react'
+
 
 // Google Apps Script URL
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0-aE9uNuU3yBJ9SAHvAfXycYt5vPyvAtlAauVy-xlH9rc4fPCGSQM6pvsqZ9QvSvbyg/exec"
@@ -20,7 +19,7 @@ function AccountDataPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [debugInfo, setDebugInfo] = useState([])
+  const [_debugInfo, setDebugInfo] = useState([])
   const [historyData, setHistoryData] = useState([])
   const [showHistory, setShowHistory] = useState(false)
   const [membersList, setMembersList] = useState([])
@@ -107,7 +106,7 @@ function AccountDataPage() {
   }
 
   // Format date from yyyy-mm-dd to DD/MM/YYYY
-  const formatDateFromHTML = (dateStr) => {
+  const _formatDateFromHTML = (dateStr) => {
     if (!dateStr) return "";
     const parts = dateStr.split('-');
     if (parts.length !== 3) return "";
@@ -413,7 +412,7 @@ function AccountDataPage() {
         // Safely get values from columns L, M, P, and Q
         const columnLValue = getCellValue(row, 11);
         const columnMValue = getCellValue(row, 12);
-        const columnPValue = getCellValue(row, 15);
+        const _columnPValue = getCellValue(row, 15);
         const columnQValue = getCellValue(row, 16);
 
         // Skip rows marked as DONE in column Q
@@ -497,6 +496,7 @@ function AccountDataPage() {
   // Load data on component mount
   useEffect(() => {
     fetchSheetData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSelectItem = (id) => {

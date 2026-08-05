@@ -1,12 +1,5 @@
-import React from 'react';
-import {
-    Document,
-    Page,
-    Text,
-    View,
-    StyleSheet,
-    pdf,
-} from '@react-pdf/renderer';
+/* eslint-disable react-refresh/only-export-components */
+import { StyleSheet, pdf, Document, Page, View, Text } from '@react-pdf/renderer';
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const S = StyleSheet.create({

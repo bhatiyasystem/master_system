@@ -1,7 +1,4 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import PurchaseHeader from '../components/PurchaseHeader';
-import PoListView from '../components/PoListView';
 
 export default function PoListPage() {
   const navigate = useNavigate();

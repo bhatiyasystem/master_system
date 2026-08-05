@@ -1,5 +1,5 @@
-import React from 'react';
-import { Calendar, Flag, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, Flag } from 'lucide-react';
+;
 
 /**
  * @typedef {Object} Task

@@ -1,0 +1,2362 @@
+[
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\components\\RenderDescription.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 181,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 181,
+        "endColumn": 20
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Icon' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 225,
+        "column": 33,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 225,
+        "endColumn": 37
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\context\\MagicToastContext.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": null,
+        "message": "Unused eslint-disable directive (no problems were reported from 'react-refresh/only-export-components').",
+        "line": 1,
+        "column": 1,
+        "severity": 1,
+        "nodeType": null,
+        "fix": {
+          "range": [
+            0,
+            57
+          ],
+          "text": " "
+        }
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\core\\components\\MasterDataView.jsx",
+    "count": 4,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Lucide' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 3,
+        "column": 13,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 3,
+        "endColumn": 19,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Lucide"
+            },
+            "fix": {
+              "range": [
+                90,
+                107
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Lucide'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'MasterDataPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 65,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 65,
+        "endColumn": 25,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "MasterDataPanel"
+            },
+            "fix": {
+              "range": [
+                2977,
+                14172
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'MasterDataPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'FieldFormatModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 315,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 315,
+        "endColumn": 26,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "FieldFormatModal"
+            },
+            "fix": {
+              "range": [
+                14174,
+                18170
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'FieldFormatModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'AddRecordModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 383,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 383,
+        "endColumn": 24,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "AddRecordModal"
+            },
+            "fix": {
+              "range": [
+                18172,
+                27026
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'AddRecordModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\pages\\AuthProvider.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Router' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 4,
+        "column": 27,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 4,
+        "endColumn": 33,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Router"
+            },
+            "fix": {
+              "range": [
+                67,
+                91
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Router'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PrivateRoute' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 8,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 8,
+        "endColumn": 19
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\pages\\LoginPage.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'UserIcon' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 12,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 12,
+        "endColumn": 26,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "UserIcon"
+            },
+            "fix": {
+              "range": [
+                406,
+                453
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'UserIcon'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 345,
+        "column": 32,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 345,
+        "endColumn": 36
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 407,
+        "column": 28,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 407,
+        "endColumn": 32
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\redux\\api\\assignTaskApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 55,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 55,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\redux\\api\\delegationApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 283,
+        "column": 12,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 283,
+        "endColumn": 18
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\redux\\api\\maintenanceApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 9,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 9,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\redux\\api\\quickTaskApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 9,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 9,
+        "endColumn": 16
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\redux\\api\\settingApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 384,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 384,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\HR_fms\\index.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'HrFmsPageWrapper' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 34,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 34,
+        "endColumn": 26,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "HrFmsPageWrapper"
+            },
+            "fix": {
+              "range": [
+                1473,
+                3530
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'HrFmsPageWrapper'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'e' is defined but never used.",
+        "line": 67,
+        "column": 20,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 67,
+        "endColumn": 21
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Component' is defined but never used. Allowed unused args must match /^_/u.",
+        "line": 95,
+        "column": 15,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 95,
+        "endColumn": 24,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Component"
+            },
+            "fix": {
+              "range": [
+                3548,
+                3557
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Component'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\HR_fms\\src\\pages\\Attendance.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'UploadZone' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 7,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 7,
+        "endColumn": 17,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "UploadZone"
+            },
+            "fix": {
+              "range": [
+                441,
+                2157
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'UploadZone'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'OverrideModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 51,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 51,
+        "endColumn": 20,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "OverrideModal"
+            },
+            "fix": {
+              "range": [
+                2244,
+                4933
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'OverrideModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'DailyGridModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 120,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 120,
+        "endColumn": 21,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "DailyGridModal"
+            },
+            "fix": {
+              "range": [
+                5020,
+                7818
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'DailyGridModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\HR_fms\\src\\pages\\Employee.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'EmployeeModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 11,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 11,
+        "endColumn": 20,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "EmployeeModal"
+            },
+            "fix": {
+              "range": [
+                447,
+                8535
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'EmployeeModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'BulkImportModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 228,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 228,
+        "endColumn": 22,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "BulkImportModal"
+            },
+            "fix": {
+              "range": [
+                9941,
+                17841
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'BulkImportModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\HR_fms\\src\\pages\\MyAttendance.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 209,
+        "column": 16,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 209,
+        "endColumn": 18
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 402,
+        "column": 32,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 402,
+        "endColumn": 34
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\HR_fms\\src\\pages\\Payroll.jsx",
+    "count": 4,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'StatusBadge' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 14,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 14,
+        "endColumn": 18,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "StatusBadge"
+            },
+            "fix": {
+              "range": [
+                749,
+                996
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'StatusBadge'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PayslipModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 26,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 26,
+        "endColumn": 19,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PayslipModal"
+            },
+            "fix": {
+              "range": [
+                1201,
+                5016
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PayslipModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'EditDeductionsModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 96,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 96,
+        "endColumn": 26,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "EditDeductionsModal"
+            },
+            "fix": {
+              "range": [
+                5103,
+                8607
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'EditDeductionsModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PayslipsTab' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 173,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 173,
+        "endColumn": 18,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PayslipsTab"
+            },
+            "fix": {
+              "range": [
+                8694,
+                18159
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PayslipsTab'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\HR_fms\\src\\pages\\SalaryConfig.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'ConfigModal' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 8,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 8,
+        "endColumn": 18,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "ConfigModal"
+            },
+            "fix": {
+              "range": [
+                313,
+                10262
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'ConfigModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\components\\RenderDescription.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 181,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 181,
+        "endColumn": 20
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Icon' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 225,
+        "column": 33,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 225,
+        "endColumn": 37
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\components\\layout\\AdminLayout.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'reportingUsers' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 131,
+        "column": 9,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 131,
+        "endColumn": 23
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\AuthProvider.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Router' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 4,
+        "column": 27,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 4,
+        "endColumn": 33,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Router"
+            },
+            "fix": {
+              "range": [
+                67,
+                91
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Router'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PrivateRoute' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 8,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 8,
+        "endColumn": 19
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\BulkImport.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'seriesCounter' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 368,
+        "column": 11,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 368,
+        "endColumn": 24,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "seriesCounter"
+            },
+            "fix": {
+              "range": [
+                13341,
+                13363
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'seriesCounter'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-undef",
+        "severity": 2,
+        "message": "'_seriesCounter' is not defined.",
+        "line": 372,
+        "column": 9,
+        "nodeType": "Identifier",
+        "messageId": "undef",
+        "endLine": 372,
+        "endColumn": 23
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 464,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 464,
+        "endColumn": 18
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\LoginPage.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'UserIcon' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 12,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 12,
+        "endColumn": 26,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "UserIcon"
+            },
+            "fix": {
+              "range": [
+                406,
+                453
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'UserIcon'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 230,
+        "column": 34,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 230,
+        "endColumn": 38
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 292,
+        "column": 30,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 292,
+        "endColumn": 34
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\QuickTask.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 224,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 224,
+        "endColumn": 16
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\Setting.jsx",
+    "count": 4,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 113,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 113,
+        "endColumn": 20
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 164,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 164,
+        "endColumn": 20
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 699,
+        "column": 22,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 699,
+        "endColumn": 24
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 800,
+        "column": 22,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 800,
+        "endColumn": 24
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\AllTasks.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 153,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 153,
+        "endColumn": 20
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 169,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 169,
+        "endColumn": 20
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 185,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 185,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\CalendarPage.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'CalendarIcon' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 3,
+        "column": 22,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 3,
+        "endColumn": 34,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "CalendarIcon"
+            },
+            "fix": {
+              "range": [
+                110,
+                166
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'CalendarIcon'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 42,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 42,
+        "endColumn": 16
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\MaintenanceTask.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'MaintenanceTaskCard' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 58,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 58,
+        "endColumn": 26,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "MaintenanceTaskCard"
+            },
+            "fix": {
+              "range": [
+                1924,
+                35275
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'MaintenanceTaskCard'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\Notifications.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 61,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 61,
+        "endColumn": 18
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\account-data-page.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_parseError' is defined but never used.",
+        "line": 229,
+        "column": 16,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 229,
+        "endColumn": 27
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\managingDirector-data-page.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_parseError' is defined but never used.",
+        "line": 227,
+        "column": 16,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 227,
+        "endColumn": 27
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\admin\\ware-house-data.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_parseError' is defined but never used.",
+        "line": 229,
+        "column": 16,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 229,
+        "endColumn": 27
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\delegation-data.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'CONFIG' is assigned a value but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 19,
+        "column": 7,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 19,
+        "endColumn": 13,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "CONFIG"
+            },
+            "fix": {
+              "range": [
+                603,
+                728
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'CONFIG'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 128,
+        "column": 16,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 128,
+        "endColumn": 18
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\pages\\user\\Tasks.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 179,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 179,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\redux\\api\\assignTaskApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 55,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 55,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\redux\\api\\delegationApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_error' is defined but never used.",
+        "line": 283,
+        "column": 12,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 283,
+        "endColumn": 18
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\redux\\api\\maintenanceApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 9,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 9,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\redux\\api\\quickTaskApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 9,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 9,
+        "endColumn": 16
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\checklist-delegation\\src\\redux\\api\\settingApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 384,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 384,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\inventory\\components\\AuditLogView.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 22,
+        "column": 14,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 22,
+        "endColumn": 16
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\inventory\\components\\MasterDataView.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 406,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 406,
+        "endColumn": 22
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\inventory\\components\\StockDashboardView.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_err' is defined but never used.",
+        "line": 168,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 168,
+        "endColumn": 22
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\inventory\\redux\\api\\inventoryApi.js",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 264,
+        "column": 16,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 264,
+        "endColumn": 18
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\mis_summary\\index.jsx",
+    "count": 4,
+    "messages": [
+      {
+        "ruleId": null,
+        "message": "Unused eslint-disable directive (no problems were reported from 'react-refresh/only-export-components').",
+        "line": 1,
+        "column": 1,
+        "severity": 1,
+        "nodeType": null,
+        "fix": {
+          "range": [
+            0,
+            57
+          ],
+          "text": " "
+        }
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'MisAuthBridgeInjector' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 38,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 38,
+        "endColumn": 31,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "MisAuthBridgeInjector"
+            },
+            "fix": {
+              "range": [
+                1555,
+                1746
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'MisAuthBridgeInjector'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'MisPageWrapper' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 50,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 50,
+        "endColumn": 24,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "MisPageWrapper"
+            },
+            "fix": {
+              "range": [
+                1811,
+                2011
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'MisPageWrapper'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PageComponent' is defined but never used. Allowed unused args must match /^_/u.",
+        "line": 61,
+        "column": 15,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 61,
+        "endColumn": 28,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PageComponent"
+            },
+            "fix": {
+              "range": [
+                2080,
+                2093
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PageComponent'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\mis_summary\\src\\App.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'RequireAuth' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 78,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 78,
+        "endColumn": 21,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "RequireAuth"
+            },
+            "fix": {
+              "range": [
+                2159,
+                2861
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'RequireAuth'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\mis_summary\\src\\pages\\admin\\Dashboard.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'_e' is defined but never used.",
+        "line": 1007,
+        "column": 18,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 1007,
+        "endColumn": 20
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\ApprovalView.jsx",
+    "count": 5,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PendingPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 55,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 55,
+        "endColumn": 22,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PendingPanel"
+            },
+            "fix": {
+              "range": [
+                1923,
+                10766
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PendingPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'CategoryApprovalModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 261,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 261,
+        "endColumn": 31,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "CategoryApprovalModal"
+            },
+            "fix": {
+              "range": [
+                10768,
+                15227
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'CategoryApprovalModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'DiffCell' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 375,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 375,
+        "endColumn": 18,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "DiffCell"
+            },
+            "fix": {
+              "range": [
+                15228,
+                15654
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'DiffCell'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'HistoryPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 386,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 386,
+        "endColumn": 22,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "HistoryPanel"
+            },
+            "fix": {
+              "range": [
+                15655,
+                20376
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'HistoryPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'TimelineModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 488,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 488,
+        "endColumn": 23,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "TimelineModal"
+            },
+            "fix": {
+              "range": [
+                20378,
+                22146
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'TimelineModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\DeliveryView.jsx",
+    "count": 5,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PendingDeliveryPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 115,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 115,
+        "endColumn": 30,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PendingDeliveryPanel"
+            },
+            "fix": {
+              "range": [
+                4032,
+                9581
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PendingDeliveryPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'DeliveryHistoryPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 225,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 225,
+        "endColumn": 30,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "DeliveryHistoryPanel"
+            },
+            "fix": {
+              "range": [
+                9583,
+                16153
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'DeliveryHistoryPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'CreateDeliveryModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 334,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 334,
+        "endColumn": 29,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "CreateDeliveryModal"
+            },
+            "fix": {
+              "range": [
+                16155,
+                23891
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'CreateDeliveryModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'AddTransporterModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 516,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 516,
+        "endColumn": 29,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "AddTransporterModal"
+            },
+            "fix": {
+              "range": [
+                23893,
+                26839
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'AddTransporterModal'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Field' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 578,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 578,
+        "endColumn": 15,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Field"
+            },
+            "fix": {
+              "range": [
+                26841,
+                27141
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Field'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\PaymentApprovalView.jsx",
+    "count": 4,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PendingApprovalPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 91,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 91,
+        "endColumn": 30,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PendingApprovalPanel"
+            },
+            "fix": {
+              "range": [
+                3561,
+                7108
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PendingApprovalPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'ApprovalHistoryPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 154,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 154,
+        "endColumn": 30,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "ApprovalHistoryPanel"
+            },
+            "fix": {
+              "range": [
+                7110,
+                10117
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'ApprovalHistoryPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'StatusPill' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 211,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 211,
+        "endColumn": 20,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "StatusPill"
+            },
+            "fix": {
+              "range": [
+                10119,
+                10539
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'StatusPill'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'DecideModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 224,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 224,
+        "endColumn": 21,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "DecideModal"
+            },
+            "fix": {
+              "range": [
+                10541,
+                14264
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'DecideModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\PaymentView.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PendingPaymentPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 97,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 97,
+        "endColumn": 29,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PendingPaymentPanel"
+            },
+            "fix": {
+              "range": [
+                3787,
+                7340
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PendingPaymentPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PaymentHistoryPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 161,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 161,
+        "endColumn": 29,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PaymentHistoryPanel"
+            },
+            "fix": {
+              "range": [
+                7342,
+                10968
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PaymentHistoryPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'RecordPaymentModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 226,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 226,
+        "endColumn": 28,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "RecordPaymentModal"
+            },
+            "fix": {
+              "range": [
+                10970,
+                14680
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'RecordPaymentModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\PoListView.jsx",
+    "count": 1,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'VersionsModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 163,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 163,
+        "endColumn": 23,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "VersionsModal"
+            },
+            "fix": {
+              "range": [
+                6713,
+                8462
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'VersionsModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\PoPendingView.jsx",
+    "count": 2,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'DiffCell' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 41,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 41,
+        "endColumn": 18,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "DiffCell"
+            },
+            "fix": {
+              "range": [
+                1480,
+                1906
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'DiffCell'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'FixVendorModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 270,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 270,
+        "endColumn": 24,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "FixVendorModal"
+            },
+            "fix": {
+              "range": [
+                11401,
+                13273
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'FixVendorModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\components\\ReceivingView.jsx",
+    "count": 3,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PendingReceivingPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 92,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 92,
+        "endColumn": 31,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PendingReceivingPanel"
+            },
+            "fix": {
+              "range": [
+                3546,
+                8388
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PendingReceivingPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'ReceivingHistoryPanel' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 174,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 174,
+        "endColumn": 31,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "ReceivingHistoryPanel"
+            },
+            "fix": {
+              "range": [
+                8390,
+                12595
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'ReceivingHistoryPanel'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'ReceiveItemsModal' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 258,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 258,
+        "endColumn": 27,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "ReceiveItemsModal"
+            },
+            "fix": {
+              "range": [
+                12597,
+                18909
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'ReceiveItemsModal'."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "filePath": "C:\\Users\\CYBORG\\Downloads\\master_system-main\\src\\systems\\purchase\\utils\\generatePOPdf.jsx",
+    "count": 5,
+    "messages": [
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Document' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 2,
+        "column": 27,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 2,
+        "endColumn": 35,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Document"
+            },
+            "fix": {
+              "range": [
+                82,
+                92
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Document'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Page' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 2,
+        "column": 37,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 2,
+        "endColumn": 41,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Page"
+            },
+            "fix": {
+              "range": [
+                92,
+                98
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Page'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'View' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 2,
+        "column": 43,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 2,
+        "endColumn": 47,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "View"
+            },
+            "fix": {
+              "range": [
+                98,
+                104
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'View'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'Text' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 2,
+        "column": 49,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 2,
+        "endColumn": 53,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "Text"
+            },
+            "fix": {
+              "range": [
+                104,
+                110
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'Text'."
+          }
+        ]
+      },
+      {
+        "ruleId": "no-unused-vars",
+        "severity": 1,
+        "message": "'PODocument' is defined but never used. Allowed unused vars must match /^(_|React)/u.",
+        "line": 57,
+        "column": 10,
+        "nodeType": "Identifier",
+        "messageId": "unusedVar",
+        "endLine": 57,
+        "endColumn": 20,
+        "suggestions": [
+          {
+            "messageId": "removeVar",
+            "data": {
+              "varName": "PODocument"
+            },
+            "fix": {
+              "range": [
+                3147,
+                7181
+              ],
+              "text": ""
+            },
+            "desc": "Remove unused variable 'PODocument'."
+          }
+        ]
+      }
+    ]
+  }
+]

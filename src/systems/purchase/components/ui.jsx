@@ -1,4 +1,3 @@
-import React from 'react';
 import { fmt } from '../utils/helpers';
 
 export function StatusBadge({ status }) {

@@ -1,27 +1,8 @@
 // src/systems/inventory/components/DashboardView.jsx
-import React, { useMemo } from "react";
-import { useSelector } from "react-redux";
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
-import {
-  Boxes,
-  TrendingDown,
-  AlertTriangle,
-  FileText,
-  Layers,
-  ArrowUpRight,
-  TrendingUp,
-} from "lucide-react";
+import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, XAxis, YAxis, Bar } from 'recharts';
+import { Boxes, TrendingDown, AlertTriangle, FileText, Layers, ArrowUpRight, TrendingUp } from 'lucide-react';
 
 const COLORS = [
   "#6366f1",
@@ -39,7 +20,7 @@ const BAND_COLORS = {
   "Below 33%": "#ef4444",
 };
 
-export default function DashboardView({ activeUser, onTabChange }) {
+export default function DashboardView({ activeUser, _onTabChange }) {
   const { materials, transactions, indents } = useSelector(
     (state) => state.inventory,
   );
@@ -300,7 +281,7 @@ export default function DashboardView({ activeUser, onTabChange }) {
                     paddingAngle={3}
                     dataKey="value"
                   >
-                    {categoryData.map((entry, index) => (
+                    {categoryData.map((_entry, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
@@ -474,8 +455,8 @@ export default function DashboardView({ activeUser, onTabChange }) {
                   }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40}>
-                  {bandData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  {bandData.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={_entry.fill} />
                   ))}
                 </Bar>
               </BarChart>

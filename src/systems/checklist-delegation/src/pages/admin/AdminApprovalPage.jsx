@@ -1,21 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useDispatch } from "react-redux";
-import AdminLayout from "../../components/layout/AdminLayout";
-import { fetchPendingApprovals, updateDelegationDoneStatus, rejectDelegationTask, fetchDelegationHistory } from "../../redux/api/delegationApi";
-import { fetchPendingMaintenanceApprovals, approveMaintenanceTask, rejectMaintenanceTask, fetchApprovedMaintenance } from "../../redux/api/maintenanceApi";
-import { fetchPendingRepairApprovals, approveRepairTask, rejectRepairTask, fetchApprovedRepairs } from "../../redux/api/repairApi";
-import { fetchPendingEAApprovals, approveEATaskV2, rejectEATask, fetchApprovedEA } from "../../redux/api/eaApi";
-import { fetchPendingChecklistApprovals, approveChecklistTask, rejectChecklistTask, fetchChecklistHistory } from "../../redux/api/quickTaskApi";
-import { CheckCircle2, Search, Play, Pause, AlertCircle, BookCheck, Wrench, Hammer, Briefcase, XCircle, History, Clock, User, Loader2, MessageSquare } from "lucide-react";
-import { sendTaskRejectionNotification, sendAdminExtensionRemarkNotification, isWhatsAppConnected } from "../../services/whatsappService";
-import AudioPlayer from "../../components/AudioPlayer";
-import { useMagicToast } from "../../context/MagicToastContext";
+import { useState, useEffect, useRef, useCallback } from 'react';
+;
+import { useDispatch } from 'react-redux';
+import { fetchPendingApprovals, updateDelegationDoneStatus, rejectDelegationTask, fetchDelegationHistory } from '../../redux/api/delegationApi';
+import { fetchPendingMaintenanceApprovals, approveMaintenanceTask, rejectMaintenanceTask, fetchApprovedMaintenance } from '../../redux/api/maintenanceApi';
+import { fetchPendingRepairApprovals, approveRepairTask, rejectRepairTask, fetchApprovedRepairs } from '../../redux/api/repairApi';
+import { fetchPendingEAApprovals, approveEATaskV2, rejectEATask, fetchApprovedEA } from '../../redux/api/eaApi';
+import { fetchPendingChecklistApprovals, approveChecklistTask, rejectChecklistTask, fetchChecklistHistory } from '../../redux/api/quickTaskApi';
+import { BookCheck, Wrench, Hammer, Briefcase, Clock, Loader2, CheckCircle2, MessageSquare, History, Search, User, AlertCircle, XCircle } from 'lucide-react';
+import { sendTaskRejectionNotification, sendAdminExtensionRemarkNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import { useMagicToast } from '../../context/MagicToastContext';
 import supabase from "../../SupabaseClient";
-import RenderDescription from "../../components/RenderDescription";
 
 // Helper to extract audio URL from text
-const extractAudioUrl = (text) => {
+const _extractAudioUrl = (text) => {
     if (!text || typeof text !== 'string') return null;
     const match = text.match(/(https?:\/\/[^\s]+(?:voice-notes|audio-recordings)[^\s]*\.(?:mp3|wav|ogg|webm|m4a|aac)(\?.*)?)/i) ||
         text.match(/(https?:\/\/[^\s]+(?:voice-notes|audio-recordings)[^\s]*)/i);
@@ -173,6 +170,7 @@ export default function AdminApprovalPage() {
         }
 
         return () => {
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             if (loadingRef.current) observer.unobserve(loadingRef.current);
         };
     }, [loading]);

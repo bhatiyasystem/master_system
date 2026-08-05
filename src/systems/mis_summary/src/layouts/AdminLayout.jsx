@@ -1,8 +1,8 @@
+import { X, Link, LogOut, LayoutDashboard, LineChart, History, Calendar, ClipboardList, Outlet, Menu } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, ClipboardList, LogOut, Menu, X, LineChart, History } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+;
 import { useAuth } from '../contexts/AuthContext';
-import Footer from '../components/Footer';
 import { getDisplayableImageUrl } from '../utils/imageUtils';
 
 const AdminLayout = () => {

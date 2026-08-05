@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { CheckCircle2, AlertCircle, Info, X, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, Sparkles, X } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+;
 
 const MagicToast = ({ message, type, onClose, duration }) => {
     const [isExiting, setIsExiting] = useState(false);

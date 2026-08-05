@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Users, User, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+;
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 
@@ -11,7 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
 
     const [submitting, setSubmitting] = useState(false);
-    const login = useAuthStore((state) => state.login);
+    const _login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {

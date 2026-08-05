@@ -1,6 +1,3 @@
-import React from 'react';
-import PurchaseHeader from '../components/PurchaseHeader';
-import PaymentView from '../components/PaymentView';
 
 export default function PaymentPage() {
     return (

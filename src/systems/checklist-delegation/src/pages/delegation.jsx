@@ -1,31 +1,12 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
-import {
-  CheckCircle2,
-  Upload,
-  X,
-  Search,
-  History,
-  ArrowLeft,
-  Filter,
-  Play,
-  Pause,
-  BellRing,
-  ChevronLeft,
-  ChevronRight,
-  Printer,
-} from "lucide-react";
-import { useRef } from "react";
-import AdminLayout from "../components/layout/AdminLayout";
-import AudioPlayer from "../components/AudioPlayer";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  delegation_DoneData,
-  delegationData,
-} from "../redux/slice/delegationSlice";
-import { insertDelegationDoneAndUpdate } from "../redux/api/delegationApi";
-import { sendUrgentTaskNotification, sendTaskExtensionNotification, isWhatsAppConnected } from "../services/whatsappService";
-import { useMagicToast } from "../context/MagicToastContext";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Search, ArrowLeft, History, Printer, CheckCircle2, X, Upload, BellRing } from 'lucide-react';
+;
+import { useDispatch, useSelector } from 'react-redux';
+import { delegation_DoneData, delegationData,  } from '../redux/slice/delegationSlice';
+import { insertDelegationDoneAndUpdate } from '../redux/api/delegationApi';
+import { sendUrgentTaskNotification, sendTaskExtensionNotification, isWhatsAppConnected } from '../services/whatsappService';
+import { useMagicToast } from '../context/MagicToastContext';
 import RenderDescription, { MediaViewer } from "../components/RenderDescription";
 import logo from "../assets/bhatiya_Logo.jpg";
 
@@ -65,15 +46,15 @@ function useDebounce(value, delay) {
 function DelegationDataPage() {
   const { showToast } = useMagicToast();
   const [uploadedImages, setUploadedImages] = useState({});
-  const [accountData, setAccountData] = useState([]);
+  const [_accountData, _setAccountData] = useState([]);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [additionalData, setAdditionalData] = useState({});
+  const [_additionalData, setAdditionalData] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [error, setError] = useState(null);
+  const [error, _setError] = useState(null);
   const [remarksData, setRemarksData] = useState({});
-  const [historyData, setHistoryData] = useState([]);
+  const [_historyData, _setHistoryData] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [statusData, setStatusData] = useState({});
   const [nextTargetDate, setNextTargetDate] = useState({});
@@ -253,7 +234,7 @@ function DelegationDataPage() {
     [parseGoogleSheetsDateTime]
   );
 
-  const parseDateFromDDMMYYYY = useCallback((dateStr) => {
+  const _parseDateFromDDMMYYYY = useCallback((dateStr) => {
     if (!dateStr || typeof dateStr !== "string") return null;
 
     const datePart = dateStr.split(" ")[0];
@@ -411,6 +392,7 @@ function DelegationDataPage() {
 
         return dateB.getTime() - dateA.getTime();
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     delegation_done,
     debouncedSearchTerm,
@@ -626,7 +608,7 @@ function DelegationDataPage() {
     setNextTargetDate((prev) => ({ ...prev, [id]: value }));
   }, []);
 
-  const fileToBase64 = useCallback((file) => {
+  const _fileToBase64 = useCallback((file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);

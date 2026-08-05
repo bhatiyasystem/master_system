@@ -1,21 +1,20 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { X, Loader2, Mic, Square, Trash2, Plus, Save, CheckCircle2, Clock } from "lucide-react";
-import AdminLayout from "../../components/layout/AdminLayout";
-import { useDispatch, useSelector } from "react-redux";
-import { createRepair } from "../../redux/slice/repairSlice";
-import { uniqueGivenByData } from "../../redux/slice/assignTaskSlice";
-import { customDropdownDetails, userDetails } from "../../redux/slice/settingSlice";
-import { ReactMediaRecorder } from "react-media-recorder";
+import { Trash2, Clock, Plus, X, Loader2, Square } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+;
+import { useDispatch, useSelector } from 'react-redux';
+;
+import { uniqueGivenByData } from '../../redux/slice/assignTaskSlice';
+import { customDropdownDetails, userDetails } from '../../redux/slice/settingSlice';
+;
 import supabase from "../../SupabaseClient";
-import { sendTaskAssignmentNotification, isWhatsAppConnected } from "../../services/whatsappService";
-import AudioPlayer from "../../components/AudioPlayer";
-import { useMagicToast } from "../../context/MagicToastContext";
+import { sendTaskAssignmentNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import { useMagicToast } from '../../context/MagicToastContext';
 
 
 
 // --- AUDIO UTILITIES ---
-const isAudioUrl = (url) => {
+const _isAudioUrl = (url) => {
     if (!url || typeof url !== 'string') return false;
     return url.startsWith('http') && (
         url.includes('audio-recordings') ||

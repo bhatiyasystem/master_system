@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Play, Pause } from "lucide-react";
+import { Play } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+;
 
 /**
  * Shared AudioPlayer component to handle voice notes and other audio recordings.
@@ -40,6 +41,7 @@ const AudioPlayer = ({ url, className = "" }) => {
             });
             setIsPlaying(true);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasInteracted]);
 
     useEffect(() => {

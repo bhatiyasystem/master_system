@@ -1,4 +1,3 @@
-import React from 'react';
 import { Gift, Calendar, Clock, MessageSquare, Users, Loader2 } from 'lucide-react';
 
 const AUDIENCE_LABEL = { all: 'All clients', selected: 'Selected clients', csv: 'Uploaded CSV list' };

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { HistoryIcon, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+;
 import useDataStore from '../store/dataStore';
 import toast from 'react-hot-toast';
 
 const Indent = () => {
-  const { addIndent } = useDataStore();
+  const { _addIndent } = useDataStore();
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     post: '',
@@ -17,7 +18,7 @@ const Indent = () => {
     timestamp: '',
   });
    const [indentData, setIndentData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, _setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // const [lastIndentNumber, setLastIndentNumber] = useState(0);

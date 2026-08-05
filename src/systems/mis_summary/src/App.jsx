@@ -1,14 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+;
 import { useAuth } from './contexts/AuthContext';
-import Login from './pages/Login';
-import AdminDashboard from './pages/admin/Dashboard';
-import AdminHistoryCommitment from './pages/admin/HistoryCommitment';
-import AdminTodayTasks from './pages/admin/TodayTasks';
-import AdminPendingTasks from './pages/admin/PendingTasks';
-import KpiKra from './pages/admin/KpiKra';
-import AdminLayout from './layouts/AdminLayout';
-import NotFound from './pages/NotFound';
-import Report from './pages/admin/Report';
 
 function App() {
   const { user, loading } = useAuth();

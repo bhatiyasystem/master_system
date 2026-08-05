@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+;
 
 /**
  * A free-text input that also offers a searchable dropdown of existing

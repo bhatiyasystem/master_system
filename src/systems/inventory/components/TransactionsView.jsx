@@ -1,21 +1,16 @@
+import { Search, SlidersHorizontal, FileSpreadsheet, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 // src/systems/inventory/components/TransactionsView.jsx
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Search,
-  SlidersHorizontal,
-  FileSpreadsheet,
-  ArrowDownLeft,
-  ArrowUpRight
-} from 'lucide-react';
+;
 import Papa from 'papaparse';
-import { postTransaction, saveSettings } from '../redux/slice/inventorySlice';
+import { saveSettings } from '../redux/slice/inventorySlice';
 
 export default function TransactionsView({ activeUser }) {
   const dispatch = useDispatch();
-  const { materials, transactions, settings, locations = [] } = useSelector((state) => state.inventory);
+  const { materials, transactions, settings, _locations = [] } = useSelector((state) => state.inventory);
 
-  const isViewer = activeUser.role === 'Viewer';
+  const _isViewer = activeUser.role === 'Viewer';
 
   // Filters
   const [search, setSearch] = useState('');

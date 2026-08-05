@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Search, Download, Filter, Calendar, Clock, UserCheck, UserX, BarChart3, MessageCircle } from 'lucide-react';
+import { UserCheck, Clock, UserX, BarChart3, MessageCircle, Calendar, Download, Search, Filter } from 'lucide-react';
+import { useState } from 'react';
+;
 
 const Report = () => {
   const [activeReport, setActiveReport] = useState('attendanceDayEnd');

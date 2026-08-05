@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as LucideIcons from "lucide-react";
 import supabase from "../../SupabaseClient";
 import systemRegistry from "../registry/systemRegistry";

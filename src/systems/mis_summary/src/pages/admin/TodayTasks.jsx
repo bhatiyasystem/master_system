@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Search, X, Loader2, Filter, Calendar, Clock, ChevronDown } from "lucide-react";
+import { Loader2, Search, Filter, Calendar, Clock, X } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+;
 import { getDisplayableImageUrl } from '../../utils/imageUtils';
 
 const AdminTodayTasks = () => {
@@ -8,7 +9,7 @@ const AdminTodayTasks = () => {
   const [dataSheetRows, setDataSheetRows] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [personFilter, setPersonFilter] = useState("all");
-  const [fmsFilter, setFmsFilter] = useState("all");
+  const [_fmsFilter, _setFmsFilter] = useState("all");
   const [activeDrillDown, setActiveDrillDown] = useState(null);
   const [taskTodayCounts, setTaskTodayCounts] = useState({});
   const [fetchingTodayCounts, setFetchingTodayCounts] = useState(false);

@@ -1,15 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, _useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Upload, FileText, CheckCircle2, AlertCircle, ArrowLeft,
-  Download, Loader2, Table, Database, Info, X, ChevronRight,
-  ClipboardList, Users, ArrowRight, Layers, Layout
-} from 'lucide-react';
+import { ClipboardList, Users, ArrowLeft, Database, CheckCircle2, ChevronRight, Upload, Table, Layers, X, Info, Download, Loader2 } from 'lucide-react';
 import Papa from 'papaparse';
-import AdminLayout from '../components/layout/AdminLayout';
 import { useMagicToast } from '../context/MagicToastContext';
 import supabase from '../SupabaseClient';
-import { motion, AnimatePresence } from 'framer-motion';
+;
 
 const BulkImport = () => {
   const [activeModule, setActiveModule] = useState('checklist');
@@ -75,6 +70,7 @@ const BulkImport = () => {
       }
     };
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const freqMap = {
@@ -369,11 +365,11 @@ const BulkImport = () => {
         return null;
       };
 
-      let seriesCounter = 0;
+      let _seriesCounter = 0;
       // First, expand all tasks
       for (const row of processingData) {
         currentRowIndex++;
-        seriesCounter++;
+        _seriesCounter++;
         const baseEntry = {};
         MODULES[activeModule].fields.forEach(field => {
           const csvHeader = mapping[field.key];
@@ -382,7 +378,7 @@ const BulkImport = () => {
         });
 
         // series_id is not supported in the current DB schema, skipping it.
-        const seriesId = null;
+        const _seriesId = null;
 
         // Map schema-specific fields based on assignTaskApi.js standards
         const entry = { ...baseEntry };
@@ -465,7 +461,7 @@ const BulkImport = () => {
       if (successCount > 0) {
         setTimeout(() => navigate('/dashboard/admin'), 3000);
       }
-    } catch (err) {
+    } catch {
       showToast("Critical error during import", "error");
     } finally {
       setIsImporting(false);

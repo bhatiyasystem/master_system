@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { CardPanel, FilterBar, StatusBadge, EmptyState } from './ui';
-import ImportView from './ImportView';
+import { Loader2, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+;
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents } from '../services/purchaseService';
-import { FileText, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+;
 export default function IndentView({ onTabChange, refreshKey, onImported }) {
   const [indents, setIndents] = useState([]);
   const [loading, setLoading] = useState(true);

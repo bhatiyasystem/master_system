@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * MIS Summary System — Master System Registration
  *
@@ -18,10 +19,9 @@
  * This makes `useAuth()` work in every MIS page without any page modifications.
  */
 
-import React from 'react';
 import systemRegistry from '../../core/registry/systemRegistry';
-import { AuthContext } from './src/contexts/AuthContext';
-import { MasterAuthBridgeProvider, useMasterAuthBridge } from './src/contexts/MasterAuthBridge';
+
+import { useMasterAuthBridge } from './src/contexts/MasterAuthBridge';
 
 // Import MIS pages
 import AdminDashboard from './src/pages/admin/Dashboard';

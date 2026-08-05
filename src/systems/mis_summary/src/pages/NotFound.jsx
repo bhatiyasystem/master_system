@@ -1,7 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Home } from 'lucide-react';
-import Footer from '../components/Footer';
+import { Link, Home } from 'lucide-react';
+;
+;
 
 const NotFound = () => {
   return (

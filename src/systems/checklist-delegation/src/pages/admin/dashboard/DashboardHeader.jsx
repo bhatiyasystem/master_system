@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { getTotalUsersCountApi } from "../../../redux/api/dashboardApi"
+import { useState, useEffect } from 'react'
+import { getTotalUsersCountApi } from '../../../redux/api/dashboardApi'
 
 export default function DashboardHeader({
     dashboardType,
@@ -14,7 +14,7 @@ export default function DashboardHeader({
     departmentFilter,
     setDepartmentFilter,
     availableDepartments,
-    isLoadingMore,
+    _isLoadingMore,
     onDateRangeChange, // Add this prop to handle date range selection
     mainTab
 }) {

@@ -794,16 +794,18 @@ export const fetchChecklistDataByDateRangeApi = async (
       case 'completed':
         query = query.not('submission_date', 'is', null);
         break;
-      case 'pending':
+      case 'pending': {
         const today = new Date().toISOString().split('T')[0];
         query = query.is('submission_date', null)
           .gte(dateColumn, `${today}T00:00:00`);
         break;
-      case 'overdue':
+      }
+      case 'overdue': {
         const todayOverdue = new Date().toISOString().split('T')[0];
         query = query.is('submission_date', null)
           .lt(dateColumn, `${todayOverdue}T00:00:00`);
         break;
+      }
       // 'all' - no additional status filter
     }
 
@@ -874,16 +876,18 @@ export const getChecklistDateRangeCountApi = async (
       case 'completed':
         query = query.not('submission_date', 'is', null);
         break;
-      case 'pending':
+      case 'pending': {
         const today = new Date().toISOString().split('T')[0];
         query = query.is('submission_date', null)
           .gte(dateColumn, `${today}T00:00:00`);
         break;
-      case 'overdue':
+      }
+      case 'overdue': {
         const todayOverdue = new Date().toISOString().split('T')[0];
         query = query.is('submission_date', null)
           .lt(dateColumn, `${todayOverdue}T00:00:00`);
         break;
+      }
       // 'all' - no additional status filter
     }
 
