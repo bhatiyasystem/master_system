@@ -1,8 +1,7 @@
 import { Plus, Search, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';
-import { fetchWithTimeout } from '../utils/fetchWithTimeout';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const LeaveManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +61,7 @@ const LeaveManagement = () => {
   // Fetch employees from JOINING sheet
 const fetchEmployees = async () => {
     try {
-      const response = await fetchWithTimeout(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch'
-      );
+      const response = await supabaseFetchSheet('JOINING');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -193,14 +190,7 @@ const fetchEmployees = async () => {
         formData.designation         // Designation (Column K, index 10)
       ];
 
-      const response = await fetchWithTimeout('https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec', {
-        method: 'POST',
-        body: new URLSearchParams({
-          sheetName: 'Leave Management',
-          action: 'insert',
-          rowData: JSON.stringify(rowData),
-        }),
-      });
+      const response = await supabaseMutateSheet('Leave Management', 'insert', { rowData });
 
       const result = await response.json();
 
@@ -240,9 +230,7 @@ const handleLeaveAction = async (action) => {
   setLoading(true);
   
   try {
-    const fullDataResponse = await fetchWithTimeout(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Leave Management&action=fetch'
-    );
+    const fullDataResponse = await supabaseFetchSheet('Leave Management');
     
     if (!fullDataResponse.ok) {
       throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
@@ -300,16 +288,7 @@ const handleLeaveAction = async (action) => {
       rowData: JSON.stringify(currentRow)
     };
 
-    const response = await fetchWithTimeout(
-      "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams(payload).toString(),
-      }
-    );
+    const response = await supabaseMutateSheet('Leave Management', 'update', payload);
 
     const result = await response.json();
     if (result.success) {
@@ -336,9 +315,7 @@ const handleLeaveAction = async (action) => {
     setError(null);
 
     try {
-      const response = await fetchWithTimeout(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Leave Management&action=fetch'
-      );
+      const response = await supabaseFetchSheet('Leave Management');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

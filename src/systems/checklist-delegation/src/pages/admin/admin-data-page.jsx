@@ -2,6 +2,8 @@ import { Search, ArrowLeft, History, CheckCircle2, X, Upload } from 'lucide-reac
 "use client"
 
 import { useState, useEffect } from 'react'
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../../services/supabaseApiAdapter'
+import AdminLayout from '../../components/layout/AdminLayout'
 
 
 // Google Apps Script URL
@@ -315,10 +317,7 @@ function AccountDataPage({ showLayout = true }) {
       formData.append('action', 'updateSalesData');
       formData.append('rowData', JSON.stringify(submissionData));
 
-      const response = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: formData
-      });
+      const response = await supabaseMutateSheet('STORE', 'updateSalesData', { rowData: submissionData });
 
       const result = await response.json();
 
@@ -356,7 +355,7 @@ function AccountDataPage({ showLayout = true }) {
       const pendingAccounts = [];
       const historyRows = [];
 
-      const response = await fetch(`https://docs.google.com/spreadsheets/d/1pso64b1nmDBPtq9V5Ay0L93smot03LKat_K0wka0XDY/gviz/tq?tqx=out:json&sheet=STORE`);
+      const response = await supabaseFetchSheet('STORE');
 
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`);
@@ -607,15 +606,7 @@ function AccountDataPage({ showLayout = true }) {
         }
       }))
 
-      const formData = new FormData()
-      formData.append('sheetName', 'STORE')
-      formData.append('action', 'updateSalesData')
-      formData.append('rowData', JSON.stringify(submissionData))
-
-      const response = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        body: formData
-      })
+      const response = await supabaseMutateSheet('STORE', 'updateSalesData', { rowData: submissionData });
 
       const result = await response.json()
 

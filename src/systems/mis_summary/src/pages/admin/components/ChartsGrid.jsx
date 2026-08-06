@@ -1,4 +1,6 @@
 import { User as _UserIcon, Loader2, UserIcon, CheckCircle2 } from 'lucide-react';
+import VerticalBarChart from '../../../components/charts/VerticalBarChart';
+import HalfCircleChart from '../../../components/charts/HalfCircleChart';
 
 const ChartsGrid = ({
     user,

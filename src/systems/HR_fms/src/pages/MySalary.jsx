@@ -1,7 +1,7 @@
 import { DollarSign, TrendingUp, Eye, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet } from '../../../../services/supabaseApiAdapter';
 
 const MySalary = () => {
   // const { user } = useAuthStore();
@@ -34,9 +34,7 @@ const fetchSalaryData = async () => {
       throw new Error("User info missing in localStorage");
     }
 
-    const response = await fetch(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Salary&action=fetch'
-    );
+    const response = await supabaseFetchSheet('Salary');
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

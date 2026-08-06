@@ -1,9 +1,10 @@
 import { Loader2, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-;
+import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents } from '../services/purchaseService';
-;
+import ImportView from './ImportView';
+
 export default function IndentView({ onTabChange, refreshKey, onImported }) {
   const [indents, setIndents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +113,7 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
         }>
           No indent data yet. Import an Excel file to get started.
         </EmptyState>
-     ) : (
+      ) : (
         <>
           {Object.keys(groups).sort().map((v) => {
             const items = groups[v];

@@ -1,7 +1,7 @@
 import { Search, Clock, CheckCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const Leaving = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -27,9 +27,7 @@ const Leaving = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch'
-      );
+      const response = await supabaseFetchSheet('JOINING');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -94,9 +92,7 @@ const Leaving = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=LEAVING&action=fetch'
-      );
+      const response = await supabaseFetchSheet('LEAVING');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -234,14 +230,7 @@ const Leaving = () => {
         selectedItem.salary,
       ];
 
-      const response = await fetch('https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec', {
-        method: 'POST',
-        body: new URLSearchParams({
-          sheetName: 'LEAVING',
-          action: 'insert',
-          rowData: JSON.stringify(rowData),
-        }),
-      });
+      const response = await supabaseMutateSheet('LEAVING', 'insert', { rowData });
 
       const result = await response.json();
 

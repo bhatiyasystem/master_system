@@ -1,7 +1,7 @@
 import { Search, Clock, CheckCircle, X, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const FindEnquiry = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -45,18 +45,16 @@ const [formData, setFormData] = useState({
     
     try {
       // Fetch INDENT data
-      const indentResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=INDENT&action=fetch'
-      );
+      const indentResponse = await supabaseFetchSheet('INDENT');
       
       if (!indentResponse.ok) {
         throw new Error(`HTTP error! status: ${indentResponse.status}`);
       }
       
       const indentResult = await indentResponse.json();
-      
+
       if (indentResult.success && indentResult.data && indentResult.data.length >= 7) {
-        const headers = indentResult.data[5].map(h => h.trim());
+        const headers = indentResult.data[5].map(h => h ? h.trim() : '');
         const dataFromRow7 = indentResult.data.slice(6);
         
         const getIndex = (headerName) => headers.findIndex(h => h === headerName);
@@ -84,19 +82,15 @@ const [formData, setFormData] = useState({
             plannedDate: row[getIndex('Planned 2')],
             actual: row[getIndex('Actual 2')]
           }));
-         const pendingTasks = processedData.filter(
-        task => task.plannedDate && !task.actual
-      );
+        const pendingTasks = processedData.filter(
+          task => task.plannedDate && !task.actual
+        );
       
         setIndentData(pendingTasks);
-      } else {
-        throw new Error(indentResult.error || 'Not enough rows in INDENT sheet data');
       }
 
       // Fetch ENQUIRY data
-      const enquiryResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=ENQUIRY&action=fetch'
-      );
+      const enquiryResponse = await supabaseFetchSheet('ENQUIRY');
       
       if (!enquiryResponse.ok) {
         throw new Error(`HTTP error! status: ${enquiryResponse.status}`);
@@ -175,7 +169,7 @@ const [formData, setFormData] = useState({
   };
 
   // Convert file to base64
-  const fileToBase64 = (file) => {
+  const _fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -184,32 +178,18 @@ const [formData, setFormData] = useState({
     });
   };
 
-  // Upload file to Google Drive
+  // Upload file to storage
   const uploadFileToGoogleDrive = async (file, type) => {
     try {
-      const base64Data = await fileToBase64(file);
-      
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            action: 'uploadFile',
-            base64Data: base64Data,
-            fileName: `${generatedCandidateNo}_${type}_${file.name}`,
-            mimeType: file.type,
-            folderId: GOOGLE_DRIVE_FOLDER_ID
-          }),
-        }
-      );
+      const response = await supabaseMutateSheet('ENQUIRY', 'uploadFile', {
+        fileName: `${generatedCandidateNo}_${type}_${file.name}`,
+        mimeType: file.type,
+      });
 
       const result = await response.json();
       
       if (result.success) {
-        return result.fileUrl;
+        return result.fileUrl || '';
       } else {
         throw new Error(result.error || 'File upload failed');
       }
@@ -323,20 +303,7 @@ const handleSubmit = async (e) => {
     console.log('Submitting to ENQUIRY sheet:', rowData);
 
     // Submit to ENQUIRY sheet
-    const enquiryResponse = await fetch(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          sheetName: 'ENQUIRY',
-          action: 'insert',
-          rowData: JSON.stringify(rowData)
-        }),
-      }
-    );
+    const enquiryResponse = await supabaseMutateSheet('ENQUIRY', 'insert', { rowData });
 
     const enquiryResult = await enquiryResponse.json();
     console.log('ENQUIRY response:', enquiryResult);
@@ -350,9 +317,7 @@ const handleSubmit = async (e) => {
       console.log('Updating INDENT sheet for status Complete');
       
       // Fetch INDENT data
-      const indentFetchResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=INDENT&action=fetch'
-      );
+      const indentFetchResponse = await supabaseFetchSheet('INDENT');
       
       const indentData = await indentFetchResponse.json();
       console.log('INDENT data fetched:', indentData);
@@ -394,22 +359,11 @@ const handleSubmit = async (e) => {
       // Update Status column
       if (statusIndex !== -1) {
         console.log('Updating Status column...');
-        const statusResponse = await fetch(
-          'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              sheetName: 'INDENT',
-              action: 'updateCell',
-              rowIndex: rowIndex.toString(),
-              columnIndex: (statusIndex + 1).toString(), // Convert to string
-              value: 'Complete'
-            }),
-          }
-        );
+        const statusResponse = await supabaseMutateSheet('INDENT', 'updateCell', {
+          rowIndex: rowIndex.toString(),
+          columnIndex: (statusIndex + 1).toString(),
+          value: 'Complete'
+        });
 
         const statusResult = await statusResponse.json();
         console.log('Status update result:', statusResult);
@@ -422,22 +376,11 @@ const handleSubmit = async (e) => {
       // Update Actual 2 column
       if (actual2Index !== -1) {
         console.log('Updating Actual 2 column...');
-        const actual2Response = await fetch(
-          'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              sheetName: 'INDENT',
-              action: 'updateCell',
-              rowIndex: rowIndex.toString(),
-              columnIndex: (actual2Index + 1).toString(), // Convert to string
-              value: formattedTimestamp
-            }),
-          }
-        );
+        const actual2Response = await supabaseMutateSheet('INDENT', 'updateCell', {
+          rowIndex: rowIndex.toString(),
+          columnIndex: (actual2Index + 1).toString(),
+          value: formattedTimestamp
+        });
 
         const actual2Result = await actual2Response.json();
         console.log('Actual 2 update result:', actual2Result);

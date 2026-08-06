@@ -1,8 +1,8 @@
 import { Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-;
 import useDataStore from '../store/dataStore';
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const Indent = () => {
   const { _addIndent } = useDataStore();
@@ -85,10 +85,7 @@ const generateIndentNumber = async () => {
 
   const fetchIndentDataFromRow7 = async () => {
   try {
-    const response = await fetch(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=INDENT&action=fetch'
-    );
-    
+    const response = await supabaseFetchSheet('INDENT');
     const result = await response.json();
     
     if (result.success && result.data && result.data.length >= 7) {
@@ -144,10 +141,7 @@ const generateIndentNumber = async () => {
 
 const fetchLastIndentNumber = async () => {
   try {
-    const response = await fetch(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=INDENT&action=fetch'
-    );
-    
+    const response = await supabaseFetchSheet('INDENT');
     const result = await response.json();
     console.log('Full sheet data:', result); // Debugging
     
@@ -279,14 +273,7 @@ const handleSubmit = async (e) => {
         "NeedMore"
       ];
 
-      const response = await fetch('https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec', {
-        method: 'POST',
-        body: new URLSearchParams({
-          sheetName: 'INDENT',
-          action: 'insert',
-          rowData: JSON.stringify(rowData),
-        }),
-      });
+      const response = await supabaseMutateSheet('INDENT', 'insert', { rowData });
 
       const result = await response.json();
 

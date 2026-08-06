@@ -1,7 +1,7 @@
 import { Loader2, History, Search } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-;
 import { useAuth } from '../../contexts/AuthContext';
+import { supabaseFetchSheet } from '../../../../../services/supabaseApiAdapter';
 
 const AdminHistoryCommitment = () => {
     const { user } = useAuth();
@@ -15,16 +15,10 @@ const AdminHistoryCommitment = () => {
         const fetchRecords = async () => {
             try {
                 setLoading(true);
-                const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
-                if (!scriptUrl) {
-                    console.error("VITE_APPS_SCRIPT_URL not set");
-                    setLoading(false);
-                    return;
-                }
 
                 const [recordsResponse, masterResponse] = await Promise.all([
-                    fetch(`${scriptUrl}?sheet=Records`),
-                    fetch(`${scriptUrl}?sheet=Master`)
+                    supabaseFetchSheet('For Whatsapp'),
+                    supabaseFetchSheet('Master')
                 ]);
                 const result = await recordsResponse.json();
                 const masterResult = await masterResponse.json();

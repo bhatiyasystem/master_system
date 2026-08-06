@@ -1,9 +1,14 @@
 // ============ DASHBOARD PAGE ============
 import { useState, useEffect, useMemo } from 'react';
-;
 import { getDisplayableImageUrl } from '../../utils/imageUtils';
 import { employees, getLowestScorers, getWeeklyCommitmentComparison,  } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../../services/supabaseApiAdapter';
+import DashboardHeader from './components/DashboardHeader';
+import EmployeeListSection from './components/EmployeeListSection';
+import UserDetailsModal from './components/UserDetailsModal';
+import ChartsGrid from './components/ChartsGrid';
+import DepartmentScoreChart from '../../components/charts/DepartmentScoreChart';
 
 const getCurrentWeek = () => {
   const today = new Date();
@@ -189,11 +194,11 @@ const AdminDashboard = () => {
 
         // Fetch sheets
         const [recordsResponse, archivedResponse, masterResponse, dataResponse, deptScoreResponse] = await Promise.all([
-          fetch(`${scriptUrl}?sheet=For Records`),
-          fetch(`${scriptUrl}?sheet=Archived`),
-          fetch(`${scriptUrl}?sheet=Master`),
-          fetch(`${scriptUrl}?sheet=Data`),
-          fetch(`${scriptUrl}?sheet=Department Score Graph`)
+          supabaseFetchSheet('For Whatsapp'),
+          supabaseFetchSheet('Archived'),
+          supabaseFetchSheet('Master'),
+          supabaseFetchSheet('Report Daily'),
+          supabaseFetchSheet('Department Score Graph')
         ]);
 
         const result = await recordsResponse.json();
@@ -716,12 +721,12 @@ const AdminDashboard = () => {
         for (const url of urlsToTry) {
           try {
             const separator = url.includes('?') ? '&' : '?';
-            let fetchUrl = `${url}${separator}sheet=${encodeURIComponent(name)}`;
+            let _fetchUrl = `${url}${separator}sheet=${encodeURIComponent(name)}`;
             if (task.sheetId) {
-              fetchUrl += `&spreadsheetId=${encodeURIComponent(task.sheetId)}`;
+              _fetchUrl += `&spreadsheetId=${encodeURIComponent(task.sheetId)}`;
             }
             
-            const res = await fetch(fetchUrl);
+            const res = await supabaseFetchSheet(name);
             if (!res.ok) throw new Error(`HTTP error ${res.status}`);
             const result = await res.json();
             if (result.success && Array.isArray(result.data)) {
@@ -961,7 +966,7 @@ const AdminDashboard = () => {
 
     setWhatsappSubmitting(true);
     try {
-      const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
+      const _scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
       const targetSpreadsheetId = "1qlSZ41zJ2vh_7o8LxQJgoWx7c2pEOnf41wmiuL1iup4";
       const whatsappLinks = [];
 
@@ -987,18 +992,14 @@ const AdminDashboard = () => {
           inputs.nextWeekCommitment || emp.nextWeekCommitment || 0
         ];
 
-        const payload = {
+        const _payload = {
           action: "insert",
           spreadsheetId: targetSpreadsheetId,
           sheetName: "For Whatsapp",
           rowData: JSON.stringify(row)
         };
 
-        const response = await fetch(scriptUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams(payload)
-        });
+        const response = await supabaseMutateSheet('For Whatsapp', 'insert', { rowData: JSON.stringify(row) });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         try {
@@ -1062,7 +1063,7 @@ Bhatiya.`;
 
     setMainSubmitting(true);
     try {
-      const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
+      const _scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
 
       for (const id of selectedEmployees) {
         const emp = sheetEmployees.find(e => e.id === id);
@@ -1082,11 +1083,7 @@ Bhatiya.`;
           ? { action: "update", sheetName: "Archived", rowIndex: existing.rowIndex, rowData: JSON.stringify(row) }
           : { action: "insert", sheetName: "Archived", rowData: JSON.stringify(row) };
 
-        const response = await fetch(scriptUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams(payload)
-        });
+        const response = await supabaseMutateSheet('Archived', existing ? 'update' : 'insert', payload);
 
         const result = await response.json();
         if (!result.success) throw new Error(result.error || "Failed to save row");

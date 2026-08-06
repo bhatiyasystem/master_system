@@ -3,16 +3,20 @@ import { Trash2, Search, Filter, ChevronDown, X, Plus, Loader2, UserRound, Squar
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-;
+import AdminLayout from '../components/layout/AdminLayout';
+import { Edit } from 'lucide-react';
+import DelegationPage from "./delegation-data";
+import { AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { deleteChecklistTask, deleteDelegationTask, uniqueChecklistTaskData, uniqueDelegationTaskData, updateChecklistTask, updateDelegationTask, fetchUsers, resetChecklistPagination, resetDelegationPagination } from '../redux/slice/quickTaskSlice';
 import { maintenanceData, deleteMaintenanceTask, updateMaintenanceTask } from '../redux/slice/maintenanceSlice';
 import { fetchUniqueDepartmentDataApi, fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from '../redux/api/assignTaskApi';
 import { fetchCustomDropdownsApi } from '../redux/api/settingApi';
-;
 import supabase from "../SupabaseClient";
 import { useMagicToast } from '../context/MagicToastContext';
-;
+import RenderDescription from '../components/RenderDescription';
+import AudioPlayer from '../components/AudioPlayer';
+import { ReactMediaRecorder } from 'react-media-recorder';
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;
@@ -104,7 +108,7 @@ export default function QuickTask() {
     currentPage: maintenancePage
   } = useSelector((state) => state.maintenance);
   const dispatch = useDispatch();
-  
+
   // HOD Access Restriction
   useEffect(() => {
     const role = localStorage.getItem("role")?.toLowerCase();
@@ -112,7 +116,7 @@ export default function QuickTask() {
       showToast("Access Denied: HODs cannot access Quick Task management.", "error");
       navigate("/dashboard");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   useEffect(() => {
@@ -281,30 +285,30 @@ export default function QuickTask() {
     setIsSaving(true);
     try {
       let finalEditData = { ...editFormData };
-      
+
       // Handle reference image uploads first
       const referenceUploadPromises = (editFormData.instruction_attachment_url || []).map(async (urlOrFile, _idx) => {
         if (urlOrFile instanceof File) {
           const extension = urlOrFile.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from('task-instructions')
             .upload(fileName, urlOrFile, { upsert: false });
-          
+
           if (uploadError) throw uploadError;
-          
+
           const { data: publicUrlData } = supabase.storage
             .from('task-instructions')
             .getPublicUrl(fileName);
-          
+
           return publicUrlData.publicUrl;
         }
         return urlOrFile;
       });
 
       const finalReferenceUrls = await Promise.all(referenceUploadPromises);
-      
+
       // JSON stringify the arrays for database
       finalEditData.instruction_attachment_url = JSON.stringify(finalReferenceUrls);
       finalEditData.instruction_attachment_type = JSON.stringify(editFormData.instruction_attachment_type || []);
@@ -438,10 +442,10 @@ export default function QuickTask() {
     setEditFormData(prev => {
       const urls = [...(prev.instruction_attachment_url || [])];
       const types = [...(prev.instruction_attachment_type || [])];
-      
+
       if (field === 'url') urls[index] = value;
       else if (field === 'type') types[index] = value;
-      
+
       return {
         ...prev,
         instruction_attachment_url: urls,
@@ -657,575 +661,575 @@ export default function QuickTask() {
   return (
     <>
       <AdminLayout>
-      <div className="sticky top-0 z-30 bg-white pb-4 border-b border-gray-200">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-purple-700">
-                  {CONFIG.PAGE_CONFIG.title}
-                </h1>
-                <p className="text-purple-600 text-[11px] font-bold uppercase tracking-wider opacity-80">
-                  {activeTab === 'checklist'
-                    ? `Showing ${quickTask.length} checklist tasks`
-                    : activeTab === 'maintenance'
-                      ? `Showing ${filteredMaintenance.length} maintenance tasks`
-                      : `Showing delegation tasks`}
-                </p>
-              </div>
-
-              {selectedTasks.length > 0 && (
-                <button
-                  onClick={handleDeleteSelected}
-                  disabled={isDeleting}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-red-600 text-white text-xs font-black rounded-full hover:bg-red-700 transition-all shadow-md animate-in fade-in zoom-in duration-300 transform active:scale-95 flex-shrink-0"
-                >
-                  <Trash2 size={14} className="stroke-[3]" />
-                  {isDeleting ? 'Deleting...' : `Delete (${selectedTasks.length})`}
-                </button>
-              )}
-            </div>
-
-            <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner w-full sm:w-auto overflow-x-auto no-scrollbar">
-              {[
-                { id: 'checklist', label: 'Checklist' },
-                { id: 'delegation', label: 'Delegation' },
-                { id: 'maintenance', label: 'Maintenance' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  className={`flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === tab.id
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-gray-500 hover:text-purple-600 hover:bg-white/50'
-                    }`}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setSelectedTasks([]);
-                    setEditingTaskId(null);
-                    setEditFormData({});
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 mt-2">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search by task or name..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              {/* Department Dropdown */}
-              <div className="relative flex-1 sm:flex-none sm:min-w-[180px]">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-                <select
-                  className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all"
-                  value={deptFilter}
-                  onChange={(e) => setDeptFilter(e.target.value)}
-                >
-                  <option value="">All Departments</option>
-                  {departments.map((dept, i) => (
-                    <option key={i} value={dept}>{dept}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-              </div>
-
-              {/* Name Dropdown */}
-              <div className="relative flex-1 sm:flex-none sm:min-w-[180px]">
-                <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-                <select
-                  className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all"
-                  value={personFilter}
-                  onChange={(e) => setPersonFilter(e.target.value)}
-                >
-                  <option value="">All Doers</option>
-                  {doersList.map((doer, i) => (
-                    <option key={i} value={doer.user_name}>{doer.user_name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mt-4 bg-red-50 p-4 rounded-md text-red-800 text-center">
-          {error} <button onClick={() => dispatch(uniqueChecklistTaskData())} className="underline ml-2 hover:text-red-600">Try again</button>
-        </div>
-      )}
-
-
-
-      {!error && (
-        <>
-          {activeTab === 'checklist' ? (
-            <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4 flex justify-between items-center">
+        <div className="sticky top-0 z-30 bg-white pb-4 border-b border-gray-200">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <div>
-                  <h2 className="text-purple-700 font-medium">Checklist Tasks</h2>
-                  <p className="text-purple-600 text-sm">
-                    {CONFIG.PAGE_CONFIG.description}
+                  <h1 className="text-2xl font-bold tracking-tight text-purple-700">
+                    {CONFIG.PAGE_CONFIG.title}
+                  </h1>
+                  <p className="text-purple-600 text-[11px] font-bold uppercase tracking-wider opacity-80">
+                    {activeTab === 'checklist'
+                      ? `Showing ${quickTask.length} checklist tasks`
+                      : activeTab === 'maintenance'
+                        ? `Showing ${filteredMaintenance.length} maintenance tasks`
+                        : `Showing delegation tasks`}
                   </p>
                 </div>
+
                 {selectedTasks.length > 0 && (
-                  <span className="text-sm text-purple-600">
-                    {selectedTasks.length} task(s) selected
-                  </span>
+                  <button
+                    onClick={handleDeleteSelected}
+                    disabled={isDeleting}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-red-600 text-white text-xs font-black rounded-full hover:bg-red-700 transition-all shadow-md animate-in fade-in zoom-in duration-300 transform active:scale-95 flex-shrink-0"
+                  >
+                    <Trash2 size={14} className="stroke-[3]" />
+                    {isDeleting ? 'Deleting...' : `Delete (${selectedTasks.length})`}
+                  </button>
                 )}
               </div>
-              <div
-                ref={tableContainerRef}
-                className="overflow-x-auto"
-              >
-                {/* Desktop View */}
-                <table className="hidden md:table min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-20">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                        <input
-                          type="checkbox"
-                          checked={filteredChecklistTasks.length > 0 && filteredChecklistTasks.every(t => selectedTasks.find(s => s.id === t.id))}
-                          onChange={handleSelectAll}
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                      </th>
-                      {[
-                        { key: 'actions', label: 'Actions' },
-                        { key: 'id', label: 'Task ID' },
-                        { key: 'task_description', label: 'Task Description', minWidth: 'min-w-[300px]' },
-                        { key: 'department', label: 'Department' },
-                        { key: 'given_by', label: 'Assign From' },
-                        { key: 'name', label: 'Name' },
-                        { key: 'task_start_date', label: 'Working Day', bg: 'bg-yellow-50' },
-                        { key: 'frequency', label: 'Frequency' },
-                        { key: 'duration', label: 'Duration' },
-                        { key: 'enable_reminder', label: 'Reminders' },
-                        { key: 'require_attachment', label: 'Attachment' },
-                        { key: 'remarks', label: 'Remarks' },
-                      ].map((column) => (
-                        <th
-                          key={column.label}
-                          className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.bg || ''} ${column.minWidth || ''} ${column.key && column.key !== 'actions' ? 'cursor-pointer hover:bg-gray-100' : ''}`}
-                          onClick={() => column.key && column.key !== 'actions' && requestSort(column.key)}
-                        >
-                          <div className="flex items-center">
-                            {column.label}
-                            {sortConfig.key === column.key && (
-                              <span className="ml-1">
-                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
 
-                  <tbody className="bg-white divide-y divide-gray-200">
+              <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner w-full sm:w-auto overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'checklist', label: 'Checklist' },
+                  { id: 'delegation', label: 'Delegation' },
+                  { id: 'maintenance', label: 'Maintenance' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    className={`flex-1 sm:flex-none px-6 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === tab.id
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-purple-600 hover:bg-white/50'
+                      }`}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setSelectedTasks([]);
+                      setEditingTaskId(null);
+                      setEditFormData({});
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 mt-2">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by task or name..."
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                {/* Department Dropdown */}
+                <div className="relative flex-1 sm:flex-none sm:min-w-[180px]">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                  <select
+                    className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all"
+                    value={deptFilter}
+                    onChange={(e) => setDeptFilter(e.target.value)}
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map((dept, i) => (
+                      <option key={i} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                </div>
+
+                {/* Name Dropdown */}
+                <div className="relative flex-1 sm:flex-none sm:min-w-[180px]">
+                  <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                  <select
+                    className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-purple-500 appearance-none transition-all"
+                    value={personFilter}
+                    onChange={(e) => setPersonFilter(e.target.value)}
+                  >
+                    <option value="">All Doers</option>
+                    {doersList.map((doer, i) => (
+                      <option key={i} value={doer.user_name}>{doer.user_name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 bg-red-50 p-4 rounded-md text-red-800 text-center">
+            {error} <button onClick={() => dispatch(uniqueChecklistTaskData())} className="underline ml-2 hover:text-red-600">Try again</button>
+          </div>
+        )}
+
+
+
+        {!error && (
+          <>
+            {activeTab === 'checklist' ? (
+              <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-purple-700 font-medium">Checklist Tasks</h2>
+                    <p className="text-purple-600 text-sm">
+                      {CONFIG.PAGE_CONFIG.description}
+                    </p>
+                  </div>
+                  {selectedTasks.length > 0 && (
+                    <span className="text-sm text-purple-600">
+                      {selectedTasks.length} task(s) selected
+                    </span>
+                  )}
+                </div>
+                <div
+                  ref={tableContainerRef}
+                  className="overflow-x-auto"
+                >
+                  {/* Desktop View */}
+                  <table className="hidden md:table min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-20">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          <input
+                            type="checkbox"
+                            checked={filteredChecklistTasks.length > 0 && filteredChecklistTasks.every(t => selectedTasks.find(s => s.id === t.id))}
+                            onChange={handleSelectAll}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                        </th>
+                        {[
+                          { key: 'actions', label: 'Actions' },
+                          { key: 'id', label: 'Task ID' },
+                          { key: 'task_description', label: 'Task Description', minWidth: 'min-w-[300px]' },
+                          { key: 'department', label: 'Department' },
+                          { key: 'given_by', label: 'Assign From' },
+                          { key: 'name', label: 'Name' },
+                          { key: 'task_start_date', label: 'Working Day', bg: 'bg-yellow-50' },
+                          { key: 'frequency', label: 'Frequency' },
+                          { key: 'duration', label: 'Duration' },
+                          { key: 'enable_reminder', label: 'Reminders' },
+                          { key: 'require_attachment', label: 'Attachment' },
+                          { key: 'remarks', label: 'Remarks' },
+                        ].map((column) => (
+                          <th
+                            key={column.label}
+                            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.bg || ''} ${column.minWidth || ''} ${column.key && column.key !== 'actions' ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                            onClick={() => column.key && column.key !== 'actions' && requestSort(column.key)}
+                          >
+                            <div className="flex items-center">
+                              {column.label}
+                              {sortConfig.key === column.key && (
+                                <span className="ml-1">
+                                  {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredChecklistTasks.length > 0 ? (
+                        filteredChecklistTasks.map((task, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={!!selectedTasks.find(t => t.id === task.id)}
+                                onChange={() => handleCheckboxChange(task)}
+                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <button
+                                onClick={() => handleEditClick(task)}
+                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                <Edit size={14} />
+                                Edit
+                              </button>
+                            </td>
+
+                            {/* Task ID */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.id}
+                            </td>
+
+                            {/* Task Description */}
+                            <td className="px-6 py-4 text-sm text-gray-500 min-w-[300px] max-w-[400px]">
+                              <div className="whitespace-normal break-words">
+                                <RenderDescription text={task.task_description} audioUrl={task.audio_url} instructionUrl={task.instruction_attachment_url} instructionType={task.instruction_attachment_type} />
+                              </div>
+                            </td>
+
+                            {/* Department */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {task.department}
+                            </td>
+
+                            {/* Given By */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.given_by}
+                            </td>
+
+                            {/* Name */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.name}
+                            </td>
+
+                            {/* Task Start Date */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
+                              {formatTimestampToDDMMYYYY(task.task_start_date)}
+                            </td>
+
+                            {/* Frequency */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className={`px-2 py-1 rounded-full text-xs ${task.frequency?.toLowerCase() === 'daily' ? 'bg-blue-100 text-blue-800' :
+                                task.frequency?.toLowerCase() === 'weekly' ? 'bg-green-100 text-green-800' :
+                                  task.frequency?.toLowerCase() === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }`}>
+                                {task.frequency}
+                              </span>
+                            </td>
+
+                            {/* Duration */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-blue-50">
+                              {task.duration ? (
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  ⏱ {task.duration}
+                                </span>
+                              ) : "—"}
+                            </td>
+
+                            {/* Enable Reminders */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="capitalize">{task.enable_reminder || "—"}</span>
+                            </td>
+
+                            {/* Require Attachment */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="capitalize">{task.require_attachment || "—"}</span>
+                            </td>
+
+                            {/* Remarks */}
+                            <td className="px-6 py-4 text-sm text-gray-500">
+                              {task.remark || "—"}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={11} className="px-6 py-4 text-center text-gray-500">
+                            {searchTerm || freqFilter
+                              ? "No tasks matching your filters"
+                              : "No tasks available"}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile View - Checklist Cards */}
+                  <div className="md:hidden divide-y divide-gray-100">
                     {filteredChecklistTasks.length > 0 ? (
                       filteredChecklistTasks.map((task, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-4 whitespace-nowrap">
+                        <div key={index} className={`p-4 bg-white space-y-3 ${selectedTasks.find(t => t.id === task.id) ? 'bg-purple-50/50' : ''}`}>
+                          <div className="flex justify-between items-start gap-3">
                             <input
                               type="checkbox"
                               checked={!!selectedTasks.find(t => t.id === task.id)}
                               onChange={() => handleCheckboxChange(task)}
-                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                             />
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                             <button
-                               onClick={() => handleEditClick(task)}
-                               className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                             >
-                               <Edit size={14} />
-                               Edit
-                             </button>
-                          </td>
-
-                          {/* Task ID */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.id}
-                          </td>
-
-                          {/* Task Description */}
-                          <td className="px-6 py-4 text-sm text-gray-500 min-w-[300px] max-w-[400px]">
-                            <div className="whitespace-normal break-words">
-                              <RenderDescription text={task.task_description} audioUrl={task.audio_url} instructionUrl={task.instruction_attachment_url} instructionType={task.instruction_attachment_type} />
-                            </div>
-                          </td>
-
-                          {/* Department */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {task.department}
-                          </td>
-
-                          {/* Given By */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.given_by}
-                          </td>
-
-                          {/* Name */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.name}
-                          </td>
-
-                          {/* Task Start Date */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
-                            {formatTimestampToDDMMYYYY(task.task_start_date)}
-                          </td>
-
-                          {/* Frequency */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={`px-2 py-1 rounded-full text-xs ${task.frequency?.toLowerCase() === 'daily' ? 'bg-blue-100 text-blue-800' :
-                              task.frequency?.toLowerCase() === 'weekly' ? 'bg-green-100 text-green-800' :
-                                task.frequency?.toLowerCase() === 'monthly' ? 'bg-purple-100 text-purple-800' :
-                                  'bg-gray-100 text-gray-800'
-                              }`}>
-                              {task.frequency}
-                            </span>
-                          </td>
-
-                          {/* Duration */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-blue-50">
-                            {task.duration ? (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                ⏱ {task.duration}
-                              </span>
-                            ) : "—"}
-                          </td>
-
-                          {/* Enable Reminders */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className="capitalize">{task.enable_reminder || "—"}</span>
-                          </td>
-
-                          {/* Require Attachment */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className="capitalize">{task.require_attachment || "—"}</span>
-                          </td>
-
-                          {/* Remarks */}
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {task.remark || "—"}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={11} className="px-6 py-4 text-center text-gray-500">
-                          {searchTerm || freqFilter
-                            ? "No tasks matching your filters"
-                            : "No tasks available"}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-
-                {/* Mobile View - Checklist Cards */}
-                <div className="md:hidden divide-y divide-gray-100">
-                  {filteredChecklistTasks.length > 0 ? (
-                    filteredChecklistTasks.map((task, index) => (
-                      <div key={index} className={`p-4 bg-white space-y-3 ${selectedTasks.find(t => t.id === task.id) ? 'bg-purple-50/50' : ''}`}>
-                        <div className="flex justify-between items-start gap-3">
-                          <input
-                            type="checkbox"
-                            checked={!!selectedTasks.find(t => t.id === task.id)}
-                            onChange={() => handleCheckboxChange(task)}
-                            className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          />
-                          <div className="flex-grow min-w-0">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[10px] font-black text-purple-500 uppercase tracking-wider">#{task.id}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight ${task.frequency?.toLowerCase() === 'daily' ? 'bg-blue-100 text-blue-800' :
-                                task.frequency?.toLowerCase() === 'weekly' ? 'bg-green-100 text-green-800' :
-                                  'bg-purple-100 text-purple-800'
-                                }`}>
-                                {task.frequency || 'Manual'}
-                              </span>
-                            </div>
-                            <>
-                              <div className="mb-2">
-                                <RenderDescription
-                                  text={task.task_description}
-                                  audioUrl={task.audio_url}
-                                  instructionUrl={task.instruction_attachment_url}
-                                  instructionType={task.instruction_attachment_type}
-                                />
+                            <div className="flex-grow min-w-0">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-black text-purple-500 uppercase tracking-wider">#{task.id}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight ${task.frequency?.toLowerCase() === 'daily' ? 'bg-blue-100 text-blue-800' :
+                                  task.frequency?.toLowerCase() === 'weekly' ? 'bg-green-100 text-green-800' :
+                                    'bg-purple-100 text-purple-800'
+                                  }`}>
+                                  {task.frequency || 'Manual'}
+                                </span>
                               </div>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-bold text-gray-500">
-                                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>{task.department}</span>
-                                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{task.name}</span>
-                                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>{formatTimestampToDDMMYYYY(task.task_start_date)}</span>
-                                {task.duration && (
-                                  <span className="flex items-center gap-1.5 text-blue-600">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                                    ⏱ {task.duration}
-                                  </span>
-                                )}
-                              </div>
-                            </>
-                          </div>
-                          <button
-                            onClick={() => handleEditClick(task)}
-                            className="p-2 bg-blue-50 text-blue-600 rounded-xl transition-all active:scale-95"
-                          >
-                            <Edit size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-gray-400 text-sm font-bold">No checklist tasks found</div>
-                  )}
-                </div>
-
-                {loading && checklistHasMore && (
-                  <div className="text-center py-4">
-                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
-                    <p className="text-purple-600 text-sm mt-2">Loading more tasks...</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : activeTab === 'maintenance' ? (
-            <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4">
-                <h2 className="text-purple-700 font-medium">Maintenance Tasks</h2>
-                <div className="flex items-center gap-2">
-                  {maintenanceLoading && <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-600"></div>}
-                  <p className="text-purple-600 text-sm">Showing all maintenance tasks from database</p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                {/* Desktop view */}
-                <table className="hidden md:table min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-20">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                        <input
-                          type="checkbox"
-                          checked={filteredMaintenance.length > 0 && filteredMaintenance.every(t => selectedTasks.find(s => s.id === t.id))}
-                          onChange={handleSelectAll}
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                      </th>
-                      {[
-                        { label: 'Actions' },
-                        { label: 'Task ID' },
-                        { label: 'Task Description', minWidth: 'min-w-[200px]' },
-                        { label: 'Machine Name' },
-                        { label: 'Part Name' },
-                        { label: 'Part Area' },
-                        { label: 'Assign From' },
-                        { label: 'Name' },
-                        { label: 'Working Day', bg: 'bg-yellow-50' },
-                        { label: 'Frequency' },
-                        { label: 'Duration' },
-                        { label: 'Status' },
-                        { label: 'Remarks' },
-                      ].map((column) => (
-                        <th
-                          key={column.label}
-                          className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.bg || ''} ${column.minWidth || ''}`}
-                        >
-                          {column.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredMaintenance.length > 0 ? (
-                      filteredMaintenance.map((task, index) => (
-                        <tr key={index} className={`hover:bg-gray-50 ${selectedTasks.find(t => t.id === task.id) ? "bg-purple-50" : ""}`}>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={!!selectedTasks.find(t => t.id === task.id)}
-                              onChange={() => handleCheckboxChange(task)}
-                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <>
+                                <div className="mb-2">
+                                  <RenderDescription
+                                    text={task.task_description}
+                                    audioUrl={task.audio_url}
+                                    instructionUrl={task.instruction_attachment_url}
+                                    instructionType={task.instruction_attachment_type}
+                                  />
+                                </div>
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-bold text-gray-500">
+                                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>{task.department}</span>
+                                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>{task.name}</span>
+                                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>{formatTimestampToDDMMYYYY(task.task_start_date)}</span>
+                                  {task.duration && (
+                                    <span className="flex items-center gap-1.5 text-blue-600">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                      ⏱ {task.duration}
+                                    </span>
+                                  )}
+                                </div>
+                              </>
+                            </div>
                             <button
                               onClick={() => handleEditClick(task)}
-                              className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              className="p-2 bg-blue-50 text-blue-600 rounded-xl transition-all active:scale-95"
                             >
-                              <Edit size={14} />
-                              Edit
+                              <Edit size={16} />
                             </button>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.id}</td>
-                          <td className="px-6 py-4 text-sm text-gray-500 min-w-[200px] max-w-[400px]">
-                            <RenderDescription
-                              text={task.task_description || task.work_description}
-                              audioUrl={task.audio_url}
-                              instructionUrl={task.instruction_attachment_url}
-                              instructionType={task.instruction_attachment_type}
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.machine_name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.part_name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.part_area}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.given_by}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {task.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
-                            {formatTimestampToDDMMYYYY(task.task_start_date)}
-                          </td>
-
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={`px-2 py-1 rounded-full text-xs ${task.freq?.toLowerCase() === 'daily' ? 'bg-blue-100 text-blue-800' :
-                              task.freq?.toLowerCase() === 'weekly' ? 'bg-green-100 text-green-800' :
-                                task.freq?.toLowerCase() === 'monthly' ? 'bg-purple-100 text-purple-800' :
-                                  'bg-gray-100 text-gray-800'
-                              }`}>
-                              <span className="capitalize">{task.freq}</span>
-                            </span>
-                          </td>
-
-                          {/* Duration */}
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-blue-50">
-                            {task.duration ? (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                ⏱ {task.duration}
-                              </span>
-                            ) : "—"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={`px-2 py-1 rounded-full text-xs ${task.status === 'Done' ? 'bg-green-100 text-green-800' :
-                              task.status === 'Issue' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
-                              {task.status || 'Pending'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {task.remarks || '—'}
-                          </td>
-
-                        </tr>
+                          </div>
+                        </div>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan={13} className="px-6 py-4 text-center text-gray-500">
-                          No maintenance tasks found
-                        </td>
-                      </tr>
+                      <div className="p-8 text-center text-gray-400 text-sm font-bold">No checklist tasks found</div>
                     )}
-                  </tbody>
-                </table>
+                  </div>
 
-                {/* Mobile View - Maintenance Cards */}
-                <div className="md:hidden divide-y divide-gray-100">
-                  {filteredMaintenance.length > 0 ? (
-                    filteredMaintenance.map((task, index) => (
-                      <div key={index} className={`p-5 bg-white space-y-4 ${selectedTasks.find(t => t.id === task.id) ? "bg-purple-50/50" : ""}`}>
-                        <div className="flex justify-between items-start gap-4">
-                          <input
-                            type="checkbox"
-                            checked={!!selectedTasks.find(t => t.id === task.id)}
-                            onChange={() => handleCheckboxChange(task)}
-                            className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          />
-                          <div className="flex-grow min-w-0">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[10px] font-black text-purple-500 uppercase tracking-wider">#{task.id}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight ${task.status === 'Done' ? 'bg-green-100 text-green-800' :
-                                task.status === 'Issue' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                                }`}>
-                                {task.status || 'Pending'}
-                              </span>
-                            </div>
-                            <>
-                              <div className="text-sm font-bold text-gray-800 leading-tight mb-3">
-                                <RenderDescription
-                                  text={task.task_description || task.work_description}
-                                  audioUrl={task.audio_url}
-                                  instructionUrl={task.instruction_attachment_url}
-                                  instructionType={task.instruction_attachment_type}
-                                />
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Resource</span>
-                                  <div className="text-xs font-bold text-gray-700">{task.machine_name || '—'}</div>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Component</span>
-                                  <div className="text-xs font-bold text-gray-700">{task.part_name || '—'}</div>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Assignee</span>
-                                  <div className="text-xs font-bold text-gray-700">{task.name || '—'}</div>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Schedule</span>
-                                  <div className="text-xs font-bold text-gray-700">{formatTimestampToDDMMYYYY(task.task_start_date)}</div>
-                                </div>
-                              </div>
-                            </>
-                          </div>
-                          <button onClick={() => handleEditClick(task)} className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                            <Edit size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-gray-400 text-sm font-bold">No maintenance tasks found</div>
+                  {loading && checklistHasMore && (
+                    <div className="text-center py-4">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                      <p className="text-purple-600 text-sm mt-2">Loading more tasks...</p>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          ) : (
-            <DelegationPage
-              searchTerm={searchTerm}
-              freqFilter={freqFilter}
-              setFreqFilter={setFreqFilter}
-              externalSelectedTasks={selectedTasks}
-              departments={departments}
-              givenByList={givenByList}
-              doersList={doersList}
-              skipFetch={true}
-              onSelectionChange={(taskOrAll, allTasks) => {
-                if (taskOrAll === 'ALL') {
-                  if (selectedTasks.length === allTasks.length) setSelectedTasks([]);
-                  else setSelectedTasks(allTasks);
-                } else {
-                  handleCheckboxChange(taskOrAll);
-                }
-              }}
-              onDelete={handleDeleteSelected}
-              isExternalDeleting={isDeleting}
-              onEdit={handleEditClick}
-            />
-          )}
-        </>
-      )}
-    </AdminLayout>
+            ) : activeTab === 'maintenance' ? (
+              <div className="mt-4 rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100 p-4">
+                  <h2 className="text-purple-700 font-medium">Maintenance Tasks</h2>
+                  <div className="flex items-center gap-2">
+                    {maintenanceLoading && <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-600"></div>}
+                    <p className="text-purple-600 text-sm">Showing all maintenance tasks from database</p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  {/* Desktop view */}
+                  <table className="hidden md:table min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-20">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          <input
+                            type="checkbox"
+                            checked={filteredMaintenance.length > 0 && filteredMaintenance.every(t => selectedTasks.find(s => s.id === t.id))}
+                            onChange={handleSelectAll}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                        </th>
+                        {[
+                          { label: 'Actions' },
+                          { label: 'Task ID' },
+                          { label: 'Task Description', minWidth: 'min-w-[200px]' },
+                          { label: 'Machine Name' },
+                          { label: 'Part Name' },
+                          { label: 'Part Area' },
+                          { label: 'Assign From' },
+                          { label: 'Name' },
+                          { label: 'Working Day', bg: 'bg-yellow-50' },
+                          { label: 'Frequency' },
+                          { label: 'Duration' },
+                          { label: 'Status' },
+                          { label: 'Remarks' },
+                        ].map((column) => (
+                          <th
+                            key={column.label}
+                            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.bg || ''} ${column.minWidth || ''}`}
+                          >
+                            {column.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredMaintenance.length > 0 ? (
+                        filteredMaintenance.map((task, index) => (
+                          <tr key={index} className={`hover:bg-gray-50 ${selectedTasks.find(t => t.id === task.id) ? "bg-purple-50" : ""}`}>
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={!!selectedTasks.find(t => t.id === task.id)}
+                                onChange={() => handleCheckboxChange(task)}
+                                className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <button
+                                onClick={() => handleEditClick(task)}
+                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                <Edit size={14} />
+                                Edit
+                              </button>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.id}</td>
+                            <td className="px-6 py-4 text-sm text-gray-500 min-w-[200px] max-w-[400px]">
+                              <RenderDescription
+                                text={task.task_description || task.work_description}
+                                audioUrl={task.audio_url}
+                                instructionUrl={task.instruction_attachment_url}
+                                instructionType={task.instruction_attachment_type}
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.machine_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.part_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.part_area}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.given_by}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {task.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
+                              {formatTimestampToDDMMYYYY(task.task_start_date)}
+                            </td>
+
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className={`px-2 py-1 rounded-full text-xs ${task.freq?.toLowerCase() === 'daily' ? 'bg-blue-100 text-blue-800' :
+                                task.freq?.toLowerCase() === 'weekly' ? 'bg-green-100 text-green-800' :
+                                  task.freq?.toLowerCase() === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }`}>
+                                <span className="capitalize">{task.freq}</span>
+                              </span>
+                            </td>
+
+                            {/* Duration */}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-blue-50">
+                              {task.duration ? (
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  ⏱ {task.duration}
+                                </span>
+                              ) : "—"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className={`px-2 py-1 rounded-full text-xs ${task.status === 'Done' ? 'bg-green-100 text-green-800' :
+                                task.status === 'Issue' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {task.status || 'Pending'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500">
+                              {task.remarks || '—'}
+                            </td>
+
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={13} className="px-6 py-4 text-center text-gray-500">
+                            No maintenance tasks found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* Mobile View - Maintenance Cards */}
+                  <div className="md:hidden divide-y divide-gray-100">
+                    {filteredMaintenance.length > 0 ? (
+                      filteredMaintenance.map((task, index) => (
+                        <div key={index} className={`p-5 bg-white space-y-4 ${selectedTasks.find(t => t.id === task.id) ? "bg-purple-50/50" : ""}`}>
+                          <div className="flex justify-between items-start gap-4">
+                            <input
+                              type="checkbox"
+                              checked={!!selectedTasks.find(t => t.id === task.id)}
+                              onChange={() => handleCheckboxChange(task)}
+                              className="mt-1 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <div className="flex-grow min-w-0">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-black text-purple-500 uppercase tracking-wider">#{task.id}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight ${task.status === 'Done' ? 'bg-green-100 text-green-800' :
+                                  task.status === 'Issue' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                  {task.status || 'Pending'}
+                                </span>
+                              </div>
+                              <>
+                                <div className="text-sm font-bold text-gray-800 leading-tight mb-3">
+                                  <RenderDescription
+                                    text={task.task_description || task.work_description}
+                                    audioUrl={task.audio_url}
+                                    instructionUrl={task.instruction_attachment_url}
+                                    instructionType={task.instruction_attachment_type}
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Resource</span>
+                                    <div className="text-xs font-bold text-gray-700">{task.machine_name || '—'}</div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Component</span>
+                                    <div className="text-xs font-bold text-gray-700">{task.part_name || '—'}</div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Assignee</span>
+                                    <div className="text-xs font-bold text-gray-700">{task.name || '—'}</div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Schedule</span>
+                                    <div className="text-xs font-bold text-gray-700">{formatTimestampToDDMMYYYY(task.task_start_date)}</div>
+                                  </div>
+                                </div>
+                              </>
+                            </div>
+                            <button onClick={() => handleEditClick(task)} className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                              <Edit size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-400 text-sm font-bold">No maintenance tasks found</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <DelegationPage
+                searchTerm={searchTerm}
+                freqFilter={freqFilter}
+                setFreqFilter={setFreqFilter}
+                externalSelectedTasks={selectedTasks}
+                departments={departments}
+                givenByList={givenByList}
+                doersList={doersList}
+                skipFetch={true}
+                onSelectionChange={(taskOrAll, allTasks) => {
+                  if (taskOrAll === 'ALL') {
+                    if (selectedTasks.length === allTasks.length) setSelectedTasks([]);
+                    else setSelectedTasks(allTasks);
+                  } else {
+                    handleCheckboxChange(taskOrAll);
+                  }
+                }}
+                onDelete={handleDeleteSelected}
+                isExternalDeleting={isDeleting}
+                onEdit={handleEditClick}
+              />
+            )}
+          </>
+        )}
+      </AdminLayout>
 
       {/* Task Edit Modal Popup */}
       <AnimatePresence>
@@ -1268,10 +1272,10 @@ export default function QuickTask() {
                       className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm font-medium focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-50 outline-none transition-all min-h-[100px] resize-none"
                       placeholder="Describe the task..."
                     />
-                    
+
                     {/* Audio Recording Feature inside Modal */}
                     <div className="absolute bottom-3 right-3 flex gap-2">
-                       <ReactMediaRecorder
+                      <ReactMediaRecorder
                         audio
                         onStop={(blobUrl, blob) => setRecordedAudio({ blobUrl, blob })}
                         render={({ status, startRecording, stopRecording, _clearBlobUrl }) => (
@@ -1486,7 +1490,7 @@ export default function QuickTask() {
                       <Plus size={10} /> Add Reference
                     </button>
                   </div>
-                  
+
                   <div className="space-y-2">
                     {(editFormData.instruction_attachment_url || []).map((url, idx) => (
                       <div key={idx} className="flex gap-2 items-center bg-gray-50/50 p-2 rounded-xl border border-gray-200">
@@ -1502,7 +1506,7 @@ export default function QuickTask() {
                         </select>
                         {editFormData.instruction_attachment_type?.[idx] === 'image' ? (
                           <div className="flex-grow flex items-center gap-2">
-                             <input
+                            <input
                               type="text"
                               value={url instanceof File ? `📄 ${url.name}` : (url || '')}
                               readOnly

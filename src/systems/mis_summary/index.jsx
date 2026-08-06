@@ -21,7 +21,8 @@
 
 import systemRegistry from '../../core/registry/systemRegistry';
 
-import { useMasterAuthBridge } from './src/contexts/MasterAuthBridge';
+import { MasterAuthBridgeProvider, useMasterAuthBridge } from './src/contexts/MasterAuthBridge';
+import { AuthContext } from './src/contexts/AuthContext';
 
 // Import MIS pages
 import AdminDashboard from './src/pages/admin/Dashboard';

@@ -1,6 +1,6 @@
 import { Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-;
+import { supabaseFetchSheet } from '../../../../services/supabaseApiAdapter';
 
 const MyAttendance = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -47,9 +47,7 @@ const MyAttendance = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Data&action=fetch'
-      );
+      const response = await supabaseFetchSheet('Report Daily');
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import PurchaseHeader from '../components/PurchaseHeader';
+import IndentView from '../components/IndentView';
 import { useNavigate } from 'react-router-dom';
 
 export default function IndentPage() {

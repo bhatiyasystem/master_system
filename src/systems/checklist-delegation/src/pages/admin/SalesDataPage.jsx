@@ -1,8 +1,8 @@
 import { Search, ArrowLeft, History, Loader2, CheckCircle2, X, Upload } from 'lucide-react';
 "use client"
 import { useState, useEffect, useMemo, useRef } from 'react'
-
 import { useDispatch, useSelector } from 'react-redux'
+import AdminLayout from '../../components/layout/AdminLayout';
 import { checklistData, checklistHistoryData, updateChecklist } from '../../redux/slice/checklistSlice'
 import { postChecklistAdminDoneAPI } from '../../redux/api/checkListApi'
 import { uniqueDoerNameData } from '../../redux/slice/assignTaskSlice';

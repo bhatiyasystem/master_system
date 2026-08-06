@@ -1,9 +1,9 @@
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-;
+import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, decideCategory, fetchIndentHistory, findOutstandingConflicts } from '../services/purchaseService';
-;
+import Modal from './Modal';
 
 export default function ApprovalView() {
   const [tab, setTab] = useState('pending');

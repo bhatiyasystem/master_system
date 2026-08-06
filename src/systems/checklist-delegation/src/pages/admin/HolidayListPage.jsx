@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Plus, Loader2, Search, Trash2 } from 'lucide-react';
 import supabase from '../../SupabaseClient';
+import AdminLayout from '../../components/layout/AdminLayout';
 
 const HolidayListPage = () => {
     const [holidays, setHolidays] = useState([]);

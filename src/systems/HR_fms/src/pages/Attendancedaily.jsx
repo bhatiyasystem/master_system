@@ -2,6 +2,8 @@ import { Search, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 ;
 
+import { supabaseFetchSheet } from '../../../../services/supabaseApiAdapter';
+
 const Attendancedaily = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -17,9 +19,7 @@ const Attendancedaily = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Report Daily&action=fetch'
-      );
+      const response = await supabaseFetchSheet('Report Daily');
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

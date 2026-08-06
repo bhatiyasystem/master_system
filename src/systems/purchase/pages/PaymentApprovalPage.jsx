@@ -1,3 +1,5 @@
+import PurchaseHeader from "../components/PurchaseHeader";
+import PaymentApprovalView from "../components/PaymentApprovalView";
 
 export default function PaymentApprovalPage() {
     return (

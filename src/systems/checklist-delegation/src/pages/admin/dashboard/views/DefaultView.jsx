@@ -1,3 +1,6 @@
+import StatisticsCards from '../StaticsCard';
+import TaskNavigationTabs from '../TaskNavigationTab';
+import StaffTasksTable from '../StaffTaskTable';
 
 export default function DefaultView({
     dashboardType,

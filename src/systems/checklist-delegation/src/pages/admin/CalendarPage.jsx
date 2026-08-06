@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar as CalendarIcon, Play, Users, ChevronDown, Search, Check, ChevronLeft, ChevronRight, Loader2, Clock, Plus, X, ShieldAlert, ClipboardList } from 'lucide-react';
 import supabase from '../../SupabaseClient';
+import AdminLayout from '../../components/layout/AdminLayout';
 
 const extractAudioUrl = (text) => {
     if (!text || typeof text !== 'string') return null;

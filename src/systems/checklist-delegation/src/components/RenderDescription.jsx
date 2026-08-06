@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Play, FileText, Image as ImageIcon, Link as LinkIcon, X } from 'lucide-react';
-;
+import { AnimatePresence } from 'framer-motion';
 
 const getYouTubeId = (url) => {
     if (!url || typeof url !== 'string') return null;
@@ -21,15 +21,15 @@ const MediaViewer = ({ isOpen, onClose, media }) => {
         <AnimatePresence>
             {isOpen && (
                 <div key="media-viewer-container" className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-8">
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
                         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
                     />
-                    
-                    <motion.div 
+
+                    <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 30 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 30 }}
@@ -40,10 +40,10 @@ const MediaViewer = ({ isOpen, onClose, media }) => {
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-xl ${isYoutube ? 'bg-red-50 text-red-600' : isVideo ? 'bg-indigo-50 text-indigo-600' : isImage ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                    {isYoutube ? <Play size={18} fill="currentColor" /> : 
-                                    isVideo ? <Play size={18} fill="currentColor" /> : 
-                                    isImage ? <ImageIcon size={18} /> : 
-                                    <FileText size={18} />}
+                                    {isYoutube ? <Play size={18} fill="currentColor" /> :
+                                        isVideo ? <Play size={18} fill="currentColor" /> :
+                                            isImage ? <ImageIcon size={18} /> :
+                                                <FileText size={18} />}
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none mb-1">
@@ -55,7 +55,7 @@ const MediaViewer = ({ isOpen, onClose, media }) => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                     onClick={() => window.open(media.url, '_blank')}
                                     className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all group hidden lg:flex items-center gap-2"
                                     title="Open in new tab"
@@ -63,7 +63,7 @@ const MediaViewer = ({ isOpen, onClose, media }) => {
                                     <span className="text-xs font-bold uppercase tracking-wider">Expand</span>
                                     <ExternalLink size={18} />
                                 </button>
-                                <button 
+                                <button
                                     onClick={onClose}
                                     className="p-2.5 text-gray-500 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"
                                 >
@@ -86,29 +86,29 @@ const MediaViewer = ({ isOpen, onClose, media }) => {
                                     />
                                 </div>
                             ) : isVideo ? (
-                                <video 
+                                <video
                                     key={media.url || 'vid'}
-                                    src={media.url} 
-                                    controls 
-                                    autoPlay 
+                                    src={media.url}
+                                    controls
+                                    autoPlay
                                     className="max-w-full max-h-[80vh] shadow-2xl"
                                 />
                             ) : isImage ? (
-                                <img 
-                                    src={media.url} 
-                                    alt="Shared Media" 
+                                <img
+                                    src={media.url}
+                                    alt="Shared Media"
                                     className="max-w-full max-h-[80vh] object-contain shadow-2xl select-none"
                                     onContextMenu={(e) => e.preventDefault()}
                                 />
                             ) : (
-                                <iframe 
+                                <iframe
                                     key={media.url || 'doc'}
-                                    src={media.url} 
+                                    src={media.url}
                                     className="w-full h-[80vh] bg-white border-none shadow-2xl"
                                     title="Document Viewer"
                                 />
                             )}
-                            
+
                             {/* Overlay Controls Hint for Image/Video */}
                             {(isImage || isVideo) && (
                                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
@@ -255,16 +255,16 @@ const RenderDescription = ({ text, audioUrl, instructionUrl, instructionType }) 
                     {cleanText}
                 </span>
             )}
-            
+
             <div className="flex flex-wrap items-center gap-2">
                 {url && <AudioPlayer className="!min-w-0" url={url} />}
                 {renderInstruction()}
             </div>
 
-            <MediaViewer 
-                isOpen={viewerOpen} 
-                onClose={() => setViewerOpen(false)} 
-                media={viewerMedia} 
+            <MediaViewer
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                media={viewerMedia}
             />
         </div>
     );

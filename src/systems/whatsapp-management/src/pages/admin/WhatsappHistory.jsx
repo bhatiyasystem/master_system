@@ -257,7 +257,7 @@ const WhatsappHistory = () => {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('user_name, number, image');
+                .select('user_name, number');
             if (error) throw error;
             setUsersList(data || []);
         } catch (error) {

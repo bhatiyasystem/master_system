@@ -1,7 +1,7 @@
-import { Target, Download, Users, ChevronDown, CheckSquare, Award, Briefcase, PlayCircle, TrendingUp, Users2, MessageSquare, User, Database, Link } from 'lucide-react';
+import { Target, Download, Users, ChevronDown, CheckSquare, Award, Briefcase, PlayCircle, TrendingUp, Users2, MessageSquare, User, Database, Link, FileText, CheckCircle2, ChevronRight, ArrowLeft } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-;
 import { useAuth } from '../../contexts/AuthContext';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../../services/supabaseApiAdapter';
 
 const designations = [
   'All',
@@ -63,15 +63,11 @@ const KpiKra = () => {
   const fetchDashboardData = async (sheetOverride, currentDept) => {
     setIsLoadingDashboard(true);
     try {
-      const scriptUrl = import.meta.env.VITE_KPI_KRA_APPSCRIPT_URL;
+      const _scriptUrl = import.meta.env.VITE_KPI_KRA_APPSCRIPT_URL;
       const isDesignationBrief = sheetOverride === 'Designation Brief';
       const isDatabase = sheetOverride === 'Database';
       const targetSheet = sheetOverride || 'Dashboard';
-      const response = await fetch(`${scriptUrl}?action=read&sheet=${targetSheet}`, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-store'
-      });
+      const response = await supabaseFetchSheet(targetSheet);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
@@ -173,12 +169,7 @@ const KpiKra = () => {
 
   const fetchUserDepartment = async () => {
     try {
-      const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
-      const response = await fetch(`${scriptUrl}?sheet=Master`, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-store'
-      });
+      const response = await supabaseFetchSheet('Master');
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
         const userRow = result.data.find(row =>
@@ -239,22 +230,11 @@ const KpiKra = () => {
 
   const handleSubmit = async (designationToSubmit) => {
     const valueToSubmit = designationToSubmit || selectedDesignation;
-    setIsSubmitting(true);
-
     try {
-      const scriptUrl = import.meta.env.VITE_KPI_KRA_APPSCRIPT_URL;
-      const params = new URLSearchParams({
-        action: 'updateDesignation',
+      const response = await supabaseMutateSheet('Dashboard', 'updateDesignation', {
         designation: valueToSubmit,
         userName: user?.name || '',
         userEmail: user?.email || ''
-      });
-
-      // Using GET method with CORS mode to ensure 100% success with Apps Script redirects
-      const response = await fetch(`${scriptUrl}?${params.toString()}`, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-store'
       });
 
       const result = await response.json();

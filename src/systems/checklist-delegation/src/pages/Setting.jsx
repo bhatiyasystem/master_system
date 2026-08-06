@@ -1,13 +1,17 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-;
+import { useEffect, useState, useRef, useCallback, Image } from 'react';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Save } from 'lucide-react';
 import { User, Building, Settings, Calendar, RefreshCw, Plus, Trash2, Search, ChevronDown, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
+import AdminLayout from '../components/layout/AdminLayout';
 import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails, customDropdownDetails, deleteCustomDropdown, createAssignFrom, deleteDepartment, deleteAssignFrom, updateCustomDropdown, updateAssignFrom, createMachineEntries, uploadProfileImage } from '../redux/slice/settingSlice';
 import { uploadPartImageApi } from '../redux/api/settingApi';
 import supabase from '../SupabaseClient';
 import { createPortal } from 'react-dom';
 import { sendTaskReassignmentNotification, isWhatsAppConnected } from '../services/whatsappService';
 import { useMagicToast } from '../context/MagicToastContext';
+import { Edit } from 'lucide-react';
 
 const formatDateLong = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
@@ -59,7 +63,7 @@ const Setting = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [profileFile, setProfileFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(null);
-  
+
   // Cleanup State
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [cleanupDays, setCleanupDays] = useState(45);
@@ -425,7 +429,7 @@ const Setting = () => {
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      const cutoffDateString = cutoffDate.toISOString().split('T')[0]; 
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
       const { data, error } = await supabase
         .from('checklist')
@@ -1986,15 +1990,15 @@ const Setting = () => {
                                                 <div className="flex gap-1.5 ml-1 opacity-100 lg:opacity-0 group-hover/part:opacity-100 transition-opacity">
                                                   <label className="text-blue-400 hover:text-blue-600 cursor-pointer flex items-center justify-center p-0.5" title="Edit part image">
                                                     <Edit size={12} />
-                                                    <input 
-                                                      type="file" 
-                                                      accept="image/*" 
-                                                      className="hidden" 
+                                                    <input
+                                                      type="file"
+                                                      accept="image/*"
+                                                      className="hidden"
                                                       onChange={(e) => {
                                                         const file = e.target.files[0];
-                                                        if(file) handleUpdatePartImage(file, part);
+                                                        if (file) handleUpdatePartImage(file, part);
                                                         e.target.value = null;
-                                                      }} 
+                                                      }}
                                                     />
                                                   </label>
                                                   <button
@@ -2084,15 +2088,15 @@ const Setting = () => {
                                           <div className="flex gap-1.5 ml-1">
                                             <label className="text-blue-400 hover:text-blue-600 cursor-pointer p-0.5 flex items-center justify-center">
                                               <Edit size={12} />
-                                              <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                className="hidden" 
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
                                                 onChange={(e) => {
                                                   const file = e.target.files[0];
-                                                  if(file) handleUpdatePartImage(file, part);
+                                                  if (file) handleUpdatePartImage(file, part);
                                                   e.target.value = null;
-                                                }} 
+                                                }}
                                               />
                                             </label>
                                             <button
@@ -2395,7 +2399,7 @@ const Setting = () => {
                     )}
 
                   </div>
-                  
+
                   <div className="mt-8 bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-[2rem] border border-purple-100/50 flex items-center justify-between group transition-all hover:shadow-xl hover:shadow-purple-100/30">
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center text-purple-600 shadow-sm border border-purple-100 group-hover:scale-110 transition-transform">
@@ -2407,12 +2411,12 @@ const Setting = () => {
                       </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer scale-110">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         name="can_self_assign"
                         checked={userForm.can_self_assign}
                         onChange={(e) => setUserForm(prev => ({ ...prev, can_self_assign: e.target.checked }))}
-                        className="sr-only peer" 
+                        className="sr-only peer"
                       />
                       <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-600 peer-checked:to-indigo-600"></div>
                     </label>
@@ -2849,7 +2853,7 @@ const Setting = () => {
                         showToast(`Successfully purged ${count} old checklist records.`, "success");
                         setShowDangerPopup(false);
                         // Refresh data if needed or stay on settings
-                        dispatch(userDetails()); 
+                        dispatch(userDetails());
                       } catch (err) {
                         console.error('Purge operation failed:', err);
                         showToast("Failed to purge records. Database error.", "error");
@@ -2876,7 +2880,7 @@ const Setting = () => {
 
                 <div className="mt-6 pt-4 border-t border-slate-100 text-center">
                   <p className="text-[9px] text-slate-400 font-medium italic">
-                    Note: This is a system-level administrative action. <br/>
+                    Note: This is a system-level administrative action. <br />
                     <span className="font-bold text-slate-500">Currently executing in Test Mode.</span>
                   </p>
                 </div>

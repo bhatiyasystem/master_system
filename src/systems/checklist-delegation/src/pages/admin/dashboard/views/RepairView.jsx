@@ -1,9 +1,16 @@
-import { ResponsiveContainer, XAxis, YAxis, Tooltip, Line, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
+// import { ResponsiveContainer, XAxis, YAxis, Tooltip, Line, Pie, PieChart, Cell, CartesianGrid, } from "recharts";
+import {
+    ResponsiveContainer, XAxis, YAxis, Tooltip, Line, Pie, PieChart as RechartsPieChart,
+    LineChart as RechartsLineChart,
+    Cell,
+    CartesianGrid,
+} from "recharts";
 import { useMemo, useState } from 'react'
-import { FileText, CheckCircle, IndianRupee, LineChart, Search, X, Loader2, Wrench } from 'lucide-react'
-
+import { FileText, CheckCircle, IndianRupee, LineChart as LineChartIcon, Search, X, Loader2, Wrench, PieChart as PieIcon } from 'lucide-react'
 import { useDispatch } from 'react-redux'
 import { updateRepair } from '../../../../redux/slice/repairSlice'
+import RenderDescription from '../../../../components/RenderDescription'
+import AudioPlayer from '../../../../components/AudioPlayer'
 
 
 const isAudioUrl = (url) => {
@@ -16,7 +23,7 @@ const isAudioUrl = (url) => {
 };
 
 const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
-    <div 
+    <div
         onClick={onClick}
         className={`bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col gap-1 relative overflow-hidden min-w-0 ${onClick ? 'cursor-pointer hover:shadow-md active:scale-95 transition-all' : ''}`}
     >
@@ -195,18 +202,18 @@ export default function RepairView({ tasks = [], onCardClick }) {
         <div className="space-y-6 pb-8 overflow-x-hidden w-full max-w-full">
             {/* Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard 
-                    icon={FileText} 
-                    label="Total Indents" 
-                    value={tasks.length} 
-                    color="bg-blue-500" 
+                <StatCard
+                    icon={FileText}
+                    label="Total Indents"
+                    value={tasks.length}
+                    color="bg-blue-500"
                     onClick={() => onCardClick?.('analyzed')}
                 />
-                <StatCard 
-                    icon={CheckCircle} 
-                    label="Repairs Completed" 
-                    value={completedTasksCount} 
-                    color="bg-green-500" 
+                <StatCard
+                    icon={CheckCircle}
+                    label="Repairs Completed"
+                    value={completedTasksCount}
+                    color="bg-green-500"
                     onClick={() => onCardClick?.('completed')}
                 />
                 <StatCard icon={IndianRupee} label="Total Repair Cost" value={`₹${totalCost.toLocaleString()}`} color="bg-orange-500" />
@@ -243,13 +250,13 @@ export default function RepairView({ tasks = [], onCardClick }) {
                     </div>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={taskOverviewData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
+                            <RechartsLineChart data={taskOverviewData} margin={{ top: 20, right: 30, left: 10, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                 <XAxis dataKey="name" axisLine={{ stroke: '#9ca3af' }} tickLine={false} tick={{ fill: '#4b5563', fontSize: 12 }} dy={10} interval={0} />
                                 <YAxis axisLine={{ stroke: '#9ca3af' }} tickLine={false} tick={{ fill: '#4b5563', fontSize: 13 }} allowDecimals={false} />
                                 <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                                 <Line type="monotone" dataKey="value" stroke="#4b5563" strokeWidth={2} dot={{ r: 4, fill: '#4b5563' }} activeDot={{ r: 6 }} />
-                            </LineChart>
+                            </RechartsLineChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
@@ -265,11 +272,11 @@ export default function RepairView({ tasks = [], onCardClick }) {
                     <div className="flex items-center justify-around h-48">
                         <div className="h-full w-1/2">
                             <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
+                                <RechartsPieChart>
                                     <Pie data={paymentData} innerRadius={45} outerRadius={65} paddingAngle={5} dataKey="value">
                                         {paymentData.map((e, i) => <Cell key={i} fill={e.color} />)}
                                     </Pie>
-                                </PieChart>
+                                </RechartsPieChart>
                             </ResponsiveContainer>
                         </div>
                         <div className="space-y-4">

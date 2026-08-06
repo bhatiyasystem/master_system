@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar as _CalendarIcon, ChevronLeft, ChevronRight, Loader2, ShieldAlert, CheckCircle2, List } from 'lucide-react';
 import supabase from '../../SupabaseClient';
+import AdminLayout from '../../components/layout/AdminLayout';
 
 const WorkingDayCalendarPage = () => {
     const [currentDate, setCurrentDate] = useState(new Date());

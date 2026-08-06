@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-;
+import { motion } from 'framer-motion';
 import { Users, ScrollText, AlertTriangle, CheckCircle2, Clock, XCircle, X } from 'lucide-react';
 import { fetchRecipients, fetchLogs } from '../../services/festivalSchedulerService';
 
@@ -65,9 +65,8 @@ export default function ScheduleProgressPanel({ schedule, onClose }) {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border ${
-                tab === id ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border ${tab === id ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
             >
               <Icon className="w-4 h-4" /> {label}
             </button>

@@ -1,7 +1,7 @@
 import { Edit3, X, Mail, Phone, Building, Calendar, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const MyProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -20,10 +20,8 @@ const MyProfile = () => {
       const currentUser = JSON.parse(userData);
       const userName = currentUser.Name;
 
-      // Fetch data from the sheet API
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch'
-      );
+      // Fetch data from Supabase
+      const response = await supabaseFetchSheet('JOINING');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -121,9 +119,7 @@ if (filteredData.length > 0) {
     setLoading(true);
     
     // 1. Fetch current data from JOINING sheet
-    const fullDataResponse = await fetch(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch'
-    );
+    const fullDataResponse = await supabaseFetchSheet('JOINING');
     
     if (!fullDataResponse.ok) {
       throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
@@ -188,16 +184,7 @@ if (filteredData.length > 0) {
     console.log("Final payload being sent:", payload);
 
     // 8. Send update request
-    const response = await fetch(
-      "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams(payload).toString(),
-      }
-    );
+    const response = await supabaseMutateSheet("JOINING", "update", payload);
 
     const result = await response.json();
     console.log("Update result:", result);

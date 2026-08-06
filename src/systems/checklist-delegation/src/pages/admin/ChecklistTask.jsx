@@ -1,14 +1,15 @@
 import { Trash2, Play, X, Calendar, Clock, ClipboardList, Database, CheckCircle2, Plus, Loader2, Square } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-;
-;
+import AdminLayout from '../../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
 import { assignTaskInTable, uniqueDepartmentData, uniqueDoerNameData, uniqueGivenByData } from '../../redux/slice/assignTaskSlice';
 import { customDropdownDetails } from '../../redux/slice/settingSlice';
 import supabase from "../../SupabaseClient";
 import { sendTaskAssignmentNotification, isWhatsAppConnected } from '../../services/whatsappService';
 import { useMagicToast } from '../../context/MagicToastContext';
+import { ReactMediaRecorder } from 'react-media-recorder';
+import { Mic } from 'lucide-react';
 
 const formatDate = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
@@ -899,8 +900,8 @@ export default function ChecklistTask() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button 
-                            onClick={() => navigate('/dashboard/bulk-import')} 
+                        <button
+                            onClick={() => navigate('/dashboard/bulk-import')}
                             className="flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-700 font-bold rounded-xl shadow-sm hover:bg-purple-50 transition-all text-sm"
                         >
                             <Database size={16} />

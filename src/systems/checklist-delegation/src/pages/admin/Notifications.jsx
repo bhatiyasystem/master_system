@@ -1,7 +1,7 @@
 import { Plus, Loader2, User, Trash2, X, Bell, CheckCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-;
+import AdminLayout from '../../components/layout/AdminLayout';
 import { fetchNotifications, createNotification, removeNotification, markAsRead } from '../../redux/slice/notificationSlice';
 import { useMagicToast } from '../../context/MagicToastContext';
 

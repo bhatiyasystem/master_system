@@ -1,4 +1,4 @@
-import { PieChart } from 'recharts';
+import { PieChart } from 'lucide-react';
 import { TrendingUp, CheckCircle, Clock, AlertCircle, Phone, Calendar, X } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 ;

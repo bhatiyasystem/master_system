@@ -1,12 +1,12 @@
 import { X, Trash2, Calendar, Clock, CheckCircle2, Plus, Loader2, Wrench, Square, BellRing } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-;
-;
+import AdminLayout from '../../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
 import { uniqueDepartmentData, uniqueDoerNameData, uniqueGivenByData } from '../../redux/slice/assignTaskSlice';
 import { customDropdownDetails } from '../../redux/slice/settingSlice';
 import { maintenanceData } from '../../redux/slice/maintenanceSlice';
+import { ReactMediaRecorder } from 'react-media-recorder';
 import supabase from "../../SupabaseClient";
 import { sendTaskAssignmentNotification, sendUrgentTaskNotification, isWhatsAppConnected } from '../../services/whatsappService';
 import { useMagicToast } from '../../context/MagicToastContext';

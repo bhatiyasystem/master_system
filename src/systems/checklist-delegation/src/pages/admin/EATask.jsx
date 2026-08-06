@@ -1,11 +1,11 @@
 import { Trash2, Users, Phone, Calendar, Clock, Plus, ArrowLeft, CheckCircle2, X, Loader2, Square } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-;
-;
+import AdminLayout from '../../components/layout/AdminLayout';
 import supabase from "../../SupabaseClient";
 import { useDispatch, useSelector } from 'react-redux';
 import { userDetails } from '../../redux/slice/settingSlice';
+import { ReactMediaRecorder } from 'react-media-recorder';
 import { sendTaskAssignmentNotification, isWhatsAppConnected } from '../../services/whatsappService';
 import { useMagicToast } from '../../context/MagicToastContext';
 

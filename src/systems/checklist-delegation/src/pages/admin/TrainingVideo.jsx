@@ -1,6 +1,7 @@
 import { Video, Play, Info } from 'lucide-react';
 "use client"
 import { useState, useEffect } from 'react'
+import AdminLayout from '../../components/layout/AdminLayout';
 
 
 function TrainingVideo() {

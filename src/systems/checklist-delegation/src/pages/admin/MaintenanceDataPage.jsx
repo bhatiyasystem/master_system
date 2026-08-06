@@ -2,7 +2,10 @@ import { Search, ArrowLeft, History, Loader2, CheckCircle2, X, Upload } from 'lu
 "use client"
 import { useState, useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import AdminLayout from '../../components/layout/AdminLayout';
 import { maintenanceData, maintenanceHistoryData, updateMaintenance } from '../../redux/slice/maintenanceSlice'
+import RenderDescription from '../../components/RenderDescription'
+import AudioPlayer from '../../components/AudioPlayer'
 
 
 

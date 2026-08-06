@@ -1,11 +1,9 @@
 import { Users, User, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-;
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
-
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=USER&action=fetch';
+import { supabaseFetchSheet } from '../../../../services/supabaseApiAdapter';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -19,7 +17,7 @@ const Login = () => {
     e.preventDefault();
 setSubmitting(true)
     try {
-      const res = await fetch(SHEET_API_URL);
+      const res = await supabaseFetchSheet('Master');
       const json = await res.json();
 
       if (!json.success) {

@@ -1,7 +1,7 @@
 import { Search, Clock, CheckCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';  
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';  
 
 const AfterJoiningWork = () => {
   const [activeTab, setActiveTab] = useState("pending");
@@ -33,9 +33,7 @@ const AfterJoiningWork = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch"
-      );
+      const response = await supabaseFetchSheet("JOINING");
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -159,9 +157,7 @@ const AfterJoiningWork = () => {
     setLoading(true);
 
     try {
-      const fullDataResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch"
-      );
+      const fullDataResponse = await supabaseFetchSheet("JOINING");
 
       if (!fullDataResponse.ok) {
         throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
@@ -270,9 +266,7 @@ const AfterJoiningWork = () => {
     }
 
     try {
-      const fullDataResponse = await fetch(
-        "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=JOINING&action=fetch"
-      );
+      const fullDataResponse = await supabaseFetchSheet("JOINING");
       if (!fullDataResponse.ok) {
         throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
       }
@@ -326,22 +320,11 @@ const AfterJoiningWork = () => {
 
       if (allFieldsYes) {
         updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "JOINING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: (startColumnIndex + 1).toString(),
-                value: formattedTimestamp,
-              }).toString(),
-            }
-          )
+          supabaseMutateSheet("JOINING", "updateCell", {
+            rowIndex: (rowIndex + 1).toString(),
+            columnIndex: (startColumnIndex + 1).toString(),
+            value: formattedTimestamp,
+          })
         );
       }
 
@@ -358,22 +341,11 @@ const AfterJoiningWork = () => {
 
       fields.forEach((field) => {
         updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "JOINING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: (startColumnIndex + field.offset + 1).toString(),
-                value: field.value,
-              }).toString(),
-            }
-          )
+          supabaseMutateSheet("JOINING", "updateCell", {
+            rowIndex: (rowIndex + 1).toString(),
+            columnIndex: (startColumnIndex + field.offset + 1).toString(),
+            value: field.value,
+          })
         );
       });
 

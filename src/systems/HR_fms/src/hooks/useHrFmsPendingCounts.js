@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import supabase from '../../../../SupabaseClient';
 
-const BASE_URL = 'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec';
-const sheetUrl = (sheet) => `${BASE_URL}?sheet=${encodeURIComponent(sheet)}&action=fetch`;
+import { supabaseFetchSheet } from '../../../../services/supabaseApiAdapter';
 
 const EMPTY_COUNTS = {
   leaveManagementPending: 0,
@@ -18,11 +17,7 @@ const EMPTY_COUNTS = {
 
 async function fetchSheet(sheetName) {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s max timeout to prevent layout blocking
-    const res = await fetch(sheetUrl(sheetName), { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!res.ok) return null;
+    const res = await supabaseFetchSheet(sheetName);
     const json = await res.json();
     const raw = json.data || json;
     return Array.isArray(raw) ? raw : null;

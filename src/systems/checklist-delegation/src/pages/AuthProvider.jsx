@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, useLocation, Navigate, Routes, Route } from 'react-router-dom'
+import AdminLayout from '../components/layout/AdminLayout'
 import "./index.css"
 
 // Authentication wrapper component

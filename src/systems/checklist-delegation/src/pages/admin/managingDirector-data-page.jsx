@@ -3,6 +3,8 @@ import { Search, ArrowLeft, History, Upload } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 
 import { useMagicToast } from '../../context/MagicToastContext'
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../../services/supabaseApiAdapter'
+import AdminLayout from '../../components/layout/AdminLayout'
 
 // Configuration object - Move all configurations here
 const CONFIG = {
@@ -214,7 +216,7 @@ function AccountDataPage() {
       const pendingAccounts = []
       const historyRows = []
 
-      const response = await fetch(`${CONFIG.APPS_SCRIPT_URL}?sheet=${CONFIG.SHEET_NAME}&action=fetch`)
+      const response = await supabaseFetchSheet(CONFIG.SHEET_NAME || 'STORE');
 
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status}`)
@@ -506,9 +508,9 @@ function AccountDataPage() {
               uploadFormData.append("mimeType", item.image.type)
               uploadFormData.append("folderId", CONFIG.DRIVE_FOLDER_ID)
 
-              const uploadResponse = await fetch(CONFIG.APPS_SCRIPT_URL, {
-                method: "POST",
-                body: uploadFormData,
+              const uploadResponse = await supabaseMutateSheet(CONFIG.SHEET_NAME || 'STORE', 'uploadFile', {
+                fileName: `task_${item["col1"]}_${Date.now()}.${item.image.name.split('.').pop()}`,
+                mimeType: item.image.type,
               })
 
               const uploadResult = await uploadResponse.json()
@@ -533,15 +535,7 @@ function AccountDataPage() {
 
       console.log("Final submission data:", submissionData)
 
-      const formData = new FormData()
-      formData.append("sheetName", CONFIG.SHEET_NAME)
-      formData.append("action", "updateTaskData")
-      formData.append("rowData", JSON.stringify(submissionData))
-
-      const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
-        method: "POST",
-        body: formData,
-      })
+      const response = await supabaseMutateSheet(CONFIG.SHEET_NAME || 'STORE', 'updateTaskData', { rowData: submissionData });
 
       const result = await response.json()
 

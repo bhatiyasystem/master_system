@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-;
+import { motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useDispatch } from 'react-redux';
+import AdminLayout from '../../components/layout/AdminLayout';
 import { fetchPendingApprovals, updateDelegationDoneStatus, rejectDelegationTask, fetchDelegationHistory } from '../../redux/api/delegationApi';
 import { fetchPendingMaintenanceApprovals, approveMaintenanceTask, rejectMaintenanceTask, fetchApprovedMaintenance } from '../../redux/api/maintenanceApi';
 import { fetchPendingRepairApprovals, approveRepairTask, rejectRepairTask, fetchApprovedRepairs } from '../../redux/api/repairApi';
@@ -8,6 +10,8 @@ import { fetchPendingEAApprovals, approveEATaskV2, rejectEATask, fetchApprovedEA
 import { fetchPendingChecklistApprovals, approveChecklistTask, rejectChecklistTask, fetchChecklistHistory } from '../../redux/api/quickTaskApi';
 import { BookCheck, Wrench, Hammer, Briefcase, Clock, Loader2, CheckCircle2, MessageSquare, History, Search, User, AlertCircle, XCircle } from 'lucide-react';
 import { sendTaskRejectionNotification, sendAdminExtensionRemarkNotification, isWhatsAppConnected } from '../../services/whatsappService';
+import RenderDescription from '../../components/RenderDescription';
+import AudioPlayer from '../../components/AudioPlayer';
 import { useMagicToast } from '../../context/MagicToastContext';
 import supabase from "../../SupabaseClient";
 
@@ -50,7 +54,7 @@ export default function AdminApprovalPage() {
         setProcessingId(task.id);
         try {
             // we dont need to store the remark only send to the user via whatsapp 
-            
+
             // Send notification
             if (!isWhatsAppConnected()) {
                 showToast("WhatsApp notifications are currently disabled. They will be enabled later.", "info");
@@ -119,7 +123,7 @@ export default function AdminApprovalPage() {
 
         // Filter tasks if not super admin
         let filteredData = data || [];
-        
+
         if (!isSystemAdmin) {
             // HOD and Users cannot approve their own tasks
             filteredData = (data || []).filter(task => {
@@ -137,7 +141,7 @@ export default function AdminApprovalPage() {
                     reportingUsers = reports.map((r) => (r.user_name || "").toLowerCase());
                 }
             }
-            
+
             filteredData = filteredData.filter(task => {
                 const doerName = (task.doer_name || task.name || task.filled_by || "").toLowerCase();
                 return reportingUsers.includes(doerName);
@@ -180,7 +184,7 @@ export default function AdminApprovalPage() {
         const currentUsername = (localStorage.getItem("user-name") || "").toLowerCase();
         const currentUserRole = (localStorage.getItem("role") || "").toLowerCase();
         const isSystemAdmin = currentUsername === "admin" || currentUserRole === "admin";
-        
+
         if (!isSystemAdmin && doerName === currentUsername) {
             showToast("You cannot approve your own submitted task.", "error");
             return;
@@ -248,11 +252,11 @@ export default function AdminApprovalPage() {
         if (selectedTaskIds.length === 0) return;
 
         const currentUsername = (localStorage.getItem("user-name") || "").toLowerCase();
-        
+
         setBulkProcessing(true);
         let successCount = 0;
         let failCount = 0;
-        
+
         // Only approve tasks that are NOT in 'extend' status AND (NOT submitted by current user OR user is system admin)
         const tasksToApprove = pendingTasks.filter(t => {
             const isSelected = selectedTaskIds.includes(t.id);
@@ -261,7 +265,7 @@ export default function AdminApprovalPage() {
             const currentUserRole = (localStorage.getItem("role") || "").toLowerCase();
             const isSystemAdmin = currentUsername === "admin" || currentUserRole === "admin";
             const isNotSelf = isSystemAdmin || doerName !== currentUsername;
-            
+
             return isSelected && isNotExtended && isNotSelf;
         });
 
@@ -466,7 +470,7 @@ export default function AdminApprovalPage() {
                                                 <span className="hidden xs:inline">Approve</span> ({pendingTasks.filter(t => selectedTaskIds.includes(t.id) && t.status !== 'extend').length})
                                             </motion.button>
                                         )}
-                                        
+
                                         {/* Show Remark button for extended tasks in delegation tab */}
                                         {activeTab === 'delegation' && pendingTasks.filter(t => selectedTaskIds.includes(t.id) && t.status === 'extend').length > 0 && (
                                             <motion.button
@@ -624,12 +628,12 @@ export default function AdminApprovalPage() {
                                                 <div className="text-[10px] text-gray-500 font-medium uppercase tracking-tight">By: {task.given_by || '-'}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                    <RenderDescription 
-                                                        text={task.task_description || task.issue_description} 
-                                                        audioUrl={task.audio_url} 
-                                                        instructionUrl={task.instruction_attachment_url} 
-                                                        instructionType={task.instruction_attachment_type} 
-                                                    />
+                                                <RenderDescription
+                                                    text={task.task_description || task.issue_description}
+                                                    audioUrl={task.audio_url}
+                                                    instructionUrl={task.instruction_attachment_url}
+                                                    instructionType={task.instruction_attachment_type}
+                                                />
                                                 {(task.machine_name || task.part_name) && (
                                                     <div className="text-[10px] text-indigo-600 font-bold mt-1.5 uppercase tracking-wider bg-indigo-50 px-2 py-0.5 rounded inline-block">
                                                         Machine: {task.machine_name} {task.part_name ? `(${task.part_name})` : ''}
@@ -678,19 +682,19 @@ export default function AdminApprovalPage() {
                                                     const proofs = [];
                                                     if (task.work_photo_url) proofs.push({ url: task.work_photo_url, label: 'Work Photo' });
                                                     if (task.bill_copy_url) proofs.push({ url: task.bill_copy_url, label: 'Bill Copy' });
-                                                    
+
                                                     const commonImg = task.image || task.image_url || task.img_url || task.uploaded_image_url;
                                                     if (commonImg && !proofs.some(p => p.url === commonImg)) {
                                                         proofs.push({ url: commonImg, label: (activeTab === 'checklist' ? 'Checklist Proof' : 'Proof') });
                                                     }
 
                                                     if (proofs.length === 0) return <span className="text-gray-300 text-xs italic">No Proof</span>;
-                                                    
+
                                                     return (
                                                         <div className="flex flex-wrap items-center gap-2">
                                                             {proofs.map((proof, idx) => (
                                                                 <div key={idx} className="flex flex-col items-center gap-1">
-                                                                    <div 
+                                                                    <div
                                                                         onClick={() => setSelectedImage(proof.url)}
                                                                         className="w-12 h-12 rounded-lg overflow-hidden border border-gray-100 shadow-sm cursor-zoom-in hover:scale-110 transition-transform bg-gray-50"
                                                                     >
@@ -792,9 +796,9 @@ export default function AdminApprovalPage() {
                                     </div>
                                     <span className="text-sm font-black text-gray-700 uppercase tracking-tight">Select All Pending</span>
                                 </div>
-                                
+
                                 {selectedTaskIds.length > 0 && (
-                                    <button 
+                                    <button
                                         onClick={() => setSelectedTaskIds([])}
                                         className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:text-red-700 transition-colors"
                                     >
@@ -839,7 +843,7 @@ export default function AdminApprovalPage() {
                                                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
                                                         <Clock size={10} /> {viewMode === 'pending' ? 'Submitted' : 'Approved'}: {formatDate(viewMode === 'pending' ? (task.submission_date || task.submission_timestamp || task.created_at) : (task.admin_approval_date || task.updated_at || task.submission_date))}
                                                     </p>
-                                                     {viewMode === 'history' && (
+                                                    {viewMode === 'history' && (
                                                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1 mt-0.5">
                                                             <User size={10} /> By: {task.admin_approved_by || "Admin"}
                                                         </p>
@@ -859,11 +863,11 @@ export default function AdminApprovalPage() {
 
                                     {/* Task Content */}
                                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 space-y-2">
-                                        <RenderDescription 
-                                            text={task.task_description || task.issue_description} 
-                                            audioUrl={task.audio_url} 
-                                            instructionUrl={task.instruction_attachment_url} 
-                                            instructionType={task.instruction_attachment_type} 
+                                        <RenderDescription
+                                            text={task.task_description || task.issue_description}
+                                            audioUrl={task.audio_url}
+                                            instructionUrl={task.instruction_attachment_url}
+                                            instructionType={task.instruction_attachment_type}
                                         />
 
                                         {(task.machine_name || task.part_name) && (
@@ -889,25 +893,25 @@ export default function AdminApprovalPage() {
                                             const proofs = [];
                                             if (task.work_photo_url) proofs.push({ url: task.work_photo_url, label: 'Work Photo' });
                                             if (task.bill_copy_url) proofs.push({ url: task.bill_copy_url, label: 'Bill Copy' });
-                                            
+
                                             const commonImg = task.image || task.image_url || task.img_url || task.uploaded_image_url;
                                             if (commonImg && !proofs.some(p => p.url === commonImg)) {
                                                 proofs.push({ url: commonImg, label: 'Proof' });
                                             }
 
                                             if (proofs.length === 0) return <span className="text-gray-300 text-[10px] italic">No Proof</span>;
-                                            
+
                                             return (
                                                 <div className="flex flex-wrap items-center justify-end gap-3">
                                                     {proofs.map((proof, idx) => (
                                                         <div key={idx} className="flex flex-col items-end gap-1">
-                                                            <div 
+                                                            <div
                                                                 onClick={() => setSelectedImage(proof.url)}
                                                                 className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white cursor-zoom-in"
                                                             >
                                                                 <img src={proof.url} className="w-full h-full object-cover" alt={proof.label} />
                                                             </div>
-                                                            <button 
+                                                            <button
                                                                 onClick={() => setSelectedImage(proof.url)}
                                                                 className="text-blue-600 text-[9px] font-black uppercase tracking-wider underline"
                                                             >
@@ -993,7 +997,7 @@ export default function AdminApprovalPage() {
                                     <p className="text-[10px] font-black text-purple-600 uppercase tracking-[0.2em] mb-0.5">Admin Action</p>
                                     <p className="text-xs font-bold text-gray-500">{selectedTaskIds.length} items</p>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                                     {/* Approve Button */}
                                     {(activeTab !== 'delegation' || pendingTasks.filter(t => selectedTaskIds.includes(t.id) && t.status !== 'extend').length > 0) && (

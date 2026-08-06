@@ -3,10 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import supabase from "../../SupabaseClient"
-import { completeTaskInTable, overdueTaskInTable, pendingTaskInTable, totalTaskInTable,  } from '../../redux/slice/dashboardSlice.js'
+import AdminLayout from '../../components/layout/AdminLayout'
+import { completeTaskInTable, overdueTaskInTable, pendingTaskInTable, totalTaskInTable, } from '../../redux/slice/dashboardSlice.js'
 import { fetchDashboardDataApi, getUniqueDepartmentsApi, getStaffNamesByDepartmentApi, fetchChecklistDataByDateRangeApi, getChecklistDateRangeStatsApi } from '../../redux/api/dashboardApi.js'
 import { fetchAllMaintenanceTasksForDashboard } from '../../redux/api/maintenanceApi.js'
 import { fetchAllRepairTasks } from '../../redux/api/repairApi.js'
+import TaskManagementTabs from '../../components/TaskManagementTabs'
+import DashboardHeader from './dashboard/DashboardHeader'
+import DefaultView from './dashboard/views/DefaultView'
+import MaintenanceView from './dashboard/views/MaintenanceView'
+import RepairView from './dashboard/views/RepairView'
+import EAView from './dashboard/views/EAView'
+import TaskModal from './dashboard/TaskModal'
+
 
 export default function AdminDashboard() {
   const [dashboardType, setDashboardType] = useState("checklist")
@@ -171,13 +180,13 @@ export default function AdminDashboard() {
 
     let reportingUsers = [username?.toLowerCase()];
     if (userRole === "hod") {
-        const { data: reports } = await supabase
-            .from("users")
-            .select("user_name")
-            .eq("reported_by", username);
-        if (reports) {
-            reportingUsers = [username.toLowerCase(), ...reports.map(r => r.user_name.toLowerCase())];
-        }
+      const { data: reports } = await supabase
+        .from("users")
+        .select("user_name")
+        .eq("reported_by", username);
+      if (reports) {
+        reportingUsers = [username.toLowerCase(), ...reports.map(r => r.user_name.toLowerCase())];
+      }
     }
 
     let totalTasks = 0;
@@ -186,7 +195,7 @@ export default function AdminDashboard() {
     let overdueTasks = 0;
 
     const _process = (_dataStream, _statsObject) => {
-        // ... nested processing logic or just call it after getReportees
+      // ... nested processing logic or just call it after getReportees
     };
 
 
@@ -213,9 +222,9 @@ export default function AdminDashboard() {
         const createdByUser = (task.given_by || task.filled_by || "").toLowerCase();
 
         if (userRole === "hod") {
-            if (!reportingUsers.includes(assignedUser) && createdByUser !== currentUserName) {
-                return null;
-            }
+          if (!reportingUsers.includes(assignedUser) && createdByUser !== currentUserName) {
+            return null;
+          }
         } else if (userRole !== "admin") {
           if (assignedUser !== currentUserName && createdByUser !== currentUserName) {
             return null;
@@ -625,13 +634,13 @@ export default function AdminDashboard() {
       let reportingUsers = [username?.toLowerCase()];
       const currentUserRole = (localStorage.getItem("role") || "").toLowerCase();
       if (currentUserRole === "hod") {
-          const { data: reports } = await supabase
-              .from("users")
-              .select("user_name")
-              .eq("reported_by", username);
-          if (reports) {
-              reportingUsers = [username.toLowerCase(), ...reports.map(r => (r.user_name || "").toLowerCase())];
-          }
+        const { data: reports } = await supabase
+          .from("users")
+          .select("user_name")
+          .eq("reported_by", username);
+        if (reports) {
+          reportingUsers = [username.toLowerCase(), ...reports.map(r => (r.user_name || "").toLowerCase())];
+        }
       }
 
       // Process tasks with your field names
@@ -645,13 +654,13 @@ export default function AdminDashboard() {
 
           if (roleNormalized !== "admin") {
             if (roleNormalized === 'hod') {
-                if (!reportingUsers.includes(assignedUser) && createdByUser !== currentUserName) {
-                    return null;
-                }
+              if (!reportingUsers.includes(assignedUser) && createdByUser !== currentUserName) {
+                return null;
+              }
             } else {
-                if (assignedUser !== currentUserName && createdByUser !== currentUserName) {
-                    return null;
-                }
+              if (assignedUser !== currentUserName && createdByUser !== currentUserName) {
+                return null;
+              }
             }
           }
 
@@ -661,11 +670,11 @@ export default function AdminDashboard() {
 
           // Robust completion check across all categories
           const statusLower = (task.status || "").toLowerCase();
-          const isCompleted = (task.submission_date !== null) || 
-                              (statusLower === 'yes') || 
-                              (statusLower.includes('done')) || 
-                              (statusLower.includes('completed')) || 
-                              (dashboardType === 'delegation' && task.admin_done === true);
+          const isCompleted = (task.submission_date !== null) ||
+            (statusLower === 'yes') ||
+            (statusLower.includes('done')) ||
+            (statusLower.includes('completed')) ||
+            (dashboardType === 'delegation' && task.admin_done === true);
 
           // Determine task status accurately
           let status;
@@ -866,7 +875,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDepartments();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType, userRole]);
 
   // Reset staff filter when department filter changes
@@ -895,7 +904,7 @@ export default function AdminDashboard() {
       tableContainer.addEventListener('scroll', handleScroll)
       return () => tableContainer.removeEventListener('scroll', handleScroll)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadingMore, hasMoreData])
 
   useEffect(() => {
@@ -931,7 +940,7 @@ export default function AdminDashboard() {
         departmentFilter,
       }),
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType, dashboardStaffFilter, departmentFilter, mainTab, dispatch])
 
   // Sync mainTab when departmentFilter changes from other sources (like DashboardHeader)
@@ -946,7 +955,7 @@ export default function AdminDashboard() {
         setMainTab("default")
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [departmentFilter])
 
   // Filter tasks based on criteria
@@ -982,7 +991,7 @@ export default function AdminDashboard() {
       endDate: "",
       filtered: false
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardType])
 
   const getTasksByView = (view) => {
@@ -1006,7 +1015,7 @@ export default function AdminDashboard() {
           return isDateToday(taskDate) && task.status !== "completed";
 
         case "upcoming": {
-// For delegation, show tomorrow's tasks regardless of completion status
+          // For delegation, show tomorrow's tasks regardless of completion status
           if (dashboardType === "delegation") {
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1017,8 +1026,8 @@ export default function AdminDashboard() {
           tomorrow.setDate(tomorrow.getDate() + 1);
           return taskDateOnly.getTime() === tomorrow.getTime();
 
-              }
-case "overdue":
+        }
+        case "overdue":
           // For delegation, show tasks that are past due and have null submission_date
           if (dashboardType === "delegation") {
             return taskDateOnly < today && !task.submission_date;
@@ -1128,7 +1137,7 @@ case "overdue":
               setActiveTab={(tabId) => {
                 // Clear current tasks immediately to prevent showing old data on new tab
                 setDepartmentData(prev => ({ ...prev, allTasks: [] }));
-                
+
                 if (tabId === 'checklist') {
                   setMainTab("default")
                   setDepartmentFilter("all")
@@ -1195,9 +1204,9 @@ case "overdue":
         )}
 
         {mainTab === "maintenance" && (
-          <MaintenanceView 
-            stats={displayStats} 
-            tasks={departmentData.allTasks} 
+          <MaintenanceView
+            stats={displayStats}
+            tasks={departmentData.allTasks}
             onCardClick={(type) => {
               setSelectedTaskType(type);
               setIsTaskModalOpen(true);
@@ -1206,9 +1215,9 @@ case "overdue":
         )}
 
         {mainTab === "repair" && (
-          <RepairView 
-            stats={displayStats} 
-            tasks={departmentData.allTasks} 
+          <RepairView
+            stats={displayStats}
+            tasks={departmentData.allTasks}
             onCardClick={(type) => {
               setSelectedTaskType(type);
               setIsTaskModalOpen(true);
@@ -1225,9 +1234,9 @@ case "overdue":
         onClose={() => setIsTaskModalOpen(false)}
         title={
           selectedTaskType === "analyzed" ? "Analyzed Tasks (Up to Today)" :
-          selectedTaskType === "completed" ? "Completed Tasks" :
-          selectedTaskType === "pending" ? "Due Today (Active)" :
-          selectedTaskType === "overdue" ? "Overdue Tasks (Action Required)" : "Tasks"
+            selectedTaskType === "completed" ? "Completed Tasks" :
+              selectedTaskType === "pending" ? "Due Today (Active)" :
+                selectedTaskType === "overdue" ? "Overdue Tasks (Action Required)" : "Tasks"
         }
         type={selectedTaskType}
         dashboardType={mainTab === "default" ? dashboardType : mainTab}

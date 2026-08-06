@@ -1,9 +1,12 @@
+
 import { useState, useEffect } from 'react';
-;
+import { AnimatePresence } from 'framer-motion';
 import * as Lucide from "lucide-react";
 import supabase from "../../SupabaseClient";
 import { useMagicToast } from '../../context/MagicToastContext';
 import systemRegistry from "../../core/registry/systemRegistry";
+import MasterDataView from "../components/MasterDataView";
+import { motion } from 'framer-motion';
 
 export default function GlobalSettings() {
   const { showToast } = useMagicToast();
@@ -138,7 +141,7 @@ export default function GlobalSettings() {
 
   useEffect(() => {
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Quick toggle active/inactive status
@@ -347,7 +350,7 @@ export default function GlobalSettings() {
       return;
     }
 
-   try {
+    try {
       // Handle profile image upload/removal
       let profileImageUrl;
       if (profileImageFile) {
@@ -772,7 +775,7 @@ export default function GlobalSettings() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-blue-50 flex flex-col h-[90vh] max-h-[90vh]"
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-blue-50 flex flex-col h-[90vh] max-h-[90vh]"
           >
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 flex justify-between items-center border-b border-blue-50">
@@ -1015,7 +1018,7 @@ export default function GlobalSettings() {
                   </div>
                 </div>
               ) : (
-              <div className="p-6 space-y-6 flex flex-col flex-1 overflow-y-auto min-h-0">
+                <div className="p-6 space-y-6 flex flex-col flex-1 overflow-y-auto min-h-0">
                   {/* System Level Access */}
                   <div>
                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">System Module Access</h4>
@@ -1074,9 +1077,9 @@ export default function GlobalSettings() {
                         <div className="text-[10px] text-gray-400 italic px-3 py-1.5 font-semibold">Enable system modules above to configure pages.</div>
                       )}
                     </div>
-                      {activePermissionSystem && selectedSystems.includes(activePermissionSystem) && (
+                    {activePermissionSystem && selectedSystems.includes(activePermissionSystem) && (
                       <div className="border border-blue-50 rounded-2xl p-4 bg-gray-50/50 flex flex-col">
-                   <div className="flex items-center justify-between mb-3 border-b border-gray-200/50 pb-2">
+                        <div className="flex items-center justify-between mb-3 border-b border-gray-200/50 pb-2">
                           <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Pages Available</span>
                           <div className="flex gap-2">
                             <button

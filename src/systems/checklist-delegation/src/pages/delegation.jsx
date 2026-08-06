@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Search, ArrowLeft, History, Printer, CheckCircle2, X, Upload, BellRing } from 'lucide-react';
-;
 import { useDispatch, useSelector } from 'react-redux';
+import AdminLayout from '../components/layout/AdminLayout';
 import { delegation_DoneData, delegationData,  } from '../redux/slice/delegationSlice';
 import { insertDelegationDoneAndUpdate } from '../redux/api/delegationApi';
 import { sendUrgentTaskNotification, sendTaskExtensionNotification, isWhatsAppConnected } from '../services/whatsappService';

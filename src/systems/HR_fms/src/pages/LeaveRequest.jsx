@@ -1,7 +1,7 @@
 import { Plus, Filter, Calendar, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const LeaveRequest = () => {
   const employeeId = localStorage.getItem("employeeId");
@@ -28,20 +28,11 @@ const LeaveRequest = () => {
 
   const fetchEmployeeData = async () => {
   try {
-    const response = await fetch(
-      'https://script.google.com/macros/s/AKfycbw4owzmbghov5H20X2JiuOTiz4lH-jtHZQyPRuMPeO-iZQfD0EGdmgDfk9F2HdZjO9l/exec?sheet=JOINING&action=fetch'
-    );
-    
+    const response = await supabaseFetchSheet('JOINING');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
     const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch employee data');
-    }
-    
     const rawData = result.data || result;
     
     if (!Array.isArray(rawData)) {
@@ -76,9 +67,7 @@ useEffect(() => {
   // Fetch employees from JOINING sheet
   const fetchEmployees = async () => {
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbw4owzmbghov5H20X2JiuOTiz4lH-jtHZQyPRuMPeO-iZQfD0EGdmgDfk9F2HdZjO9l/exec?sheet=JOINING&action=fetch'
-      );
+      const response = await supabaseFetchSheet('JOINING');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -194,9 +183,7 @@ useEffect(() => {
     setError(null);
 
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbw4owzmbghov5H20X2JiuOTiz4lH-jtHZQyPRuMPeO-iZQfD0EGdmgDfk9F2HdZjO9l/exec?sheet=Leave Management&action=fetch'
-      );
+      const response = await supabaseFetchSheet('Leave Management');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -282,14 +269,7 @@ useEffect(() => {
         formData.designation         // Designation (Column K, index 10)
       ];
 
-      const response = await fetch('https://script.google.com/macros/s/AKfycbw4owzmbghov5H20X2JiuOTiz4lH-jtHZQyPRuMPeO-iZQfD0EGdmgDfk9F2HdZjO9l/exec', {
-        method: 'POST',
-        body: new URLSearchParams({
-          sheetName: 'Leave Management',
-          action: 'insert',
-          rowData: JSON.stringify(rowData),
-        }),
-      });
+      const response = await supabaseMutateSheet('Leave Management', 'insert', { rowData });
 
       const result = await response.json();
 

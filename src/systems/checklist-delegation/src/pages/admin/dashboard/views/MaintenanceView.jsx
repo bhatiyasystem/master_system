@@ -7,7 +7,8 @@ import { updateMaintenanceTask } from '../../../../redux/slice/maintenanceSlice'
 import { fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from '../../../../redux/api/assignTaskApi'
 
 
-import _RenderDescription, { MediaViewer } from "../../../../components/RenderDescription"
+import RenderDescription, { MediaViewer } from "../../../../components/RenderDescription"
+import AudioPlayer from "../../../../components/AudioPlayer"
 
 const isAudioUrl = (url) => {
   if (!url || typeof url !== 'string') return false;

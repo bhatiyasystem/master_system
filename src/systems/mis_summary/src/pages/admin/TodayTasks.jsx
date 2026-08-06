@@ -1,7 +1,7 @@
-import { Loader2, Search, Filter, Calendar, Clock, X } from 'lucide-react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
-;
+import { Loader2, Search, Filter, Calendar, Clock, X, ArrowLeft, RefreshCw, Layers } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getDisplayableImageUrl } from '../../utils/imageUtils';
+import { supabaseFetchSheet } from '../../../../../services/supabaseApiAdapter';
 
 const AdminTodayTasks = () => {
   const [loading, setLoading] = useState(true);
@@ -48,9 +48,9 @@ const AdminTodayTasks = () => {
         }
 
         const [masterResponse, dataResponse, recordsResponse] = await Promise.all([
-          fetch(`${scriptUrl}?sheet=Master`),
-          fetch(`${scriptUrl}?sheet=Data`),
-          fetch(`${scriptUrl}?sheet=For Records`)
+          supabaseFetchSheet('Master'),
+          supabaseFetchSheet('Report Daily'),
+          supabaseFetchSheet('For Whatsapp')
         ]);
 
         const masterResult = await masterResponse.json();
@@ -122,7 +122,7 @@ const AdminTodayTasks = () => {
 
       await Promise.all(Object.values(sheetGroups).map(async (group) => {
         try {
-          const res = await fetch(`${group.scriptUrl}?sheet=${encodeURIComponent(group.sheetName)}`);
+          const res = await supabaseFetchSheet(group.sheetName);
           const result = await res.json();
           if (!result.success || !Array.isArray(result.data)) return;
           const sheetData = result.data;
@@ -239,7 +239,7 @@ const AdminTodayTasks = () => {
 
         const cache = {};
         await Promise.all([...sheets].map(async (name) => {
-          const res = await fetch(`${scriptUrl}?sheet=${encodeURIComponent(name)}`);
+          const res = await supabaseFetchSheet(name);
           const result = await res.json();
           cache[name] = (result.success && Array.isArray(result.data)) ? result.data : [];
         }));

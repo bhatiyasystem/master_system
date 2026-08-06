@@ -1,7 +1,7 @@
 import { Search, Clock, CheckCircle, X, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const CallTracker = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -69,8 +69,8 @@ const CallTracker = () => {
 
     try {
       const [enquiryResponse, followUpResponse] = await Promise.all([
-        fetch('https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=ENQUIRY&action=fetch'),
-        fetch('https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Follow - Up&action=fetch')
+        supabaseFetchSheet('ENQUIRY'),
+        supabaseFetchSheet('Follow - Up')
       ]);
       
       if (!enquiryResponse.ok || !followUpResponse.ok) {
@@ -154,9 +154,7 @@ const fetchFollowUpData = async () => {
   setError(null);
 
   try {
-    const response = await fetch(
-      'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=Follow - Up&action=fetch'
-    );
+    const response = await supabaseFetchSheet('Follow - Up');
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -250,148 +248,38 @@ const fetchFollowUpData = async () => {
   };
 
   const postToJoiningSheet = async (rowData) => {
-  const URL = 'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec';
-
-  try {
-    console.log('Attempting to post:', {
-      sheetName: 'JOINING',
-      rowData: rowData
-    });
-
-    const params = new URLSearchParams();
-    params.append('sheetName', 'JOINING');
-    params.append('action', 'insert');
-    params.append('rowData', JSON.stringify(rowData));
-
-    const response = await fetch(URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('Server response:', data);
-
-    if (!data.success) {
-      throw new Error(data.error || 'Server returned unsuccessful response');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Full error details:', {
-      error: error.message,
-      stack: error.stack,
-      rowData: rowData,
-      timestamp: new Date().toISOString()
-    });
-    throw new Error(`Failed to update sheet: ${error.message}`);
-  }
-};
-
-
-const postToSheet = async (rowData) => {
-  const URL = 'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec';
-
-  try {
-    console.log('Attempting to post:', {
-      sheetName: 'Follow - Up',
-      rowData: rowData
-    });
-
-    const params = new URLSearchParams();
-    params.append('sheetName', 'Follow - Up');
-    params.append('action', 'insert');
-    params.append('rowData', JSON.stringify(rowData));
-
-    const response = await fetch(URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('Server response:', data);
-
-    if (!data.success) {
-      throw new Error(data.error || 'Server returned unsuccessful response');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Full error details:', {
-      error: error.message,
-      stack: error.stack,
-      rowData: rowData,
-      timestamp: new Date().toISOString()
-    });
-    throw new Error(`Failed to update sheet: ${error.message}`);
-  }
-};
-
-// utils/dateFormatter.js
- const _formatDateTime=(isoString)=>{
-  const d = new Date(isoString);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
-}
-
- const uploadFileToDrive = async (file, folderId = '12sCqWAuyGR3-Wsxt4qj_FMWR0lmNZIKa') => {
     try {
-      // Convert file to base64
-      const reader = new FileReader();
-      const base64Data = await new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const response = await supabaseMutateSheet('JOINING', 'insert', { rowData });
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Failed to update sheet: ${error.message}`);
+    }
+  };
 
-      const params = new URLSearchParams();
-      params.append('action', 'uploadFile');
-      params.append('base64Data', base64Data);
-      params.append('fileName', file.name);
-      params.append('mimeType', file.type);
-      params.append('folderId', folderId);
+  const postToSheet = async (rowData) => {
+    try {
+      const response = await supabaseMutateSheet('Follow - Up', 'insert', { rowData });
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Failed to update sheet: ${error.message}`);
+    }
+  };
 
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params,
-        }
-      );
+  const _formatDateTime=(isoString)=>{
+    const d = new Date(isoString);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+  const uploadFileToDrive = async (file) => {
+    try {
+      const response = await supabaseMutateSheet('ENQUIRY', 'uploadFile', { fileName: file.name, mimeType: file.type });
       const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'File upload failed');
-      }
-
-      return data.fileUrl;
+      return data.fileUrl || '';
     } catch (error) {
       console.error('Error uploading file:', error);
       toast.error(`Failed to upload file: ${error.message}`);

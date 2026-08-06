@@ -1,3 +1,5 @@
+import PurchaseHeader from "../components/PurchaseHeader";
+import ReceivingView from "../components/ReceivingView";
 
 export default function ReceivingPage() {
     return (

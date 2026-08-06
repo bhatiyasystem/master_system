@@ -1,8 +1,6 @@
-import { BarChart } from 'recharts';
+import { CardPanel, BarChart } from './ui';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-;
-;
 import { fmt } from '../utils/helpers';
 import { fetchIndents, fetchPOs } from '../services/purchaseService';
 

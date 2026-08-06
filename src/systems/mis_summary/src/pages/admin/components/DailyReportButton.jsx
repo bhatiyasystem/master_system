@@ -1,7 +1,7 @@
 import { Loader2, FileText } from 'lucide-react';
 import { useState } from 'react';
-;
 import { pdf } from '@react-pdf/renderer';
+import { supabaseFetchSheet } from '../../../../../../services/supabaseApiAdapter';
 
 const DailyReportButton = ({ dataSheetRows }) => {
   const [generating, setGenerating] = useState(false);
@@ -183,12 +183,12 @@ const DailyReportButton = ({ dataSheetRows }) => {
           for (const url of urlsToTry) {
             try {
               const separator = url.includes('?') ? '&' : '?';
-              let fetchUrl = `${url}${separator}sheet=${encodeURIComponent(group.sheetName)}`;
+              let _fetchUrl = `${url}${separator}sheet=${encodeURIComponent(group.sheetName)}`;
               if (group.spreadsheetId) {
-                fetchUrl += `&spreadsheetId=${encodeURIComponent(group.spreadsheetId)}`;
+                _fetchUrl += `&spreadsheetId=${encodeURIComponent(group.spreadsheetId)}`;
               }
 
-              const res = await fetch(fetchUrl);
+              const res = await supabaseFetchSheet(group.sheetName);
               if (!res.ok) {
                 throw new Error(`HTTP error ${res.status}`);
               }

@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import PurchaseHeader from '../components/PurchaseHeader';
+import PoPendingView from '../components/PoPendingView';
+import PoListView from '../components/PoListView';
+
 import { useNavigate } from 'react-router-dom';
 
 export default function PurchaseOrderPage() {
@@ -10,17 +14,15 @@ export default function PurchaseOrderPage() {
       <PurchaseHeader subtitle="Manage pending and approved purchase orders" />
       <div className="inline-flex rounded-lg bg-gray-100 p-1">
         <button
-          className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${
-            tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'
-          }`}
+          className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'
+            }`}
           onClick={() => setTab('pending')}
         >
           PO Pending
         </button>
         <button
-          className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${
-            tab === 'approved' ? 'bg-[#173254] text-white' : 'text-gray-600'
-          }`}
+          className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'approved' ? 'bg-[#173254] text-white' : 'text-gray-600'
+            }`}
           onClick={() => setTab('approved')}
         >
           History

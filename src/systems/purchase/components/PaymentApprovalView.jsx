@@ -1,7 +1,6 @@
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-;
-;
+import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPayablePOs, fetchPaymentApprovals, submitPaymentApproval } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 
@@ -109,45 +108,45 @@ function PendingApprovalPanel({ pos, onDecide }) {
                 />
             </FilterBar>
 
-           <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">Action</th>
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Date</th>
-                              <th className="px-3 py-2.5">Vendor</th>
-                                <th className="px-3 py-2.5">Advance</th>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Date</th>
+                            <th className="px-3 py-2.5">Vendor</th>
+                            <th className="px-3 py-2.5">Advance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pos.length === 0 ? (
+                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No fully received POs waiting for payment approval.</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No POs match the search.</td></tr>
+                        ) : filtered.map((po) => (
+                            <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                <td className="px-3 py-2.5">
+                                    <button
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
+                                        onClick={() => onDecide(po)}
+                                    >
+                                        <CheckCircle2 size={14} /> Decide
+                                    </button>
+                                </td>
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
+                                <td className="px-3 py-2.5 text-gray-800">{po.vendor?.name}</td>
+                                <td className="px-3 py-2.5 text-gray-800">
+                                    {po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Parli PI'
+                                        ? po.vendor.paymentTerms
+                                        : 'No'}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                           {pos.length === 0 ? (
-                                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No fully received POs waiting for payment approval.</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No POs match the search.</td></tr>
-                            ) : filtered.map((po) => (
-                                <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="px-3 py-2.5">
-                                        <button
-                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
-                                            onClick={() => onDecide(po)}
-                                        >
-                                            <CheckCircle2 size={14} /> Decide
-                                        </button>
-                                    </td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">{po.vendor?.name}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">
-                                        {po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Parli PI'
-                                            ? po.vendor.paymentTerms
-                                            : 'No'}
-                                    </td>
-                                </tr>
-                            ))}
-                       </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -176,35 +175,35 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
             </FilterBar>
 
             <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Status</th>
-                                <th className="px-3 py-2.5">Remark</th>
-                                <th className="px-3 py-2.5">Decided At</th>
+                <table className="w-full text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Status</th>
+                            <th className="px-3 py-2.5">Remark</th>
+                            <th className="px-3 py-2.5">Decided At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {approvals.length === 0 ? (
+                            <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No payment approval decisions yet.</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                        ) : filtered.map((a) => (
+                            <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">{poMap.get(a.poId)?.poNo || '—'}</td>
+                                <td className="px-3 py-2.5">
+                                    <StatusPill status={a.status} />
+                                </td>
+                                <td className="px-3 py-2.5 text-gray-600">{a.remarks || '—'}</td>
+                                <td className="px-3 py-2.5 text-gray-500">
+                                    {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {approvals.length === 0 ? (
-                                <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No payment approval decisions yet.</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
-                            ) : filtered.map((a) => (
-                                <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{poMap.get(a.poId)?.poNo || '—'}</td>
-                                    <td className="px-3 py-2.5">
-                                        <StatusPill status={a.status} />
-                                    </td>
-                                    <td className="px-3 py-2.5 text-gray-600">{a.remarks || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-500">
-                                        {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -260,7 +259,7 @@ function DecideModal({ po, onClose, onSuccess }) {
                     </select>
                 </div>
 
-               {isAdvanceVendor && (
+                {isAdvanceVendor && (
                     <div>
                         <label className="mb-1 block text-[12px] font-bold text-gray-600">Advance Amount (₹)</label>
                         <input

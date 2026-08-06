@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { fetchStaffTasksDataApi, getStaffTasksCountApi, getTotalUsersCountApi } from '../redux/api/dashboardApi'
+import AdminLayout from '../components/layout/AdminLayout'
 
 function StaffTasksPage() {
     const [dashboardStaffFilter, setDashboardStaffFilter] = useState("all")

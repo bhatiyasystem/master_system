@@ -1,4 +1,4 @@
-;
+import React from 'react'
 import bhatiyaLogo from '../../../assets/bhatiya_Logo.jpg';
 
 export default function POSheet({ po, revisionNote }) {
@@ -6,11 +6,11 @@ export default function POSheet({ po, revisionNote }) {
     <div className="mx-auto max-w-[900px] rounded-xl border border-gray-200 bg-white p-6 md:p-8 print:border-0 print:shadow-none">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3.5">
-            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center">
+          <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center">
             <img src={bhatiyaLogo} alt="Bhatia Enterprises" className="h-full w-full object-contain" />
           </div>
           <div>
-           <div className="font-sora text-[23px] font-extrabold leading-tight text-[#173254]">Bhatia Enterprises</div>
+            <div className="font-sora text-[23px] font-extrabold leading-tight text-[#173254]">Bhatia Enterprises</div>
             <div className="mt-0.5 text-[11.3px] text-gray-500">Nehru Chowk, Bilaspur (C.G.)</div>
           </div>
         </div>
@@ -53,7 +53,7 @@ export default function POSheet({ po, revisionNote }) {
         </InfoBox>
       </div>
 
-     
+
 
       <table className="mb-3 w-full border-collapse">
         <thead>

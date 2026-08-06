@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet } from '../../../../services/supabaseApiAdapter';
 
 const CompanyCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -9,13 +9,11 @@ const CompanyCalendar = () => {
   const [companyEvents, setCompanyEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch calendar data from Google Sheets
+  // Fetch calendar data
   const fetchCalendarData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=CompanyCalendar&action=fetch'
-      );
+      const response = await supabaseFetchSheet('CompanyCalendar');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

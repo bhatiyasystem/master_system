@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDisplayableImageUrl } from '../utils/imageUtils';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const AuthContext = createContext(undefined);
 
@@ -24,10 +25,8 @@ export function AuthProvider({ children }) {
 
   const preloadUsers = async () => {
     try {
-      const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
-      if (scriptUrl) {
-        const response = await fetch(`${scriptUrl}?sheet=Master`);
-        const result = await response.json();
+      const response = await supabaseFetchSheet('Master');
+      const result = await response.json();
         if (result.success && Array.isArray(result.data)) {
           setUserCache(result.data);
           console.log("Users pre-loaded for fast login");
@@ -79,7 +78,6 @@ export function AuthProvider({ children }) {
             return prevUser;
           });
         }
-      }
     } catch (err) {
       console.warn("User pre-load failed:", err);
     }
@@ -94,14 +92,8 @@ export function AuthProvider({ children }) {
 
       // If cache missed or failed, fetch now
       if (!usersData) {
-        const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
-        if (!scriptUrl) {
-          console.error("VITE_APPS_SCRIPT_URL is not defined in .env");
-          setLoading(false);
-          return false;
-        }
         // Fetch users (Master tab)
-        const response = await fetch(`${scriptUrl}?sheet=Master`);
+        const response = await supabaseFetchSheet('Master');
         const result = await response.json();
         if (result.success && Array.isArray(result.data)) {
           usersData = result.data;
@@ -189,42 +181,23 @@ export function AuthProvider({ children }) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      const base64Data = await base64Promise;
+      const _base64Data = await base64Promise;
 
-      const genericUpload = async (base64) => {
-        const response = await fetch(scriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            action: 'uploadFile',
-            fileName: `profile_${user.name.replace(/\s+/g, '_')}`,
-            mimeType: file.type,
-            base64Data: base64,
-            folderId: import.meta.env.VITE_DRIVE_FOLDER_ID || '10-mJ-H5P0jp67gX0A7gc6TGlyyku3thB'
-          })
-        });
-        return await response.json();
-      };
+      const uploadRes = await supabaseMutateSheet('Master', 'uploadFile', {
+        fileName: `profile_${user.name.replace(/\s+/g, '_')}`,
+        mimeType: file.type,
+      });
 
-      const uploadResult = await genericUpload(base64Data);
+      const uploadResult = await uploadRes.json();
 
       if (uploadResult.success && uploadResult.fileUrl) {
         const newImageUrl = uploadResult.fileUrl;
 
-        // 3. Update Master Sheet (Column E is index 4)
-        // We use 'update' action with rowIndex and rowData (as array)
-        // Data structure: [0:Name, 1:Email, 2:Dept, 3:Designation, 4:Profile, 5:ID, 6:Pass]
         const rowUpdate = ["", "", "", "", newImageUrl, "", ""];
 
-        const updateRes = await fetch(scriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            action: 'update',
-            sheetName: 'Master',
-            rowIndex: user.rowIndex,
-            rowData: JSON.stringify(rowUpdate)
-          })
+        const updateRes = await supabaseMutateSheet('Master', 'update', {
+          rowIndex: user.rowIndex,
+          rowData: JSON.stringify(rowUpdate)
         });
 
         const updateResult = await updateRes.json();

@@ -1,11 +1,13 @@
 import { Trash2 } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-
+import { Edit } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux'
 import { deleteDelegationTask, uniqueDelegationTaskData, updateDelegationTask } from '../redux/slice/quickTaskSlice'
 
 import supabase from "../SupabaseClient"
 import { useMagicToast } from '../context/MagicToastContext'
+import RenderDescription from '../components/RenderDescription'
+import AudioPlayer from '../components/AudioPlayer'
 
 
 const isAudioUrl = (url) => {
@@ -164,7 +166,7 @@ function DelegationPage({
     setIsSaving(true);
     try {
       let finalEditData = { ...editFormData };
-      
+
       // JSON stringify the arrays for database
       finalEditData.instruction_attachment_url = JSON.stringify(editFormData.instruction_attachment_url || []);
       finalEditData.instruction_attachment_type = JSON.stringify(editFormData.instruction_attachment_type || []);
@@ -253,10 +255,10 @@ function DelegationPage({
     setEditFormData(prev => {
       const urls = [...(prev.instruction_attachment_url || [])];
       const types = [...(prev.instruction_attachment_type || [])];
-      
+
       if (field === 'url') urls[index] = value;
       else if (field === 'type') types[index] = value;
-      
+
       return {
         ...prev,
         instruction_attachment_url: urls,
@@ -567,42 +569,42 @@ function DelegationPage({
                           </span>
                         </div>
 
-                          <div className="mb-4 flex flex-col min-w-[200px] max-w-full">
-                            <RenderDescription
-                              text={task.task_description}
-                              audioUrl={task.audio_url}
-                              instructionUrl={task.instruction_attachment_url}
-                              instructionType={task.instruction_attachment_type}
-                            />
+                        <div className="mb-4 flex flex-col min-w-[200px] max-w-full">
+                          <RenderDescription
+                            text={task.task_description}
+                            audioUrl={task.audio_url}
+                            instructionUrl={task.instruction_attachment_url}
+                            instructionType={task.instruction_attachment_type}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 border-t border-gray-50 pt-4">
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dept</span>
+                            <div className="text-[11px] font-bold text-gray-700 truncate">{task.department || '—'}</div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 border-t border-gray-50 pt-4">
-                            <div className="space-y-1">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dept</span>
-                              <div className="text-[11px] font-bold text-gray-700 truncate">{task.department || '—'}</div>
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">From</span>
-                              <div className="text-[11px] font-bold text-gray-700 truncate">{task.given_by || '—'}</div>
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Assignee</span>
-                              <div className="text-[11px] font-bold text-gray-700 truncate">{task.name || '—'}</div>
-                            </div>
-                            <div className="space-y-1">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Start</span>
-                              <div className="text-[11px] font-bold text-gray-700">{formatDateTime(task.task_start_date)}</div>
-                            </div>
-                            <div className="space-y-1">
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Time Status</span>
-                                <div className={`text-[10px] font-bold w-fit px-2 py-0.5 rounded-full ${task.timeStatus === "Overdue" ? "bg-red-100 text-red-700" :
-                                  task.timeStatus === "Today" ? "bg-amber-100 text-amber-700" :
-                                    task.timeStatus === "Upcoming" ? "bg-blue-100 text-blue-700" :
-                                      "bg-gray-100 text-gray-700"
-                                  }`}>
-                                  {task.timeStatus}
-                                </div>
-                              </div>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">From</span>
+                            <div className="text-[11px] font-bold text-gray-700 truncate">{task.given_by || '—'}</div>
                           </div>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Assignee</span>
+                            <div className="text-[11px] font-bold text-gray-700 truncate">{task.name || '—'}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Start</span>
+                            <div className="text-[11px] font-bold text-gray-700">{formatDateTime(task.task_start_date)}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Time Status</span>
+                            <div className={`text-[10px] font-bold w-fit px-2 py-0.5 rounded-full ${task.timeStatus === "Overdue" ? "bg-red-100 text-red-700" :
+                              task.timeStatus === "Today" ? "bg-amber-100 text-amber-700" :
+                                task.timeStatus === "Upcoming" ? "bg-blue-100 text-blue-700" :
+                                  "bg-gray-100 text-gray-700"
+                              }`}>
+                              {task.timeStatus}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <button onClick={() => handleEditClick(task)} className="p-2 bg-blue-50 text-blue-600 rounded-xl active:scale-95 transition-all">
                         <Edit size={16} />

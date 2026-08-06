@@ -1,7 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
-;
 import toast from 'react-hot-toast';
+import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
 
 const AfterLeavingWork = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,14 +31,7 @@ const AfterLeavingWork = () => {
     setError(null);
 
     try {
-      const response = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=LEAVING&action=fetch'
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
+      const response = await supabaseFetchSheet('LEAVING');
       const result = await response.json();
       
       if (!result.success) {
@@ -115,9 +108,7 @@ const AfterLeavingWork = () => {
 
     try {
       // Fetch current values from the sheet
-      const fullDataResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=LEAVING&action=fetch'
-      );
+      const fullDataResponse = await supabaseFetchSheet('LEAVING');
       
       if (!fullDataResponse.ok) {
         throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
@@ -232,9 +223,7 @@ const AfterLeavingWork = () => {
 
     try {
       // 1. First fetch the current data
-      const fullDataResponse = await fetch(
-        'https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec?sheet=LEAVING&action=fetch'
-      );
+      const fullDataResponse = await supabaseFetchSheet('LEAVING');
       if (!fullDataResponse.ok) {
         throw new Error(`HTTP error! status: ${fullDataResponse.status}`);
       }
@@ -283,22 +272,11 @@ const AfterLeavingWork = () => {
       // Only update actual date if all conditions are met
       if (allConditionsMet) {
         updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "LEAVING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: "14", // Column N (Actual date)
-                value: formattedTimestamp,
-              }).toString(),
-            }
-          )
+          supabaseMutateSheet("LEAVING", "updateCell", {
+            rowIndex: (rowIndex + 1).toString(),
+            columnIndex: "14",
+            value: formattedTimestamp,
+          })
         );
       }
 
@@ -327,43 +305,21 @@ const AfterLeavingWork = () => {
 
       // Add final release date update
       updatePromises.push(
-        fetch(
-          "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              sheetName: "LEAVING",
-              action: "updateCell",
-              rowIndex: (rowIndex + 1).toString(),
-              columnIndex: "23", // Column W (Final Release Date)
-              value: finalReleaseDateValue,
-            }).toString(),
-          }
-        )
+        supabaseMutateSheet("LEAVING", "updateCell", {
+          rowIndex: (rowIndex + 1).toString(),
+          columnIndex: "23",
+          value: finalReleaseDateValue,
+        })
       );
 
       // Add all other field updates
       fields.forEach((field) => {
         updatePromises.push(
-          fetch(
-            "https://script.google.com/macros/s/AKfycbzF-ERpUfrb0figpapH5q5-J1KRAnBHt-OaXYrN9Cw4wzwaacKhUPwGgtCIWfxw2Ruz9g/exec",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                sheetName: "LEAVING",
-                action: "updateCell",
-                rowIndex: (rowIndex + 1).toString(),
-                columnIndex: (field.offset + 1).toString(),
-                value: field.value,
-              }).toString(),
-            }
-          )
+          supabaseMutateSheet("LEAVING", "updateCell", {
+            rowIndex: (rowIndex + 1).toString(),
+            columnIndex: (field.offset + 1).toString(),
+            value: field.value,
+          })
         );
       });
 
