@@ -1,7 +1,8 @@
-import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Search, DollarSign, Edit3 } from 'lucide-react';
+import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Search, DollarSign, Edit3, Mail, Printer } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, MONTHS,  } from '../services/supabaseHR';
+import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, MONTHS, } from '../services/supabaseHR';
+import EnvelopePDF from '../components/EnvelopePDF';
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 const statusStyle = {
@@ -164,6 +165,374 @@ const EditDeductionsModal = ({ row, onSave, onClose }) => {
           <button onClick={handleSave} disabled={saving} className="flex-1 bg-indigo-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Employee Envelope Modal ───────────────────────────────────────────────────
+const EmployeeEnvelopeModal = ({ row, onClose }) => {
+  const [downloading, setDownloading] = useState(false);
+  const [printing, setPrinting] = useState(false);
+
+  if (!row) return null;
+
+  const monthName = MONTHS[(row.month || 1) - 1];
+
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const blob = await pdf(<EnvelopePDF row={row} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Envelope_${row.emp_name.replace(/\s+/g, '_')}_${monthName}_${row.year}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error generating envelope PDF', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrint = () => {
+    setPrinting(true);
+    try {
+      const printWindow = window.open('', '_blank', 'width=1000,height=700');
+      if (!printWindow) {
+        alert('Please allow popups for printing.');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Pay Envelope - ${row.emp_name}</title>
+            <style>
+              @page {
+                size: A4 landscape;
+                margin: 10mm;
+              }
+              body {
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 15px;
+                color: #0f172a;
+                background-color: #ffffff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .envelope-container {
+                border: 2px solid #1e3a8a;
+                border-radius: 12px;
+                padding: 24px;
+                background: #f8fafc;
+                box-sizing: border-box;
+                min-height: 170mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+              }
+              .header-band {
+                background-color: #1e3a8a;
+                color: #ffffff;
+                padding: 16px 24px;
+                border-radius: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              }
+              .company-name {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: 0.5px;
+              }
+              .company-sub {
+                font-size: 10px;
+                color: #93c5fd;
+                margin-top: 4px;
+                letter-spacing: 1px;
+                font-weight: 600;
+              }
+              .period-label {
+                font-size: 10px;
+                color: #93c5fd;
+                text-align: right;
+                font-weight: 700;
+                letter-spacing: 1px;
+              }
+              .period-val {
+                font-size: 16px;
+                font-weight: 800;
+                color: #ffffff;
+                margin-top: 2px;
+              }
+              .info-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                padding: 16px 20px;
+                border-radius: 8px;
+                margin-top: 20px;
+              }
+              .info-label {
+                font-size: 10px;
+                color: #64748b;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+              }
+              .info-val {
+                font-size: 15px;
+                font-weight: 700;
+                color: #0f172a;
+                margin-top: 4px;
+              }
+              .salary-grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 12px;
+                margin-top: 20px;
+              }
+              .salary-card {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                padding: 14px;
+                border-radius: 8px;
+              }
+              .salary-card.net {
+                background: #16a34a;
+                color: #ffffff;
+                border: none;
+              }
+              .sal-label {
+                font-size: 10px;
+                color: #64748b;
+                font-weight: 700;
+                text-transform: uppercase;
+              }
+              .net .sal-label {
+                color: #dcfce7;
+              }
+              .sal-val {
+                font-size: 16px;
+                font-weight: 800;
+                margin-top: 4px;
+                color: #1e293b;
+              }
+              .net .sal-val {
+                font-size: 22px;
+                color: #ffffff;
+              }
+              .footer {
+                border-top: 1px dashed #94a3b8;
+                padding-top: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                margin-top: 20px;
+              }
+              .footer-text {
+                font-size: 10px;
+                color: #64748b;
+                line-height: 1.4;
+              }
+              .sig-box {
+                border-top: 1px solid #64748b;
+                width: 160px;
+                text-align: center;
+                padding-top: 4px;
+                font-size: 10px;
+                color: #475569;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="envelope-container">
+              <div class="header-band">
+                <div>
+                  <div class="company-name">BHATIA ENTERPRISES</div>
+                  <div class="company-sub">SALARY DISBURSEMENT ENVELOPE — CONFIDENTIAL</div>
+                </div>
+                <div>
+                  <div class="period-label">PAY PERIOD</div>
+                  <div class="period-val">${monthName} ${row.year}</div>
+                </div>
+              </div>
+
+              <div class="info-grid">
+                <div>
+                  <div class="info-label">Employee Name</div>
+                  <div class="info-val">${row.emp_name}</div>
+                </div>
+                <div>
+                  <div class="info-label">Employee Code</div>
+                  <div class="info-val">${row.emp_code}</div>
+                </div>
+                <div>
+                  <div class="info-label">Payable Days</div>
+                  <div class="info-val">${row.payable_days ?? '—'}</div>
+                </div>
+                <div>
+                  <div class="info-label">Status</div>
+                  <div class="info-val" style="color:#16a34a;">${(row.status || 'PAID').toUpperCase()}</div>
+                </div>
+              </div>
+
+              <div class="salary-grid">
+                <div class="salary-card">
+                  <div class="sal-label">Basic Salary</div>
+                  <div class="sal-val">${fmt(row.basic_salary)}</div>
+                </div>
+                <div class="salary-card">
+                  <div class="sal-label">Puttha Bonus</div>
+                  <div class="sal-val">${fmt(row.puttha_price)}</div>
+                </div>
+                <div class="salary-card">
+                  <div class="sal-label">Gross Salary</div>
+                  <div class="sal-val" style="color:#1d4ed8;">${fmt(row.gross_salary)}</div>
+                </div>
+                <div class="salary-card">
+                  <div class="sal-label">Total Deductions</div>
+                  <div class="sal-val" style="color:#dc2626;">-${fmt(row.total_deductions)}</div>
+                </div>
+                <div class="salary-card net">
+                  <div class="sal-label">Net Salary Paid</div>
+                  <div class="sal-val">${fmt(row.net_salary)}</div>
+                </div>
+              </div>
+
+              <div class="footer">
+                <div class="footer-text">
+                  Official pay envelope for <strong>${row.emp_name}</strong> (${row.emp_code}).<br/>
+                  Issued by: HR & Payroll Department
+                </div>
+                <div class="sig-box">Receiver Signature</div>
+              </div>
+            </div>
+            <script>
+              window.onload = function() {
+                window.focus();
+                window.print();
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (err) {
+      console.error('Error printing envelope', err);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-6 py-5 flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2">
+              <Mail size={18} className="text-blue-300" />
+              <p className="text-blue-300 text-xs uppercase tracking-widest font-semibold">Employee Pay Envelope</p>
+            </div>
+            <h2 className="text-2xl font-bold mt-1">{row.emp_name}</h2>
+            <p className="text-blue-200 text-sm mt-0.5">{row.emp_code} · {monthName} {row.year}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <X size={20} className="text-blue-200" />
+          </button>
+        </div>
+
+        {/* Envelope Preview Box */}
+        <div className="p-6 space-y-6">
+          <div className="border-2 border-indigo-200 bg-indigo-50/50 rounded-xl p-5 relative overflow-hidden shadow-inner">
+            <div className="absolute right-3 top-3 text-[10px] uppercase font-bold text-indigo-500 border border-indigo-200 bg-white/80 px-2 py-0.5 rounded tracking-widest">
+              Landscape Envelope Format
+            </div>
+
+            {/* Top Details */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 pb-4 border-b border-indigo-100">
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Month & Year</p>
+                <p className="text-sm font-bold text-gray-800">{monthName} {row.year}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Employee Name</p>
+                <p className="text-sm font-bold text-gray-800">{row.emp_name}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Emp Code</p>
+                <p className="text-sm font-bold text-gray-800">{row.emp_code}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-gray-500 font-semibold uppercase">Pay Status</p>
+                <span className="inline-block text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full mt-0.5">
+                  {(row.status || 'paid').toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            {/* Salary Breakdown */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm">
+                <p className="text-xs text-gray-500 font-medium">Basic Salary</p>
+                <p className="text-sm font-bold text-gray-900">{fmt(row.basic_salary)}</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm">
+                <p className="text-xs text-gray-500 font-medium">Gross Salary</p>
+                <p className="text-sm font-bold text-blue-700">{fmt(row.gross_salary)}</p>
+              </div>
+              <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm">
+                <p className="text-xs text-gray-500 font-medium">Deductions</p>
+                <p className="text-sm font-bold text-red-600">-{fmt(row.total_deductions)}</p>
+              </div>
+              <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg p-3 text-white shadow-sm">
+                <p className="text-xs text-emerald-100 font-semibold">Net Salary</p>
+                <p className="text-lg font-black">{fmt(row.net_salary)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-gray-100">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-md"
+            >
+              {downloading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              {downloading ? 'Downloading...' : 'Download PDF'}
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={printing}
+              className="flex items-center gap-2 px-5 py-2 bg-slate-800 text-white rounded-xl text-sm font-semibold hover:bg-slate-900 disabled:opacity-50 transition-all shadow-md"
+            >
+              {printing ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Printer size={16} />
+              )}
+              {printing ? 'Preparing...' : 'Print (Landscape)'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -398,6 +767,7 @@ const Payroll = () => {
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
   const [payslipRow, setPayslipRow] = useState(null);
+  const [envelopeRow, setEnvelopeRow] = useState(null);
   const [editRow, setEditRow] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [activeTab, setActiveTab] = useState('payroll'); // 'payroll' | 'payslips'
@@ -710,118 +1080,121 @@ const Payroll = () => {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-indigo-900 text-white">
-                      <th className="px-4 py-3 text-left">
-                        <input type="checkbox" checked={selectedIds.length === filtered.length} onChange={toggleAll} className="rounded" />
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Emp Code</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Basic Salary</th>
-                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Puttha Price</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Puttha Status</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Gross Salary</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Advance</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Loan Ded.</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Adv. Ded.</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Total Ded.</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-green-900 bg-opacity-50">Net Salary</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Status</th>
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="bg-indigo-900 text-white">
+                        <th className="px-4 py-3 text-left">
+                          <input type="checkbox" checked={selectedIds.length === filtered.length} onChange={toggleAll} className="rounded" />
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Emp Code</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Basic Salary</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Puttha Price</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Puttha Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Gross Salary</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Advance</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Loan Ded.</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Adv. Ded.</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Total Ded.</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-green-900 bg-opacity-50">Net Salary</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Status</th>
 
-                      <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filtered.map((row) => (
-                      <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleSelect(row.id)} className="rounded" />
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
-                            {row.payable_days ?? '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.puttha_price)}</td>
-                        <td className="px-4 py-3 text-center text-sm text-gray-700">{row.puttha_status || '—'}</td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{fmt(row.gross_salary)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.advance)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.loan_deduction || 0)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.salary_advance_deduction || 0)}</td>
-                        <td className="px-4 py-3 text-right text-sm text-red-700 font-medium">{fmt(row.total_deductions)}</td>
-                        <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(row.net_salary)}</td>
-                        <td className="px-4 py-3 text-center"><StatusBadge status={row.status} /></td>
-
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 justify-center">
-                            <button onClick={() => setPayslipRow(row)} title="View payslip" className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600">
-                              <Eye size={14} />
-                            </button>
-                            <button onClick={() => setEditRow(row)} title="Adjust advance deduction" className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600">
-                              <Edit3 size={14} />
-                            </button>
-                          </div>
-                        </td>
+                        <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-100 border-t-2 border-gray-300">
-                      <td colSpan={3} className="px-4 py-3 text-sm font-bold text-gray-700">
-                        Total ({filtered.length} employees)
-                      </td>
-                      <td className="px-4 py-3 text-center text-sm font-bold text-indigo-700">
-                        {filtered.length > 0 ? (filtered.reduce((s, r) => s + (parseFloat(r.payable_days) || 0), 0) / filtered.length).toFixed(1) : 0} avg
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(filtered.reduce((s, r) => s + (r.basic_salary || 0), 0))}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(filtered.reduce((s, r) => s + (r.puttha_price || 0), 0))}</td>
-                      <td className="px-4 py-3" />
-                      <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(totalGross)}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.advance || 0), 0))}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.loan_deduction || 0), 0))}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.salary_advance_deduction || 0), 0))}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(totalDeductions)}</td>
-                      <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(totalNet)}</td>
-                      <td colSpan={3} />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filtered.map((row) => (
+                        <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">
+                            <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleSelect(row.id)} className="rounded" />
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+                              {row.payable_days ?? '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.puttha_price)}</td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700">{row.puttha_status || '—'}</td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{fmt(row.gross_salary)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.advance)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.loan_deduction || 0)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.salary_advance_deduction || 0)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-red-700 font-medium">{fmt(row.total_deductions)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(row.net_salary)}</td>
+                          <td className="px-4 py-3 text-center"><StatusBadge status={row.status} /></td>
 
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-white gap-3 rounded-b-2xl">
-                <div className="text-xs text-gray-500 font-medium">
-                  Showing <span className="font-bold text-gray-800">{totalRecords > 0 ? (page - 1) * pageSize + 1 : 0}</span> to{' '}
-                  <span className="font-bold text-gray-800">{Math.min(page * pageSize, totalRecords)}</span> of{' '}
-                  <span className="font-bold text-gray-800">{totalRecords}</span> records (Page {page} of {totalPages || 1})
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1 justify-center">
+                              <button onClick={() => setPayslipRow(row)} title="View payslip" className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600">
+                                <Eye size={14} />
+                              </button>
+                              <button onClick={() => setEnvelopeRow(row)} title="Employee Envelope" className="p-1.5 rounded-lg hover:bg-purple-50 text-purple-600">
+                                <Mail size={14} />
+                              </button>
+                              <button onClick={() => setEditRow(row)} title="Adjust advance deduction" className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600">
+                                <Edit3 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-100 border-t-2 border-gray-300">
+                        <td colSpan={3} className="px-4 py-3 text-sm font-bold text-gray-700">
+                          Total ({filtered.length} employees)
+                        </td>
+                        <td className="px-4 py-3 text-center text-sm font-bold text-indigo-700">
+                          {filtered.length > 0 ? (filtered.reduce((s, r) => s + (parseFloat(r.payable_days) || 0), 0) / filtered.length).toFixed(1) : 0} avg
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(filtered.reduce((s, r) => s + (r.basic_salary || 0), 0))}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(filtered.reduce((s, r) => s + (r.puttha_price || 0), 0))}</td>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(totalGross)}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.advance || 0), 0))}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.loan_deduction || 0), 0))}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.salary_advance_deduction || 0), 0))}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(totalDeductions)}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(totalNet)}</td>
+                        <td colSpan={3} />
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page <= 1 || loading}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-xs font-semibold px-2.5 py-1 bg-gray-100 rounded-md text-gray-800">
-                    {page} / {totalPages || 1}
-                  </span>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages || loading}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
+
+                {/* Pagination Controls */}
+                <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-white gap-3 rounded-b-2xl">
+                  <div className="text-xs text-gray-500 font-medium">
+                    Showing <span className="font-bold text-gray-800">{totalRecords > 0 ? (page - 1) * pageSize + 1 : 0}</span> to{' '}
+                    <span className="font-bold text-gray-800">{Math.min(page * pageSize, totalRecords)}</span> of{' '}
+                    <span className="font-bold text-gray-800">{totalRecords}</span> records (Page {page} of {totalPages || 1})
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1 || loading}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs font-semibold px-2.5 py-1 bg-gray-100 rounded-md text-gray-800">
+                      {page} / {totalPages || 1}
+                    </span>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages || loading}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -837,6 +1210,7 @@ const Payroll = () => {
 
       {/* Modals */}
       {payslipRow && <PayslipModal row={payslipRow} onClose={() => setPayslipRow(null)} />}
+      {envelopeRow && <EmployeeEnvelopeModal row={envelopeRow} onClose={() => setEnvelopeRow(null)} />}
       {editRow && (
         <EditDeductionsModal row={editRow} onSave={handleEditSave} onClose={() => setEditRow(null)} />
       )}
