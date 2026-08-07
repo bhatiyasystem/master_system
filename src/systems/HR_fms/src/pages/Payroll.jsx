@@ -22,7 +22,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN', { minimumFractionDigits: (n || 0) % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
 
 // ── Payslip Modal (preview) ───────────────────────────────────────────────────
 const PayslipModal = ({ row, onClose }) => {
@@ -48,9 +48,19 @@ const PayslipModal = ({ row, onClose }) => {
               <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Earnings</p>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Basic Salary</span>
+                  <span className="text-gray-600">Contracted Salary</span>
                   <span className="font-medium text-gray-900">{fmt(row.basic_salary)}</span>
                 </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Earned Basic ({row.payable_days || 0} days)</span>
+                  <span className="font-medium text-gray-900">{fmt(row.earned_basic ?? ((row.basic_salary / 30) * (row.payable_days || 0)))}</span>
+                </div>
+                {(row.ot_amount > 0 || row.ot_hours > 0) && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">OT ({row.ot_hours || 0} hrs @ ₹50/hr)</span>
+                    <span className="font-medium text-gray-900">{fmt(row.ot_amount || 0)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Puttha Price</span>
                   <span className="font-medium text-gray-900">{fmt(row.puttha_price)}</span>
@@ -1089,6 +1099,7 @@ const Payroll = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Basic Salary</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase">OT</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Puttha Price</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Puttha Status</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Gross Salary</th>
@@ -1115,7 +1126,9 @@ const Payroll = () => {
                               {row.payable_days ?? '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.payable_days ? (row.basic_salary / row.payable_days) * 31 : 0)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-700">{(row.ot_amount > 0 || row.ot_hours > 0) ? (<span className="inline-flex items-center gap-1 font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-xs border border-amber-200">{row.ot_hours} hrs ({fmt(row.ot_amount)})</span>) : ('—')}
+                          </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.puttha_price)}</td>
                           <td className="px-4 py-3 text-center text-sm">
                             <button
@@ -1162,6 +1175,7 @@ const Payroll = () => {
                           {filtered.length > 0 ? (filtered.reduce((s, r) => s + (parseFloat(r.payable_days) || 0), 0) / filtered.length).toFixed(1) : 0} avg
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(filtered.reduce((s, r) => s + (r.basic_salary || 0), 0))}</td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-amber-700">{fmt(filtered.reduce((s, r) => s + (r.ot_amount || 0), 0))}</td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(filtered.reduce((s, r) => s + (r.puttha_price || 0), 0))}</td>
                         <td className="px-4 py-3" />
                         <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">{fmt(totalGross)}</td>

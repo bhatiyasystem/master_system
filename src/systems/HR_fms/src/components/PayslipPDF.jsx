@@ -235,8 +235,8 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
             <Text style={styles.salaryCardSub}>As per employee record · {totalDaysInMonth} calendar days</Text>
           </View>
           <View style={[styles.salaryCard, styles.salaryCardGreen]}>
-            <Text style={styles.salaryCardLabel}>Basic Salary This Month</Text>
-            <Text style={[styles.salaryCardValue, styles.salaryCardValueGreen]}>{fmt(row.basic_salary)}</Text>
+            <Text style={styles.salaryCardLabel}>Earned Basic Salary</Text>
+            <Text style={[styles.salaryCardValue, styles.salaryCardValueGreen]}>{fmt(row.earned_basic ?? ((actualSalary / totalDaysInMonth) * payableDays))}</Text>
             <Text style={styles.salaryCardSub}>For {payableDays} payable days @ {actualSalary > 0 ? fmt(actualSalary / totalDaysInMonth) + '/day' : '—'}</Text>
           </View>
         </View>
@@ -275,9 +275,15 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
           <View style={styles.column}>
             <Text style={styles.sectionHeading}>EARNINGS</Text>
             <View style={styles.lineRow}>
-              <Text style={styles.lineLabel}>Basic Salary (earned)</Text>
-              <Text style={styles.lineValue}>{fmt(row.basic_salary)}</Text>
+              <Text style={styles.lineLabel}>Earned Basic ({payableDays} days)</Text>
+              <Text style={styles.lineValue}>{fmt(row.earned_basic ?? ((actualSalary / totalDaysInMonth) * payableDays))}</Text>
             </View>
+            {(row.ot_amount > 0 || row.ot_hours > 0) && (
+              <View style={styles.lineRow}>
+                <Text style={styles.lineLabel}>Overtime ({row.ot_hours || 0} hrs @ ₹50/hr)</Text>
+                <Text style={styles.lineValue}>{fmt(row.ot_amount || 0)}</Text>
+              </View>
+            )}
             <View style={styles.lineRow}>
               <Text style={styles.lineLabel}>Puttha Price (bonus)</Text>
               <Text style={styles.lineValue}>{fmt(row.puttha_price)}</Text>
