@@ -158,6 +158,7 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
               { label: 'WO Present', value: row.total_wop, color: '#3b82f6' },
               { label: 'Leave (L)', value: row.total_leave, color: '#f59e0b' },
               { label: 'Holiday (H)', value: row.total_holiday, color: '#8b5cf6' },
+              { label: 'Overtime (OT)', value: row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : '00:00'), color: '#d97706' },
               { label: 'Payable Days', value: row.payable_days_override ?? row.payable_days, color: '#6366f1' },
             ].map(item => (
               <div key={item.label} className="bg-gray-50 rounded-xl p-3 text-center">
@@ -204,9 +205,9 @@ const AttendanceMonthly = () => {
     setUploadResult(null);
     try {
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
+      const wb = XLSX.read(buffer, { type: 'array', raw: false, cellText: true, cellDates: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
 
       const { uploadMeta, employees } = parseAttendanceExcel(rawRows);
 
@@ -520,6 +521,7 @@ const AttendanceMonthly = () => {
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-600">WO</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-blue-700">WOP</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">Leave</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-800">OT</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-800">Payable Days</th>
                       </tr>
                     </thead>
@@ -531,10 +533,11 @@ const AttendanceMonthly = () => {
                           <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{emp.emp_name || '—'}</td>
                           <td className="px-3 py-2.5 text-center font-semibold text-green-700">{emp.total_present ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center font-semibold text-red-600">{emp.total_absent ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-purple-700">{emp.total_holiday ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{emp.total_holiday ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center text-gray-500">{emp.total_wo ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center text-blue-600">{emp.total_wop ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center text-amber-600">{emp.total_leave ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-center text-amber-700 font-medium">{emp.total_ot || (emp.ot_hours ? `${emp.ot_hours} hrs` : '—')}</td>
                           <td className="px-3 py-2.5 text-center">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
                               {emp.payable_days ?? '—'}
@@ -654,8 +657,10 @@ const AttendanceMonthly = () => {
                       ))}
                       <th className="px-3 py-3 text-center text-xs font-semibold text-green-800 bg-green-50">P</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold text-red-800 bg-red-50">A</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-purple-800 bg-purple-50">H</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 bg-gray-50">WO</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold text-blue-800 bg-blue-50">WOP</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">OT</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-800 bg-indigo-50">Payable</th>
                       <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900">Actions</th>
                     </tr>
@@ -686,8 +691,10 @@ const AttendanceMonthly = () => {
                           })}
                           <td className="px-3 py-3 text-center text-sm font-semibold text-green-700">{row.total_present}</td>
                           <td className="px-3 py-3 text-center text-sm font-semibold text-red-600">{row.total_absent}</td>
+                          <td className="px-3 py-3 text-center text-sm text-purple-700 font-semibold">{row.total_holiday ?? 0}</td>
                           <td className="px-3 py-3 text-center text-sm text-gray-500">{row.total_wo}</td>
                           <td className="px-3 py-3 text-center text-sm text-blue-600">{row.total_wop}</td>
+                          <td className="px-3 py-3 text-center text-sm text-amber-700 font-medium">{row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : '—')}</td>
                           <td className="px-3 py-3 text-center">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
                               ${hasOverride ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>

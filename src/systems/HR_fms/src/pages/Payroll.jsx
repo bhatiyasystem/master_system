@@ -1,7 +1,7 @@
 import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Search, DollarSign, Edit3, Mail, Printer } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, updateEmployeePutthaStatus, recalculateMonthPutthaAndPayroll, MONTHS, } from '../services/supabaseHR';
+import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, updateEmployeePutthaStatus, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, } from '../services/supabaseHR';
 import EnvelopePDF from '../components/EnvelopePDF';
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -55,9 +55,9 @@ const PayslipModal = ({ row, onClose }) => {
                   <span className="text-gray-600">Earned Basic ({row.payable_days || 0} present days)</span>
                   <span className="font-medium text-gray-900">{fmt(((row.basic_salary / (row.month ? new Date(row.year || new Date().getFullYear(), row.month, 0).getDate() : 30)) * (row.payable_days || 0)))}</span>
                 </div>
-                {(row.ot_amount > 0 || row.ot_hours > 0) && (
+                {(row.ot_amount > 0 || parseOtHours(row.ot_hours) > 0) && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">OT ({row.ot_hours || 0} hrs @ ₹50/hr)</span>
+                    <span className="text-gray-600">OT ({formatOtDisplay(row.ot_hours)} hrs @ ₹50/hr)</span>
                     <span className="font-medium text-gray-900">{fmt(row.ot_amount || 0)}</span>
                   </div>
                 )}
@@ -901,7 +901,8 @@ const Payroll = () => {
     const presentDays = parseFloat(r.payable_days) || 0;
     const baseSalary = parseFloat(r.basic_salary) || 0;
     const earnedBasic = parseFloat(((baseSalary / totalDaysInMonth) * presentDays).toFixed(2));
-    const otAmount = parseFloat(r.ot_amount || 0);
+    const parsedOt = parseOtHours(r.ot_hours || r.total_ot || 0);
+    const otAmount = parseFloat((parsedOt * 50).toFixed(2));
     const putthaStatus = r.puttha_status || 'Yes';
     const putthaPrice = putthaStatus === 'No' ? 0 : (perYesPutthaPrice > 0 ? perYesPutthaPrice : parseFloat(r.puttha_price || 0));
 
@@ -912,6 +913,8 @@ const Payroll = () => {
 
     return {
       ...r,
+      ot_hours: parsedOt,
+      ot_amount: otAmount,
       puttha_status: putthaStatus,
       puttha_price: putthaPrice,
       earned_basic: earnedBasic,
@@ -1139,9 +1142,9 @@ const Payroll = () => {
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">
-                            {(row.ot_amount > 0 || row.ot_hours > 0) ? (
-                              <span className="inline-flex items-center gap-1 font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-xs border border-amber-200">
-                                {row.ot_hours} hrs ({fmt(row.ot_amount)})
+                            {(row.ot_amount > 0 || parseOtHours(row.ot_hours) > 0) ? (
+                              <span className="inline-flex items-center gap-1 font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-xs border border-amber-200" title={`${formatOtDisplay(row.ot_hours)} hrs @ ₹50/hr = ₹${row.ot_amount}`}>
+                                {formatOtDisplay(row.ot_hours)} ({fmt(row.ot_amount)})
                               </span>
                             ) : (
                               '—'

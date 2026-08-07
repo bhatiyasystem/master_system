@@ -186,7 +186,24 @@ export function parseAttendanceExcel(rawRows) {
     totalLeave: findCol('totalleave', 'total leave') !== -1 ? findCol('totalleave', 'total leave') : findExactCol('l'),
     totalPresent: findCol('totalpresent', 'total present'),
     totalPayDays: findCol('totalpaydays', 'total pay days', 'paydays', 'pay days', 'payable days', 'payabledays'),
-    totalOT: findCol('totalot', 'total ot in hrs', 'total ot', 'otinhrs', 'ot'),
+    totalOT: (() => {
+      const otIdx = findCol('totalot', 'total ot in hrs', 'total ot (in hrs.)', 'total ot', 'otinhrs', 'overtime', 'over time', 'ot hrs', 'othours', 'ot(hh:mm)', 'ot time', 'ot(hrs)');
+      if (otIdx !== -1) return otIdx;
+      const exactIdx = findExactCol('ot', 'overtime');
+      if (exactIdx !== -1) return exactIdx;
+      // Fallback: inspect first data rows for HH:MM pattern in non-day columns
+      for (let i = headerRowIdx + 1; i < Math.min(rawRows.length, headerRowIdx + 10); i++) {
+        const r = rawRows[i] || [];
+        for (let c = 0; c < r.length; c++) {
+          if (dayColIndices.some(d => d.colIdx === c)) continue;
+          const val = String(r[c] || '').trim();
+          if (/^\d{1,3}:\d{2}(:\d{2})?$/.test(val)) {
+            return c;
+          }
+        }
+      }
+      return -1;
+    })(),
     totalLate: findCol('totallateby', 'total late by', 'totallate', 'total late', 'lateby', 'late'),
     totalEarly: findCol('totalearlyby', 'total early by', 'totalearly', 'total early', 'earlyby', 'early'),
   };
@@ -233,7 +250,18 @@ export function parseAttendanceExcel(rawRows) {
       }
     }
 
-    const totalOT = String(row[summaryMap.totalOT] !== undefined ? row[summaryMap.totalOT] : '00:00').trim();
+    let totalOT = '00:00';
+    if (summaryMap.totalOT !== -1 && row[summaryMap.totalOT] !== undefined && row[summaryMap.totalOT] !== null) {
+      const rawOt = row[summaryMap.totalOT];
+      if (typeof rawOt === 'number') {
+        totalOT = formatOtDisplay(rawOt);
+      } else {
+        const strOt = String(rawOt).trim();
+        if (strOt && strOt !== '—' && strOt !== '-') {
+          totalOT = strOt;
+        }
+      }
+    }
     const totalLate = parseFloat(row[summaryMap.totalLate] || 0) || 0;
     const totalEarly = parseFloat(row[summaryMap.totalEarly] || 0) || 0;
 
@@ -346,16 +374,34 @@ export async function saveAttendanceRows(uploadId, employees, year, month, compa
   }));
 
   // Upsert: update on conflict (same emp_code, year, month, company)
-  const { data, error } = await supabase
-    .from('attendance_monthly')
-    .upsert(rows, {
-      onConflict: 'emp_code,year,month,company_name',
-      ignoreDuplicates: false,
-    })
-    .select();
+  try {
+    const { data, error } = await supabase
+      .from('attendance_monthly')
+      .upsert(rows, {
+        onConflict: 'emp_code,year,month,company_name',
+        ignoreDuplicates: false,
+      })
+      .select();
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    if (err?.message && (err.message.includes('total_ot') || err.message.includes('column'))) {
+      console.warn('total_ot column missing in attendance_monthly, falling back without total_ot:', err.message);
+      const fallbackRows = rows.map(({ total_ot, ...rest }) => rest);
+      const { data: fallbackData, error: fallbackErr } = await supabase
+        .from('attendance_monthly')
+        .upsert(fallbackRows, {
+          onConflict: 'emp_code,year,month,company_name',
+          ignoreDuplicates: false,
+        })
+        .select();
+
+      if (fallbackErr) throw fallbackErr;
+      return fallbackData;
+    }
+    throw err;
+  }
 }
 
 export async function fetchAttendanceMonthly({ year, month, companyName, empCode } = {}) {
@@ -427,15 +473,50 @@ export async function deactivateSalaryConfig(id) {
 
 export function parseOtHours(otValue) {
   if (otValue === null || otValue === undefined || otValue === '') return 0;
-  if (typeof otValue === 'number') return otValue;
+
+  if (typeof otValue === 'number') {
+    if (isNaN(otValue) || otValue <= 0) return 0;
+    if (otValue < 5 && String(otValue).includes('.') && String(otValue).split('.')[1].length > 3) {
+      return otValue * 24;
+    }
+    return otValue;
+  }
+
   const str = String(otValue).trim();
+  if (!str || str === '—' || str === '-' || str === '0' || str === '00:00' || str === '0:00') return 0;
+
   if (str.includes(':')) {
     const parts = str.split(':');
     const h = parseFloat(parts[0]) || 0;
     const m = parseFloat(parts[1]) || 0;
+    const s = parseFloat(parts[2]) || 0;
+    return h + (m / 60) + (s / 3600);
+  }
+
+  const hMatch = str.match(/(\d+)\s*(?:h|hr|hrs|hour|hours)/i);
+  const mMatch = str.match(/(\d+)\s*(?:m|min|mins|minute|minutes)/i);
+  if (hMatch || mMatch) {
+    const h = hMatch ? parseFloat(hMatch[1]) : 0;
+    const m = mMatch ? parseFloat(mMatch[1]) : 0;
     return h + (m / 60);
   }
-  return parseFloat(str) || 0;
+
+  const num = parseFloat(str);
+  if (isNaN(num) || num <= 0) return 0;
+  if (num < 5 && str.includes('.') && str.split('.')[1].length > 3) {
+    return num * 24;
+  }
+  return num;
+}
+
+export function formatOtDisplay(otValue) {
+  if (otValue === null || otValue === undefined || otValue === '' || otValue === 0) return '00:00';
+  if (typeof otValue === 'string' && otValue.includes(':')) return otValue;
+  const num = typeof otValue === 'number' ? otValue : parseFloat(otValue);
+  if (isNaN(num) || num <= 0) return '00:00';
+  const hrs = Math.floor(num);
+  const mins = Math.round((num - hrs) * 60);
+  return `${hrs}:${String(mins).padStart(2, '0')}`;
 }
 
 export function calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice = 0, advance = 0, loanDeduction = 0, salaryAdvanceDeduction = 0, otHours = 0) {
@@ -918,18 +999,40 @@ export async function fetchPayrollPaginated({ year, month, status, empCode, sear
       }
     }
 
-    // Check if any row has puttha_price, gross_salary or net_salary that requires recalculation
+    // Fetch attendance_monthly to check if OT or payable_days need syncing
+    const { data: attRows } = await supabase
+      .from('attendance_monthly')
+      .select('emp_code, total_ot, ot_hours, payable_days, payable_days_override')
+      .eq('year', year)
+      .eq('month', month);
+
+    const attMap = {};
+    (attRows || []).forEach(a => {
+      attMap[a.emp_code] = a;
+    });
+
+    // Check if any row has puttha_price, ot_amount, gross_salary or net_salary that requires recalculation
     data.forEach(r => {
       const daysInMonth = (year && month) ? new Date(year, month, 0).getDate() : 30;
-      const presentDays = parseFloat(r.payable_days) || 0;
+      const att = attMap[r.emp_code];
+      const presentDays = parseFloat(att?.payable_days_override ?? att?.payable_days ?? r.payable_days) || 0;
       const baseSalary = empSalaryMap[r.emp_code] !== undefined ? empSalaryMap[r.emp_code] : (parseFloat(r.basic_salary) || 0);
       const earnedBasic = parseFloat(((baseSalary / daysInMonth) * presentDays).toFixed(2));
+      const rawOt = att?.total_ot || att?.ot_hours || r.ot_hours || r.total_ot || 0;
+      const expectedOtHours = parseOtHours(rawOt);
+      const expectedOtAmount = parseFloat((expectedOtHours * 50).toFixed(2));
+
       const putthaPrice = (r.puttha_status || 'Yes') === 'No' ? 0 : (parseFloat(r.puttha_price) || 0);
-      const expectedGross = parseFloat((earnedBasic + (parseFloat(r.ot_amount) || 0) + putthaPrice).toFixed(2));
+      const expectedGross = parseFloat((earnedBasic + expectedOtAmount + putthaPrice).toFixed(2));
       const rawNet = Math.max(0, expectedGross - (parseFloat(r.total_deductions) || 0));
       const expectedNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
-      if (parseFloat(r.puttha_price) !== putthaPrice || Math.abs(parseFloat(r.gross_salary) - expectedGross) > 0.01 || parseFloat(r.net_salary) !== expectedNet) {
+      if (
+        Math.abs((parseFloat(r.ot_amount) || 0) - expectedOtAmount) > 0.01 ||
+        parseFloat(r.puttha_price) !== putthaPrice ||
+        Math.abs(parseFloat(r.gross_salary) - expectedGross) > 0.01 ||
+        parseFloat(r.net_salary) !== expectedNet
+      ) {
         needsRecalc = true;
       }
     });
@@ -1113,9 +1216,22 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
     }
   });
 
+  // Fetch monthly attendance to get latest OT and payable days per employee
+  const { data: attRows } = await supabase
+    .from('attendance_monthly')
+    .select('emp_code, total_ot, ot_hours, payable_days, payable_days_override')
+    .eq('year', year)
+    .eq('month', month);
+
+  const attMap = {};
+  (attRows || []).forEach(a => {
+    attMap[a.emp_code] = a;
+  });
+
   // Update every payroll row in the batch
   for (const row of payrollRows) {
-    const presentDays = parseFloat(row.payable_days) || 0;
+    const att = attMap[row.emp_code];
+    const presentDays = parseFloat(att?.payable_days_override ?? att?.payable_days ?? row.payable_days) || 0;
     const isEligible = (row.puttha_status || 'Yes') !== 'No';
 
     const putthaPrice = isEligible ? batchPutthaPrice : 0;
@@ -1125,7 +1241,8 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
     const basicSalary = parseFloat(empBaseSalary.toFixed(2));
     const earnedBasic = parseFloat(((empBaseSalary / totalDaysInMonth) * presentDays).toFixed(2));
-    const otHours = parseOtHours(row.ot_hours || row.total_ot || 0);
+    const rawOt = att?.total_ot || att?.ot_hours || row.ot_hours || row.total_ot || 0;
+    const otHours = parseOtHours(rawOt);
     const otAmount = parseFloat((otHours * 50).toFixed(2));
 
     const newGross = parseFloat((earnedBasic + putthaPrice + otAmount).toFixed(2));
@@ -1137,6 +1254,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
       .from('payroll')
       .update({
         basic_salary: basicSalary,
+        payable_days: presentDays,
         ot_hours: otHours,
         ot_amount: otAmount,
         puttha_price: putthaPrice,

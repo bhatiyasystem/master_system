@@ -1,5 +1,5 @@
 import { StyleSheet } from '@react-pdf/renderer';
-import { MONTHS } from '../services/supabaseHR';
+import { MONTHS, parseOtHours, formatOtDisplay } from '../services/supabaseHR';
 
 const styles = StyleSheet.create({
   page: {
@@ -278,9 +278,9 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
               <Text style={styles.lineLabel}>Earned Basic ({payableDays} present days)</Text>
               <Text style={styles.lineValue}>{fmt((actualSalary / totalDaysInMonth) * payableDays)}</Text>
             </View>
-            {(row.ot_amount > 0 || row.ot_hours > 0) && (
+            {(row.ot_amount > 0 || parseOtHours(row.ot_hours) > 0) && (
               <View style={styles.lineRow}>
-                <Text style={styles.lineLabel}>Overtime ({row.ot_hours || 0} hrs @ ₹50/hr)</Text>
+                <Text style={styles.lineLabel}>Overtime ({formatOtDisplay(row.ot_hours)} hrs @ ₹50/hr)</Text>
                 <Text style={styles.lineValue}>{fmt(row.ot_amount || 0)}</Text>
               </View>
             )}
