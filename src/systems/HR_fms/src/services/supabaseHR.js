@@ -73,19 +73,19 @@ export const STATUS_LABELS = {
  * @returns {{ uploadMeta, employees }}
  */
 export function parseAttendanceExcel(rawRows) {
-  // ── Find header row (contains "Emp. Code" or "Emp Code") ──
+  // ── Find header row (contains "Emp. Code" or "Emp Code" and "Name" or "EmployeeName") ──
   let headerRowIdx = -1;
   for (let i = 0; i < rawRows.length; i++) {
     const row = rawRows[i];
     if (!row) continue;
     const joined = row.map(c => String(c || '')).join(' ').toLowerCase();
-    if (joined.includes('emp') && joined.includes('code') && joined.includes('name')) {
+    if (joined.includes('emp') && (joined.includes('code') || joined.includes('emp.code')) && (joined.includes('name') || joined.includes('employee'))) {
       headerRowIdx = i;
       break;
     }
   }
 
-  if (headerRowIdx === -1) throw new Error('Could not find header row in Excel. Expected "Emp. Code" and "Name" columns.');
+  if (headerRowIdx === -1) throw new Error('Could not find header row in Excel. Expected "Emp. Code" and "EmployeeName" (or "Name") columns.');
 
   const headers = rawRows[headerRowIdx].map(h => String(h || '').trim());
 
@@ -95,11 +95,29 @@ export function parseAttendanceExcel(rawRows) {
     const row = rawRows[i] || [];
     const rowText = row.map(c => String(c || '')).join(' ');
 
+    // Match "01/07/2026 To 31/07/2026" or "01-07-2026 To 31-07-2026"
+    const slashPeriodMatch = rowText.match(/(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})\s+To\s+(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/i);
+    if (slashPeriodMatch) {
+      const parseDateStr = (str) => {
+        const parts = str.split(/[/.-]/);
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+        return new Date(str);
+      };
+      const df = parseDateStr(slashPeriodMatch[1]);
+      const dt = parseDateStr(slashPeriodMatch[2]);
+      if (!isNaN(df)) periodFrom = df;
+      if (!isNaN(dt)) periodTo = dt;
+    }
+
     // Match "Apr 01 2026  To  Apr 30 2026"
     const periodMatch = rowText.match(/(\w+\s+\d+\s+\d{4})\s+To\s+(\w+\s+\d+\s+\d{4})/i);
     if (periodMatch) {
-      periodFrom = new Date(periodMatch[1]);
-      periodTo = new Date(periodMatch[2]);
+      const df = new Date(periodMatch[1]);
+      const dt = new Date(periodMatch[2]);
+      if (!isNaN(df)) periodFrom = df;
+      if (!isNaN(dt)) periodTo = dt;
     }
 
     // Match company
@@ -127,59 +145,100 @@ export function parseAttendanceExcel(rawRows) {
     periodTo = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
   }
 
-  // ── Identify day columns ──
-  // Day columns look like "1 W", "2 Th", "3 F" — numeric day + day abbreviation
-  const dayColIndices = []; // [{colIdx, dayNum}]
+  // ── Identify day columns (if present in detailed daily report) ──
+  const dayColIndices = [];
   headers.forEach((h, idx) => {
     const m = h.match(/^(\d{1,2})\s+[A-Za-z]{1,3}$/);
     if (m) dayColIndices.push({ colIdx: idx, dayNum: parseInt(m[1]) });
   });
 
   // ── Summary column indices ──
-  const colIdx = (name) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  const cleanHeader = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const findCol = (...keywords) => {
+    return headers.findIndex(h => {
+      const c = cleanHeader(h);
+      return keywords.some(k => c.includes(cleanHeader(k)));
+    });
+  };
+
+  const findExactCol = (...exactNames) => {
+    return headers.findIndex(h => {
+      const c = cleanHeader(h);
+      return exactNames.some(e => c === cleanHeader(e));
+    });
+  };
+
   const summaryMap = {
-    sl: colIdx('Sl') !== -1 ? colIdx('Sl') : 0,
-    empCode: headers.findIndex(h => h.toLowerCase().includes('emp') && h.toLowerCase().includes('code')),
-    name: colIdx('Name'),
-    totalP: colIdx('P'),
-    totalA: colIdx('A'),
-    totalL: colIdx('L'),
-    totalH: colIdx('H'),
-    totalHP: colIdx('HP'),
-    totalWO: colIdx('WO'),
-    totalWOP: colIdx('WOP'),
+    sl: findCol('sl', 'sn', 'sno', 'slno') !== -1 ? findCol('sl', 'sn', 'sno', 'slno') : 0,
+    empCode: findCol('empcode', 'emp.code', 'emp code', 'code'),
+    name: findCol('employeename', 'employee name', 'name', 'employee'),
+    totalP: findExactCol('p') !== -1 ? findExactCol('p') : findCol('totalpresent', 'total present'),
+    totalA: findExactCol('a') !== -1 ? findExactCol('a') : findCol('totalabsent', 'total absent'),
+    totalH: findExactCol('h') !== -1 ? findExactCol('h') : findCol('totalholiday', 'holiday'),
+    totalHP: findExactCol('hp') !== -1 ? findExactCol('hp') : findCol('halfpresent', 'half present'),
+    totalWO: findExactCol('wo') !== -1 ? findExactCol('wo') : findCol('weeklyoff', 'weekly off'),
+    totalWOP: findExactCol('wop') !== -1 ? findExactCol('wop') : findCol('wopresent', 'wo present'),
+    totalCL: findExactCol('cl') !== -1 ? findExactCol('cl') : findCol('casualleave', 'casual leave'),
+    totalPL: findExactCol('pl') !== -1 ? findExactCol('pl') : findCol('paidleave', 'paid leave'),
+    totalSL: findExactCol('sl') !== -1 ? findExactCol('sl') : findCol('sickleave', 'sick leave'),
+    totalOtherLeave: findCol('otherleave', 'other leave'),
+    totalLeave: findCol('totalleave', 'total leave') !== -1 ? findCol('totalleave', 'total leave') : findExactCol('l'),
+    totalPresent: findCol('totalpresent', 'total present'),
+    totalPayDays: findCol('totalpaydays', 'total pay days', 'paydays', 'pay days', 'payable days', 'payabledays'),
+    totalOT: findCol('totalot', 'total ot in hrs', 'total ot', 'otinhrs', 'ot'),
+    totalLate: findCol('totallateby', 'total late by', 'totallate', 'total late', 'lateby', 'late'),
+    totalEarly: findCol('totalearlyby', 'total early by', 'totalearly', 'total early', 'earlyby', 'early'),
   };
 
   // ── Parse employee rows ──
   const employees = [];
   for (let i = headerRowIdx + 1; i < rawRows.length; i++) {
     const row = rawRows[i] || [];
-    if (!row || row.every(c => !c)) continue; // skip empty rows
+    if (!row || row.every(c => c === null || c === undefined || String(c).trim() === '')) continue;
 
-    const empCode = String(row[summaryMap.empCode] || '').trim();
-    const empName = String(row[summaryMap.name] || '').trim();
-    if (!empCode || !empName) continue;
+    const empCode = String(row[summaryMap.empCode] !== undefined ? row[summaryMap.empCode] : '').trim();
+    const empName = String(row[summaryMap.name] !== undefined ? row[summaryMap.name] : '').trim();
 
-    // Build daily_status JSONB
+    // Skip empty or header rows
+    if (!empCode || !empName || empCode.toLowerCase().includes('code') || empName.toLowerCase().includes('name')) continue;
+
+    // Build daily_status JSONB if day columns are present
     const dailyStatus = {};
     dayColIndices.forEach(({ colIdx, dayNum }) => {
       const cell = String(row[colIdx] || '').trim();
       if (cell) dailyStatus[dayNum] = cell;
     });
 
-    const totalPresent = parseFloat(row[summaryMap.totalP] || 0) || 0;
-    const totalAbsent = parseInt(row[summaryMap.totalA] || 0) || 0;
-    const totalLeave = parseInt(row[summaryMap.totalL] || 0) || 0;
-    const totalHoliday = parseInt(row[summaryMap.totalH] || 0) || 0;
-    const totalHalfPresent = parseInt(row[summaryMap.totalHP] || 0) || 0;
-    const totalWO = parseInt(row[summaryMap.totalWO] || 0) || 0;
-    const totalWOP = parseInt(row[summaryMap.totalWOP] || 0) || 0;
+    const totalPresent = parseFloat(row[summaryMap.totalPresent] !== undefined && row[summaryMap.totalPresent] !== '' ? row[summaryMap.totalPresent] : (row[summaryMap.totalP] || 0)) || 0;
+    const totalAbsent = parseFloat(row[summaryMap.totalA] || 0) || 0;
+    const totalHoliday = parseFloat(row[summaryMap.totalH] || 0) || 0;
+    const totalHalfPresent = parseFloat(row[summaryMap.totalHP] || 0) || 0;
+    const totalWO = parseFloat(row[summaryMap.totalWO] || 0) || 0;
+    const totalWOP = parseFloat(row[summaryMap.totalWOP] || 0) || 0;
+    const totalCL = parseFloat(row[summaryMap.totalCL] || 0) || 0;
+    const totalPL = parseFloat(row[summaryMap.totalPL] || 0) || 0;
+    const totalSL = parseFloat(row[summaryMap.totalSL] || 0) || 0;
+    const totalOtherLeave = parseFloat(row[summaryMap.totalOtherLeave] || 0) || 0;
+    const totalLeave = parseFloat(row[summaryMap.totalLeave] !== undefined && row[summaryMap.totalLeave] !== '' ? row[summaryMap.totalLeave] : (totalCL + totalPL + totalSL + totalOtherLeave)) || 0;
 
-    // payable_days = P + WOP + H + L
-    const payableDays = totalPresent + totalWOP + totalHoliday + totalLeave;
+    // Attendance / Payable Days calculation logic: P + WO + H + HP + WOP (+ Leave)
+    const formulaDays = totalPresent + totalWO + totalHoliday + totalHalfPresent + totalWOP + totalLeave;
+
+    let payableDays = formulaDays;
+    if (summaryMap.totalPayDays !== -1 && row[summaryMap.totalPayDays] !== undefined && String(row[summaryMap.totalPayDays]).trim() !== '') {
+      const explicitPayDays = parseFloat(row[summaryMap.totalPayDays]);
+      if (!isNaN(explicitPayDays) && explicitPayDays > 0) {
+        payableDays = explicitPayDays;
+      }
+    }
+
+    const totalOT = String(row[summaryMap.totalOT] !== undefined ? row[summaryMap.totalOT] : '00:00').trim();
+    const totalLate = parseFloat(row[summaryMap.totalLate] || 0) || 0;
+    const totalEarly = parseFloat(row[summaryMap.totalEarly] || 0) || 0;
 
     employees.push({
-      sl_no: parseInt(row[summaryMap.sl] || i - headerRowIdx) || (i - headerRowIdx),
+      sl_no: employees.length + 1,
       emp_code: empCode,
       emp_name: empName,
       daily_status: dailyStatus,
@@ -190,7 +249,14 @@ export function parseAttendanceExcel(rawRows) {
       total_half_present: totalHalfPresent,
       total_wo: totalWO,
       total_wop: totalWOP,
+      total_cl: totalCL,
+      total_pl: totalPL,
+      total_sl: totalSL,
+      total_other_leave: totalOtherLeave,
       payable_days: payableDays,
+      total_ot: totalOT,
+      total_late: totalLate,
+      total_early: totalEarly,
     });
   }
 
@@ -364,13 +430,10 @@ export async function deactivateSalaryConfig(id) {
 export function calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice = 0, advance = 0, loanDeduction = 0, salaryAdvanceDeduction = 0) {
   const monthlySalary = parseFloat(employee.salary || 0);
 
-  // Daily Salary = Monthly Salary / Total Days in Month
-  const dailySalary = monthlySalary / totalDaysInMonth;
+  // Basic Salary matches Employee Management salary directly
+  const basicSalary = parseFloat(monthlySalary.toFixed(2));
 
-  // Salary for the Month = Daily Salary * Payable Days
-  const basicSalary = parseFloat((dailySalary * payableDays).toFixed(2));
-
-  // Gross Salary = Salary for the Month + Puttha Price
+  // Gross Salary = Basic Salary + Puttha Price
   const gross = parseFloat((basicSalary + putthaPrice).toFixed(2));
 
   // Deductions
@@ -379,7 +442,9 @@ export function calculatePayroll(employee, payableDays, totalDaysInMonth, puttha
   const totalDeductions = parseFloat((loanDed + salAdvDed).toFixed(2));
 
   // Net Salary = Gross Salary - Total Deductions
-  const net = parseFloat((gross - totalDeductions).toFixed(2));
+  // Roundoff UPWARDS to nearest 10 (e.g. 5381 -> 5390, not 5380)
+  const rawNet = parseFloat((gross - totalDeductions).toFixed(2));
+  const net = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
   return {
     basic_salary: basicSalary,
@@ -786,8 +851,69 @@ export async function fetchPayrollPaginated({ year, month, status, empCode, sear
     query = query.or(`emp_name.ilike.%${search}%,emp_code.ilike.%${search}%`);
   }
 
-  const { data, count, error } = await query.range(from, to);
+  let { data, count, error } = await query.range(from, to);
   if (error) throw error;
+
+  // Sync latest puttha_status from employees master table & recalculate if any eligible employee has 0 puttha price
+  if (data && data.length > 0) {
+    let needsRecalc = false;
+
+    const empCodes = [...new Set(data.map(r => r.emp_code))];
+    const { data: emps } = await supabase
+      .from('employees')
+      .select('employee_id, puttha_status')
+      .in('employee_id', empCodes);
+
+    if (emps && emps.length > 0) {
+      const empStatusMap = {};
+      emps.forEach(e => {
+        empStatusMap[e.employee_id] = e.puttha_status || 'Yes';
+      });
+
+      data.forEach(r => {
+        if (empStatusMap[r.emp_code] && empStatusMap[r.emp_code] !== r.puttha_status) {
+          r.puttha_status = empStatusMap[r.emp_code];
+          needsRecalc = true;
+        }
+      });
+    }
+
+    // Check if any row has non-zero puttha_price, but some eligible employees still have 0.00
+    const hasBatchPuttha = data.some(r => (parseFloat(r.puttha_price) || 0) > 0);
+    if (hasBatchPuttha) {
+      const hasMissingPuttha = data.some(r => (r.puttha_status || 'Yes') !== 'No' && (parseFloat(r.payable_days) || 0) >= 15 && (parseFloat(r.puttha_price) || 0) === 0);
+      if (hasMissingPuttha) {
+        needsRecalc = true;
+      }
+    }
+
+    // Check if any row has net_salary that is not rounded UPWARDS to nearest 10 (e.g., 5381 -> 5390)
+    data.forEach(r => {
+      const rawNet = Math.max(0, (parseFloat(r.gross_salary) || 0) - (parseFloat(r.total_deductions) || 0));
+      const expectedNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
+      if (parseFloat(r.net_salary) !== expectedNet) {
+        needsRecalc = true;
+      }
+    });
+
+    if (needsRecalc && year && month) {
+      await recalculateMonthPutthaAndPayroll(year, month);
+      let refetchQuery = supabase
+        .from('payroll')
+        .select('*', { count: 'exact' })
+        .order('emp_name', { ascending: true });
+
+      if (year) refetchQuery = refetchQuery.eq('year', year);
+      if (month) refetchQuery = refetchQuery.eq('month', month);
+      if (status) refetchQuery = refetchQuery.eq('status', status);
+      if (empCode) refetchQuery = refetchQuery.eq('emp_code', empCode);
+      if (search) {
+        refetchQuery = refetchQuery.or(`emp_name.ilike.%${search}%,emp_code.ilike.%${search}%`);
+      }
+      const refetchRes = await refetchQuery.range(from, to);
+      if (refetchRes.data) data = refetchRes.data;
+    }
+  }
 
   return {
     data: data || [],
@@ -891,6 +1017,143 @@ export async function fetchEmployees() {
   return data;
 }
 
+export async function recalculateMonthPutthaAndPayroll(year, month) {
+  if (!year || !month) return;
+
+  const totalDaysInMonth = new Date(year, month, 0).getDate();
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(totalDaysInMonth).padStart(2, '0')}`;
+
+  // Fetch total approved puttha amount for this month
+  const { data: putthas } = await supabase
+    .from('putthas')
+    .select('total_price')
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  let totalPutthaAmount = 0;
+  (putthas || []).forEach(p => {
+    totalPutthaAmount += parseFloat(p.total_price) || 0;
+  });
+
+  // Fetch all payroll rows for this year and month
+  const { data: payrollRows, error } = await supabase
+    .from('payroll')
+    .select('*')
+    .eq('year', year)
+    .eq('month', month);
+
+  if (error || !payrollRows || payrollRows.length === 0) return;
+
+  // Count eligible employees (payable_days >= 15 and puttha_status != 'No')
+  const eligibleRows = payrollRows.filter(r => {
+    const days = parseFloat(r.payable_days) || 0;
+    return days >= 15 && (r.puttha_status || 'Yes') !== 'No';
+  });
+  const eligibleCount = eligibleRows.length;
+
+  // Determine the per-employee puttha share for the batch
+  let batchPutthaPrice = 0;
+  if (totalPutthaAmount > 0 && eligibleCount > 0) {
+    batchPutthaPrice = parseFloat((totalPutthaAmount / eligibleCount).toFixed(2));
+  } else {
+    // Fallback: use existing non-zero puttha_price in the batch if available
+    const existingRow = payrollRows.find(r => (parseFloat(r.puttha_price) || 0) > 0);
+    if (existingRow) {
+      batchPutthaPrice = parseFloat(existingRow.puttha_price);
+    }
+  }
+
+  // Fetch latest employee salaries
+  const empCodes = [...new Set(payrollRows.map(r => r.emp_code))];
+  const { data: emps } = await supabase
+    .from('employees')
+    .select('employee_id, salary')
+    .in('employee_id', empCodes);
+
+  const empSalaryMap = {};
+  (emps || []).forEach(e => {
+    if (e.salary !== undefined && e.salary !== null) {
+      empSalaryMap[e.employee_id] = parseFloat(e.salary) || 0;
+    }
+  });
+
+  // Update every payroll row in the batch
+  for (const row of payrollRows) {
+    const days = parseFloat(row.payable_days) || 0;
+    const isEligible = days >= 15 && (row.puttha_status || 'Yes') !== 'No';
+
+    const putthaPrice = isEligible ? batchPutthaPrice : 0;
+    const basicSalary = empSalaryMap[row.emp_code] !== undefined
+      ? empSalaryMap[row.emp_code]
+      : parseFloat(row.basic_salary || 0);
+    const newGross = parseFloat((basicSalary + putthaPrice).toFixed(2));
+    const totalDeductions = parseFloat(row.total_deductions || 0);
+    const rawNet = Math.max(0, newGross - totalDeductions);
+    const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
+
+    await supabase
+      .from('payroll')
+      .update({
+        basic_salary: basicSalary,
+        puttha_price: putthaPrice,
+        gross_salary: newGross,
+        net_salary: newNet,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', row.id);
+  }
+}
+
+export async function syncPayrollForEmployeeSalary(empCode, salary) {
+  if (!empCode || salary === undefined || salary === null) return;
+  const basicSalary = parseFloat(salary) || 0;
+
+  const { data: payrollRows, error } = await supabase
+    .from('payroll')
+    .select('*')
+    .eq('emp_code', empCode);
+
+  if (error || !payrollRows || payrollRows.length === 0) return;
+
+  for (const row of payrollRows) {
+    const putthaPrice = parseFloat(row.puttha_price || 0);
+    const newGross = parseFloat((basicSalary + putthaPrice).toFixed(2));
+    const totalDeductions = parseFloat(row.total_deductions || 0);
+    const rawNet = Math.max(0, newGross - totalDeductions);
+    const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
+
+    await supabase
+      .from('payroll')
+      .update({
+        basic_salary: basicSalary,
+        gross_salary: newGross,
+        net_salary: newNet,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', row.id);
+  }
+}
+
+export async function syncPayrollForEmployeePutthaStatus(empCode, putthaStatus) {
+  if (!empCode) return;
+  const { data: payrollRows, error } = await supabase
+    .from('payroll')
+    .select('*')
+    .eq('emp_code', empCode);
+
+  if (!error && payrollRows && payrollRows.length > 0) {
+    for (const row of payrollRows) {
+      await supabase
+        .from('payroll')
+        .update({ puttha_status: putthaStatus || 'Yes' })
+        .eq('id', row.id);
+
+      await recalculateMonthPutthaAndPayroll(row.year, row.month);
+    }
+  }
+}
+
 export async function upsertEmployee(employee) {
   const { data, error } = await supabase
     .from('employees')
@@ -898,10 +1161,22 @@ export async function upsertEmployee(employee) {
     .select()
     .single();
   if (error) throw error;
+
+  if (employee.employee_id) {
+    try {
+      if (employee.puttha_status) {
+        await syncPayrollForEmployeePutthaStatus(employee.employee_id, employee.puttha_status);
+      }
+      if (employee.salary !== undefined) {
+        await syncPayrollForEmployeeSalary(employee.employee_id, employee.salary);
+      }
+    } catch (e) {
+      console.error('Error syncing payroll for employee:', e);
+    }
+  }
+
   return data;
 }
-
-
 
 // Directly update an employee's puttha status by employee_id (source of truth for payroll)
 export async function updateEmployeePutthaStatus(employeeId, status) {
@@ -914,6 +1189,13 @@ export async function updateEmployeePutthaStatus(employeeId, status) {
   if (!data || data.length === 0) {
     throw new Error(`No employee found with employee_id "${employeeId}" — puttha status was not updated.`);
   }
+
+  try {
+    await syncPayrollForEmployeePutthaStatus(employeeId, status);
+  } catch (e) {
+    console.error('Error syncing payroll puttha status:', e);
+  }
+
   return data[0];
 }
 
@@ -923,6 +1205,24 @@ export async function bulkUpsertEmployees(employees) {
     .upsert(employees, { onConflict: 'employee_id' })
     .select();
   if (error) throw error;
+
+  if (Array.isArray(employees)) {
+    for (const emp of employees) {
+      if (emp.employee_id) {
+        try {
+          if (emp.puttha_status) {
+            await syncPayrollForEmployeePutthaStatus(emp.employee_id, emp.puttha_status);
+          }
+          if (emp.salary !== undefined) {
+            await syncPayrollForEmployeeSalary(emp.employee_id, emp.salary);
+          }
+        } catch (e) {
+          console.error('Error syncing payroll for employee bulk update:', e);
+        }
+      }
+    }
+  }
+
   return data;
 }
 
@@ -976,6 +1276,48 @@ export async function deleteAdvance(id) {
 
 // ─── SALARY ADVANCES ────────────────────────────────────────────────────────
 
+export async function syncPayrollForEmployeeAdvance(empCode) {
+  if (!empCode) return;
+
+  const { data: salAdvs } = await supabase
+    .from('salary_advances')
+    .select('amount')
+    .eq('employee_id', empCode)
+    .in('status', ['Approved', 'Deducted']);
+
+  const totalSalAdv = (salAdvs || []).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+
+  const { data: payrollRows } = await supabase
+    .from('payroll')
+    .select('*')
+    .eq('emp_code', empCode);
+
+  if (!payrollRows || payrollRows.length === 0) return;
+
+  for (const row of payrollRows) {
+    const gross = parseFloat(row.gross_salary) || 0;
+    const loanDed = parseFloat(row.loan_deduction) || 0;
+    const otherDed = parseFloat(row.other_deduction) || 0;
+    const pfDed = parseFloat(row.pf_deduction) || 0;
+    const esiDed = parseFloat(row.esi_deduction) || 0;
+
+    const newTotalDed = totalSalAdv + loanDed + otherDed + pfDed + esiDed;
+    const rawNet = gross - newTotalDed;
+    const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
+
+    await supabase
+      .from('payroll')
+      .update({
+        advance_deduction: totalSalAdv,
+        salary_advance_deduction: totalSalAdv,
+        total_deduction: newTotalDed,
+        net_salary: newNet,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', row.id);
+  }
+}
+
 export async function fetchSalaryAdvances() {
   const { data, error } = await supabase
     .from('salary_advances')
@@ -992,6 +1334,15 @@ export async function upsertSalaryAdvance(advance) {
     .select()
     .single();
   if (error) throw error;
+
+  if (advance.employee_id) {
+    try {
+      await syncPayrollForEmployeeAdvance(advance.employee_id);
+    } catch (e) {
+      console.error('Error syncing payroll for salary advance:', e);
+    }
+  }
+
   return data;
 }
 
@@ -1003,15 +1354,38 @@ export async function updateSalaryAdvanceStatus(id, status) {
     .select()
     .single();
   if (error) throw error;
+
+  if (data && data.employee_id) {
+    try {
+      await syncPayrollForEmployeeAdvance(data.employee_id);
+    } catch (e) {
+      console.error('Error syncing payroll for salary advance status:', e);
+    }
+  }
+
   return data;
 }
 
 export async function deleteSalaryAdvance(id) {
+  const { data: existing } = await supabase
+    .from('salary_advances')
+    .select('employee_id')
+    .eq('id', id)
+    .single();
+
   const { error } = await supabase
     .from('salary_advances')
     .delete()
     .eq('id', id);
   if (error) throw error;
+
+  if (existing && existing.employee_id) {
+    try {
+      await syncPayrollForEmployeeAdvance(existing.employee_id);
+    } catch (e) {
+      console.error('Error syncing payroll after deleting salary advance:', e);
+    }
+  }
 }
 
 // ─── PAYSLIPS ────────────────────────────────────────────────────────────────

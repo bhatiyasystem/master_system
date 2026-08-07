@@ -18,7 +18,7 @@ import MySalary from './src/pages/MySalary';
 import CompanyCalendar from './src/pages/CompanyCalendar';
 import LeaveManagement from './src/pages/LeaveManagement';
 import Attendance from './src/pages/Attendance';
-import Attendancedaily from './src/pages/Attendancedaily';
+// import Attendancedaily from './src/pages/Attendancedaily';
 import Report from './src/pages/Report';
 import Payroll from './src/pages/Payroll';
 import Advance from './src/pages/Advance';
@@ -198,12 +198,12 @@ systemRegistry.register({
           href: '/dashboard/hr-attendance',
           label: 'Monthly Attendance',
           showFor: ['admin', 'HOD'],
-        },
-        {
-          href: '/dashboard/hr-attendancedaily',
-          label: 'Daily Attendance',
-          showFor: ['admin', 'HOD'],
-        },
+        }
+        // {
+        //   href: '/dashboard/hr-attendancedaily',
+        //   label: 'Daily Attendance',
+        //   showFor: ['admin', 'HOD'],
+        // },
       ],
     },
     {
@@ -325,12 +325,12 @@ systemRegistry.register({
       protected: true,
       allowedRoles: ['admin', 'HOD'],
     },
-    {
-      path: '/dashboard/hr-attendancedaily',
-      element: wrap(Attendancedaily),
-      protected: true,
-      allowedRoles: ['admin', 'HOD'],
-    },
+    // {
+    //   path: '/dashboard/hr-attendancedaily',
+    //   element: wrap(Attendancedaily),
+    //   protected: true,
+    //   allowedRoles: ['admin', 'HOD'],
+    // },
     {
       path: '/dashboard/hr-report',
       element: wrap(Report),

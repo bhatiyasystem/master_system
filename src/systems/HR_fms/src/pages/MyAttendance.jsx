@@ -26,18 +26,18 @@ const MyAttendance = () => {
     }
   };
 
- const formatDOB = (dateString) => {
+  const formatDOB = (dateString) => {
     if (!dateString) return '';
-    
+
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
       return dateString; // Return as-is if not a valid date
     }
-    
+
     const day = date.getDate();
     const month = date.getMonth();
     const year = date.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
   };
 
@@ -115,19 +115,19 @@ const MyAttendance = () => {
     const username = getUsername();
     if (username && attendanceData.length > 0) {
       console.log('Filtering for username:', username);
-      
+
       // Filter data to only show records where the name matches the username
       const filteredData = attendanceData.filter(record => {
         // Check all string values in the record for the username
         for (const key in record) {
-          if (typeof record[key] === 'string' && 
-              record[key].toLowerCase().includes(username.toLowerCase())) {
+          if (typeof record[key] === 'string' &&
+            record[key].toLowerCase().includes(username.toLowerCase())) {
             return true;
           }
         }
         return false;
       });
-      
+
       setUserAttendanceData(filteredData);
       console.log('Filtered attendance data:', filteredData);
     }
@@ -141,7 +141,7 @@ const MyAttendance = () => {
   const filteredAttendance = userAttendanceData.filter(record => {
     const dateValue = record.Date || record.date;
     if (!dateValue) return false;
-    
+
     try {
       // Try to parse various date formats
       let recordDate;
@@ -156,7 +156,7 @@ const MyAttendance = () => {
       } else {
         return true; // Show records with unknown date formats
       }
-      
+
       return recordDate.getMonth() === selectedMonth && recordDate.getFullYear() === selectedYear;
     } catch (error) {
       console.error('Error parsing date:', dateValue, error);
@@ -166,20 +166,20 @@ const MyAttendance = () => {
 
   // Calculate statistics
   const totalDays = filteredAttendance.length;
-  const presentDays = filteredAttendance.filter(record => 
-    (record.In && record.In !== '' && record.In !== '-') || 
+  const presentDays = filteredAttendance.filter(record =>
+    (record.In && record.In !== '' && record.In !== '-') ||
     (record.inTime && record.inTime !== '' && record.inTime !== '-')
   ).length;
-  
+
   const absentDays = totalDays - presentDays;
-  
+
   // Calculate working hours based on time strings
   const totalWorkingHours = filteredAttendance.reduce((sum, record) => {
     if (record.In && record.Out) {
       try {
         const inTime = parseTimeString(record.In);
         const outTime = parseTimeString(record.Out);
-        
+
         if (inTime && outTime) {
           let hours = (outTime - inTime) / (1000 * 60 * 60);
           // Handle cases where out time might be next day (e.g., working past midnight)
@@ -192,14 +192,14 @@ const MyAttendance = () => {
     }
     return sum;
   }, 0);
-  
+
   // Calculate overtime (assuming working hours > 8 is overtime)
   const totalOvertime = filteredAttendance.reduce((sum, record) => {
     if (record.In && record.Out) {
       try {
         const inTime = parseTimeString(record.In);
         const outTime = parseTimeString(record.Out);
-        
+
         if (inTime && outTime) {
           let hours = (outTime - inTime) / (1000 * 60 * 60);
           if (hours < 0) hours += 24;
@@ -215,9 +215,9 @@ const MyAttendance = () => {
   // Helper function to parse time strings like "10:00:00 AM"
   const parseTimeString = (timeStr) => {
     if (!timeStr) return null;
-    
+
     let cleanTime = timeStr.toString().trim();
-    
+
     // Handle AM/PM format
     let isPM = false;
     if (cleanTime.toLowerCase().includes('pm')) {
@@ -226,19 +226,19 @@ const MyAttendance = () => {
     } else if (cleanTime.toLowerCase().includes('am')) {
       cleanTime = cleanTime.toLowerCase().replace('am', '').trim();
     }
-    
+
     // Split by colon
     const parts = cleanTime.split(':');
     if (parts.length < 2) return null;
-    
+
     let hours = parseInt(parts[0], 10);
     const minutes = parseInt(parts[1], 10);
     const seconds = parts.length > 2 ? parseInt(parts[2], 10) : 0;
-    
+
     // Adjust for PM
     if (isPM && hours < 12) hours += 12;
     if (!isPM && hours === 12) hours = 0; // 12 AM = 0 hours
-    
+
     // Create a date object with fixed date and the parsed time
     return new Date(2000, 0, 1, hours, minutes, seconds);
   };
@@ -252,8 +252,8 @@ const MyAttendance = () => {
 
   // Determine status based on In time presence
   const getStatus = (record) => {
-    if ((record.In && record.In !== '' && record.In !== '-') || 
-        (record.inTime && record.inTime !== '' && record.inTime !== '-')) {
+    if ((record.In && record.In !== '' && record.In !== '-') ||
+      (record.inTime && record.inTime !== '' && record.inTime !== '-')) {
       return 'Present';
     }
     return 'Absent';
@@ -391,7 +391,7 @@ const MyAttendance = () => {
                       try {
                         const inTime = parseTimeString(record.In);
                         const outTime = parseTimeString(record.Out);
-                        
+
                         if (inTime && outTime) {
                           workingHours = (outTime - inTime) / (1000 * 60 * 60);
                           if (workingHours < 0) workingHours += 24;
@@ -406,7 +406,7 @@ const MyAttendance = () => {
                     return (
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDOB(record.Date) ||formatDOB(record.date) || '-'}
+                          {formatDOB(record.Date) || formatDOB(record.date) || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {record.In || record.inTime || '-'}
@@ -415,11 +415,10 @@ const MyAttendance = () => {
                           {record.Out || record.outTime || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            status === 'Present' 
-                              ? 'bg-green-100 text-green-800' 
+                          <span className={`px-2 py-1 text-xs rounded-full ${status === 'Present'
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
-                          }`}>
+                            }`}>
                             {status}
                           </span>
                         </td>

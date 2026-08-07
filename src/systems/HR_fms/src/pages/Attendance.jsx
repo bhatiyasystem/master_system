@@ -431,12 +431,10 @@ const AttendanceMonthly = () => {
 
               {/* Format Guide */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-blue-900 mb-2">Expected Excel Format</p>
+                <p className="text-sm font-semibold text-blue-900 mb-2">Expected Attendance Calculation Format</p>
                 <div className="text-xs text-blue-800 space-y-1">
-                  <p>• Row with period: <code className="bg-blue-100 px-1 rounded">Apr 01 2026 To Apr 30 2026</code></p>
-                  <p>• Row with: <code className="bg-blue-100 px-1 rounded">Company: Default</code></p>
-                  <p>• Header row: <code className="bg-blue-100 px-1 rounded">Sl | Emp. Code | Name | 1 W | 2 Th | ... | P | A | L | H | HP | WO | WOP</code></p>
-                  <p>• Status codes: P, A, ½P, WO, WOP, P(OD), L, H, HP</p>
+                  <p>• Pay Days Logic: <code className="bg-blue-100 px-1.5 py-0.5 rounded font-bold text-blue-900">P + WO + H + HP + WOP + Total Leave</code></p>
+                  <p>• Summary columns: <code className="bg-blue-100 px-1.5 py-0.5 rounded">Emp. Code | EmployeeName | P | A | H | HP | WO | WOP | CL | PL | SL | Total Leave | Total Pay Days</code></p>
                 </div>
               </div>
             </>
@@ -516,10 +514,12 @@ const AttendanceMonthly = () => {
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">#</th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">Emp Code</th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">Name</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-800">Present</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-700">Absent</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">Leave</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-800">P</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-700">A</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-purple-700">H</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-600">WO</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-blue-700">WOP</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">Leave</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-800">Payable Days</th>
                       </tr>
                     </thead>
@@ -531,8 +531,10 @@ const AttendanceMonthly = () => {
                           <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{emp.emp_name || '—'}</td>
                           <td className="px-3 py-2.5 text-center font-semibold text-green-700">{emp.total_present ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center font-semibold text-red-600">{emp.total_absent ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-amber-600">{emp.total_leave ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-center text-purple-700">{emp.total_holiday ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center text-gray-500">{emp.total_wo ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-center text-blue-600">{emp.total_wop ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-center text-amber-600">{emp.total_leave ?? '—'}</td>
                           <td className="px-3 py-2.5 text-center">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
                               {emp.payable_days ?? '—'}

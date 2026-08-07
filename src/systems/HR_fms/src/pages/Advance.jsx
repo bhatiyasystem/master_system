@@ -1,11 +1,17 @@
 import { UploadCloud, Plus, Clock, Check, X, Trash2, FileText, Table, Info, Download, IndianRupee, Pencil } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-;
 import toast from 'react-hot-toast';
 import supabase from '../../../../SupabaseClient';
-import hrSupabase from '../services/supabaseHRClient';
-import { fetchAdvancesPaginated, upsertAdvance, updateAdvanceStatus, deleteAdvance, fetchEmployees, fetchSalaryAdvances, upsertSalaryAdvance, updateSalaryAdvanceStatus, deleteSalaryAdvance, fetchSalaryConfigs } from '../services/supabaseHR';
+import { fetchAdvancesPaginated, upsertAdvance, updateAdvanceStatus, deleteAdvance, fetchEmployees, fetchSalaryAdvances, upsertSalaryAdvance, updateSalaryAdvanceStatus, deleteSalaryAdvance, fetchSalaryConfigs, syncPayrollForEmployeeAdvance } from '../services/supabaseHR';
+
+const parseAmount = (val) => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const str = String(val).replace(/[^0-9.]/g, '');
+  const n = parseFloat(str);
+  return isNaN(n) ? 0 : n;
+};
 
 const Advance = () => {
   const [activeTab, setActiveTab] = useState('Loan');
@@ -413,7 +419,7 @@ const Advance = () => {
             if (!r.some((c) => String(c).trim() !== '')) continue;
 
             const name = String(r[0] || '').trim();
-            const amount = parseFloat(String(r[2] || '').replace(/,/g, '')) || 0;
+            const amount = parseAmount(r[2]);
             if (!name || !amount) continue;
 
             const match = employeesList.find(
@@ -431,14 +437,16 @@ const Advance = () => {
               status: 'Approved',
             });
           }
-
           setTotalDebitAmount(sheetTotal);
           localStorage.setItem('hrfms_advance_total_debit', String(sheetTotal));
           setUnmatchedImportNames(unmatched);
 
           if (validRows.length > 0) {
-           const { error } = await hrSupabase.from('salary_advances').insert(validRows);
+            const { error } = await supabase.from('salary_advances').insert(validRows);
             if (error) throw error;
+            for (const r of validRows) {
+              if (r.employee_id) await syncPayrollForEmployeeAdvance(r.employee_id);
+            }
           }
 
           if (skipped > 0) {
@@ -456,12 +464,11 @@ const Advance = () => {
         const firstCell = String(raw[0][0] || '').trim().toUpperCase();
         const isLedgerFormat = firstCell === 'D' || firstCell === 'C';
 
-        // Helper: find the first usable numeric amount in a row (amount column
-        // shifts between C/D in the sheet, so scan instead of fixing an index)
+        // Helper: find the first usable numeric amount in a row
         const findAmount = (row) => {
           for (let c = 2; c < row.length; c++) {
-            const n = parseFloat(String(row[c]).replace(/,/g, ''));
-            if (!isNaN(n) && n > 0) return n;
+            const n = parseAmount(row[c]);
+            if (n > 0) return n;
           }
           return 0;
         };
@@ -559,7 +566,7 @@ const Advance = () => {
         console.log('validRows built:', validRows);
 
         if (validRows.length > 0) {
-          const { data: insertedData, error } = await hrSupabase.from('salary_advances').insert(validRows).select();
+          const { data: insertedData, error } = await supabase.from('salary_advances').insert(validRows).select();
           if (error) {
             console.error('Supabase insert error:', error);
             throw error;
@@ -761,13 +768,13 @@ const Advance = () => {
                             {adv.date}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ₹{(adv.amount || 0).toLocaleString('en-IN')}
+                            ₹{parseAmount(adv.amount || adv.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ₹{(adv.monthly_deduction || 0).toLocaleString('en-IN')}
+                            ₹{parseAmount(adv.monthly_deduction || adv.monthlyDeduction).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ₹{(adv.remaining_amount !== undefined && adv.remaining_amount !== null ? adv.remaining_amount : adv.amount || 0).toLocaleString('en-IN')}
+                            ₹{parseAmount(adv.remaining_amount !== undefined && adv.remaining_amount !== null ? adv.remaining_amount : (adv.amount || adv.total_amount)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {adv.deduction || 'Yes'}
@@ -1085,7 +1092,7 @@ const Advance = () => {
                             {adv.date}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            ₹{(adv.amount || 0).toLocaleString('en-IN')}
+                            ₹{parseAmount(adv.amount || adv.advance_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-fit ${adv.status === 'Approved' ? 'bg-green-100 text-green-800' :

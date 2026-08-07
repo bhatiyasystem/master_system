@@ -428,7 +428,7 @@ export default function TaskNavigationTabs({
       setDoersList(doers);
     };
     fetchDropdownData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskView, dashboardType, dashboardStaffFilter, departmentFilter])
 
   // Load more when search changes (client-side filter)
@@ -436,7 +436,7 @@ export default function TaskNavigationTabs({
     if (currentPage === 1) {
       loadTasksFromServer(1, false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   // Reset local staff filter when dashboardStaffFilter changes
@@ -444,7 +444,7 @@ export default function TaskNavigationTabs({
     if (dashboardStaffFilter !== "all") {
       setFilterStaff("all")
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardStaffFilter])
 
   // Function to load more data when scrolling
@@ -477,7 +477,7 @@ export default function TaskNavigationTabs({
       tableContainer.addEventListener('scroll', handleScroll)
       return () => tableContainer.removeEventListener('scroll', handleScroll)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMoreData, isLoadingMore, currentPage])
 
   return (
