@@ -452,8 +452,11 @@ export function calculatePayroll(employee, payableDays, totalDaysInMonth, puttha
   const parsedOtHours = parseOtHours(otHours);
   const otAmount = parseFloat((parsedOtHours * 50).toFixed(2));
 
+  const putthaStatus = employee?.puttha_status || 'Yes';
+  const actualPutthaPrice = putthaStatus === 'No' ? 0 : putthaPrice;
+
   // Gross Salary = (basic_salary / totalDaysInMonth * presentDays) + Puttha Price + OT Amount
-  const gross = parseFloat((earnedBasic + putthaPrice + otAmount).toFixed(2));
+  const gross = parseFloat((earnedBasic + actualPutthaPrice + otAmount).toFixed(2));
 
   // Deductions
   const loanDed = parseFloat(loanDeduction.toFixed(2));
@@ -466,10 +469,9 @@ export function calculatePayroll(employee, payableDays, totalDaysInMonth, puttha
 
   return {
     basic_salary: basicSalary,
-    earned_basic: earnedBasic,
     ot_hours: parsedOtHours,
     ot_amount: otAmount,
-    puttha_price: putthaPrice,
+    puttha_price: actualPutthaPrice,
     gross_salary: gross,
     advance: advance,
     loan_deduction: loanDed,
@@ -644,11 +646,10 @@ export async function generatePayrollBatch(attendanceRows, employeeMap) {
     employeeSalaryAdvs[empCode].push(adv);
   });
 
-  // ── Determine eligible employees (payable_days >= 15) ──────────────────────
+  // ── Determine eligible employees (puttha_status != 'No') ──────────────────────
   const eligibleRows = attendanceRows.filter(att => {
-    const days = parseFloat(att.payable_days_override ?? att.payable_days) || 0;
     const emp = employeeMap[att.emp_code];
-    return emp && days >= 15 && (emp.puttha_status || 'Yes') !== 'No';
+    return emp && (emp.puttha_status || 'Yes') !== 'No';
   });
   const eligibleCount = eligibleRows.length;
 
@@ -665,7 +666,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap) {
 
     const empCode = att.emp_code;
     const payableDays = parseFloat(att.payable_days_override ?? att.payable_days) || 0;
-    const putthaPrice = (payableDays >= 15 && (employee.puttha_status || 'Yes') !== 'No') ? putthaPerEmployee : 0;
+    const putthaPrice = (employee.puttha_status || 'Yes') !== 'No' ? putthaPerEmployee : 0;
     const advanceAmount = parseFloat(advanceMap[empCode] || 0);
 
     let loanDeduction = 0;
@@ -746,7 +747,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap) {
   }
 
   // Upsert payroll rows in single bulk batch
-  const dbRows = payrollRows.map(({ _salaryAdvsUpdates, ...rest }) => rest);
+  const dbRows = payrollRows.map(({ _salaryAdvsUpdates, earned_basic, ...rest }) => rest);
   const { data, error } = await supabase
     .from('payroll')
     .upsert(dbRows, { onConflict: 'emp_code,year,month' })
@@ -911,23 +912,24 @@ export async function fetchPayrollPaginated({ year, month, status, empCode, sear
     // Check if any row has non-zero puttha_price, but some eligible employees still have 0.00
     const hasBatchPuttha = data.some(r => (parseFloat(r.puttha_price) || 0) > 0);
     if (hasBatchPuttha) {
-      const hasMissingPuttha = data.some(r => (r.puttha_status || 'Yes') !== 'No' && (parseFloat(r.payable_days) || 0) >= 15 && (parseFloat(r.puttha_price) || 0) === 0);
+      const hasMissingPuttha = data.some(r => (r.puttha_status || 'Yes') !== 'No' && (parseFloat(r.puttha_price) || 0) === 0);
       if (hasMissingPuttha) {
         needsRecalc = true;
       }
     }
 
-    // Check if any row has gross_salary or net_salary that requires recalculation
+    // Check if any row has puttha_price, gross_salary or net_salary that requires recalculation
     data.forEach(r => {
       const daysInMonth = (year && month) ? new Date(year, month, 0).getDate() : 30;
       const presentDays = parseFloat(r.payable_days) || 0;
       const baseSalary = empSalaryMap[r.emp_code] !== undefined ? empSalaryMap[r.emp_code] : (parseFloat(r.basic_salary) || 0);
       const earnedBasic = parseFloat(((baseSalary / daysInMonth) * presentDays).toFixed(2));
-      const expectedGross = parseFloat((earnedBasic + (parseFloat(r.ot_amount) || 0) + (parseFloat(r.puttha_price) || 0)).toFixed(2));
+      const putthaPrice = (r.puttha_status || 'Yes') === 'No' ? 0 : (parseFloat(r.puttha_price) || 0);
+      const expectedGross = parseFloat((earnedBasic + (parseFloat(r.ot_amount) || 0) + putthaPrice).toFixed(2));
       const rawNet = Math.max(0, expectedGross - (parseFloat(r.total_deductions) || 0));
       const expectedNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
-      if (Math.abs(parseFloat(r.gross_salary) - expectedGross) > 0.01 || parseFloat(r.net_salary) !== expectedNet) {
+      if (parseFloat(r.puttha_price) !== putthaPrice || Math.abs(parseFloat(r.gross_salary) - expectedGross) > 0.01 || parseFloat(r.net_salary) !== expectedNet) {
         needsRecalc = true;
       }
     });
@@ -1081,11 +1083,8 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
   if (error || !payrollRows || payrollRows.length === 0) return;
 
-  // Count eligible employees (payable_days >= 15 and puttha_status != 'No')
-  const eligibleRows = payrollRows.filter(r => {
-    const days = parseFloat(r.payable_days) || 0;
-    return days >= 15 && (r.puttha_status || 'Yes') !== 'No';
-  });
+  // Count eligible employees (puttha_status != 'No')
+  const eligibleRows = payrollRows.filter(r => (r.puttha_status || 'Yes') !== 'No');
   const eligibleCount = eligibleRows.length;
 
   // Determine the per-employee puttha share for the batch
@@ -1093,10 +1092,10 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
   if (totalPutthaAmount > 0 && eligibleCount > 0) {
     batchPutthaPrice = parseFloat((totalPutthaAmount / eligibleCount).toFixed(2));
   } else {
-    // Fallback: use existing non-zero puttha_price in the batch if available
-    const existingRow = payrollRows.find(r => (parseFloat(r.puttha_price) || 0) > 0);
-    if (existingRow) {
-      batchPutthaPrice = parseFloat(existingRow.puttha_price);
+    // Fallback: sum of all existing puttha_prices divided by eligibleCount
+    const totalExistingPuttha = payrollRows.reduce((sum, r) => sum + (parseFloat(r.puttha_price) || 0), 0);
+    if (totalExistingPuttha > 0 && eligibleCount > 0) {
+      batchPutthaPrice = parseFloat((totalExistingPuttha / eligibleCount).toFixed(2));
     }
   }
 
@@ -1117,7 +1116,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
   // Update every payroll row in the batch
   for (const row of payrollRows) {
     const presentDays = parseFloat(row.payable_days) || 0;
-    const isEligible = presentDays >= 15 && (row.puttha_status || 'Yes') !== 'No';
+    const isEligible = (row.puttha_status || 'Yes') !== 'No';
 
     const putthaPrice = isEligible ? batchPutthaPrice : 0;
     const empBaseSalary = empSalaryMap[row.emp_code] !== undefined
@@ -1138,7 +1137,6 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
       .from('payroll')
       .update({
         basic_salary: basicSalary,
-        earned_basic: earnedBasic,
         ot_hours: otHours,
         ot_amount: otAmount,
         puttha_price: putthaPrice,
@@ -1182,7 +1180,6 @@ export async function syncPayrollForEmployeeSalary(empCode, salary) {
       .from('payroll')
       .update({
         basic_salary: basicSalary,
-        earned_basic: earnedBasic,
         ot_hours: otHours,
         ot_amount: otAmount,
         gross_salary: newGross,

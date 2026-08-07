@@ -53,7 +53,7 @@ const PayslipModal = ({ row, onClose }) => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Earned Basic ({row.payable_days || 0} present days)</span>
-                  <span className="font-medium text-gray-900">{fmt(row.earned_basic ?? ((row.basic_salary / 30) * (row.payable_days || 0)))}</span>
+                  <span className="font-medium text-gray-900">{fmt(((row.basic_salary / (row.month ? new Date(row.year || new Date().getFullYear(), row.month, 0).getDate() : 30)) * (row.payable_days || 0)))}</span>
                 </div>
                 {(row.ot_amount > 0 || row.ot_hours > 0) && (
                   <div className="flex justify-between text-sm">
@@ -893,12 +893,17 @@ const Payroll = () => {
 
   const totalDaysInMonth = (filterYear && filterMonth) ? new Date(filterYear, filterMonth, 0).getDate() : 30;
 
+  const yesCount = payrollData.filter(r => (r.puttha_status || 'Yes') !== 'No').length;
+  const totalPutthaPool = payrollData.reduce((s, r) => s + (parseFloat(r.puttha_price) || 0), 0);
+  const perYesPutthaPrice = yesCount > 0 ? parseFloat((totalPutthaPool / yesCount).toFixed(2)) : 0;
+
   const filtered = payrollData.map(r => {
     const presentDays = parseFloat(r.payable_days) || 0;
     const baseSalary = parseFloat(r.basic_salary) || 0;
     const earnedBasic = parseFloat(((baseSalary / totalDaysInMonth) * presentDays).toFixed(2));
     const otAmount = parseFloat(r.ot_amount || 0);
-    const putthaPrice = parseFloat(r.puttha_price || 0);
+    const putthaStatus = r.puttha_status || 'Yes';
+    const putthaPrice = putthaStatus === 'No' ? 0 : (perYesPutthaPrice > 0 ? perYesPutthaPrice : parseFloat(r.puttha_price || 0));
 
     const grossSalary = parseFloat((earnedBasic + otAmount + putthaPrice).toFixed(2));
     const totalDeductions = parseFloat(r.total_deductions || 0);
@@ -907,6 +912,8 @@ const Payroll = () => {
 
     return {
       ...r,
+      puttha_status: putthaStatus,
+      puttha_price: putthaPrice,
       earned_basic: earnedBasic,
       gross_salary: grossSalary,
       net_salary: netSalary,
