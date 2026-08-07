@@ -11,137 +11,97 @@ const styles = StyleSheet.create({
   },
   envelopeContainer: {
     border: '2 solid #1e3a8a',
-    borderRadius: 8,
-    padding: 24,
+    borderRadius: 12,
+    padding: 32,
     height: '100%',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
   },
   headerBand: {
     backgroundColor: '#1e3a8a',
-    borderRadius: 6,
-    padding: '16 24',
+    borderRadius: 8,
+    padding: '20 28',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   companyName: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 22,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: 0.5,
   },
   companyTagline: {
     color: '#93c5fd',
-    fontSize: 9,
-    marginTop: 3,
+    fontSize: 10,
+    marginTop: 4,
+    fontFamily: 'Helvetica-Bold',
+    letterSpacing: 1,
   },
   headerRight: {
     alignItems: 'flex-end',
   },
   payslipLabel: {
     color: '#93c5fd',
-    fontSize: 9,
+    fontSize: 10,
     letterSpacing: 1.5,
     fontFamily: 'Helvetica-Bold',
   },
   payPeriod: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 18,
     fontFamily: 'Helvetica-Bold',
-    marginTop: 3,
+    marginTop: 4,
   },
   bodyContent: {
-    marginVertical: 15,
-    gap: 15,
-  },
-  infoGrid: {
+    marginVertical: 30,
+    gap: 20,
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderRadius: 6,
-    padding: '12 16',
-    border: '1 solid #cbd5e1',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  infoItem: {
+  infoCard: {
     flex: 1,
-  },
-  infoLabel: {
-    fontSize: 8,
-    color: '#64748b',
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-    marginBottom: 3,
-  },
-  infoValue: {
-    fontSize: 12,
-    color: '#0f172a',
-    fontFamily: 'Helvetica-Bold',
-  },
-  salaryGrid: {
-    flexDirection: 'row',
-    gap: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 24,
+    border: '1 solid #cbd5e1',
+    marginRight: 15,
   },
   salaryCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 6,
-    padding: 12,
-    border: '1 solid #e2e8f0',
-  },
-  salaryCardHeader: {
-    fontSize: 8,
-    color: '#64748b',
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  salaryCardValue: {
-    fontSize: 14,
-    fontFamily: 'Helvetica-Bold',
-    color: '#1e293b',
-  },
-  netSalaryCard: {
-    flex: 1.2,
     backgroundColor: '#16a34a',
-    borderRadius: 6,
-    padding: 12,
+    borderRadius: 10,
+    padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  netSalaryLabel: {
-    fontSize: 9,
+  label: {
+    fontSize: 11,
+    color: '#64748b',
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  empNameValue: {
+    fontSize: 22,
+    color: '#0f172a',
+    fontFamily: 'Helvetica-Bold',
+  },
+  salaryLabel: {
+    fontSize: 11,
     color: '#dcfce7',
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
-  netSalaryValue: {
-    fontSize: 20,
-    fontFamily: 'Helvetica-Bold',
+  salaryValue: {
+    fontSize: 30,
     color: '#ffffff',
-    marginTop: 2,
-  },
-  footer: {
-    borderTop: '1 dashed #94a3b8',
-    paddingTop: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 8,
-    color: '#64748b',
-  },
-  sigBox: {
-    borderTop: '1 solid #94a3b8',
-    width: 140,
-    alignItems: 'center',
-    paddingTop: 4,
-  },
-  sigText: {
-    fontSize: 8,
-    color: '#475569',
+    fontFamily: 'Helvetica-Bold',
   },
 });
 
@@ -160,7 +120,7 @@ const EnvelopePDF = ({ row, companyName = 'Bhatia Enterprises' }) => {
           <View style={styles.headerBand}>
             <View>
               <Text style={styles.companyName}>{companyName}</Text>
-              <Text style={styles.companyTagline}>SALARY DISBURSEMENT ENVELOPE — CONFIDENTIAL</Text>
+              <Text style={styles.companyTagline}>PAY ENVELOPE</Text>
             </View>
             <View style={styles.headerRight}>
               <Text style={styles.payslipLabel}>PAY PERIOD</Text>
@@ -168,61 +128,16 @@ const EnvelopePDF = ({ row, companyName = 'Bhatia Enterprises' }) => {
             </View>
           </View>
 
-          {/* Main Info */}
+          {/* Main Content - Employee Name & Salary Only */}
           <View style={styles.bodyContent}>
-            {/* Employee Information */}
-            <View style={styles.infoGrid}>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Employee Name</Text>
-                <Text style={styles.infoValue}>{row?.emp_name || '—'}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Employee Code</Text>
-                <Text style={styles.infoValue}>{row?.emp_code || '—'}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Payable Days</Text>
-                <Text style={styles.infoValue}>{row?.payable_days ?? '—'}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Status</Text>
-                <Text style={[styles.infoValue, { color: '#16a34a' }]}>{(row?.status || 'PAID').toUpperCase()}</Text>
-              </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.label}>EMPLOYEE NAME</Text>
+              <Text style={styles.empNameValue}>{row?.emp_name || '—'}</Text>
             </View>
 
-            {/* Salary Figures */}
-            <View style={styles.salaryGrid}>
-              <View style={styles.salaryCard}>
-                <Text style={styles.salaryCardHeader}>Basic Salary</Text>
-                <Text style={styles.salaryCardValue}>{fmt(row?.basic_salary)}</Text>
-              </View>
-              <View style={styles.salaryCard}>
-                <Text style={styles.salaryCardHeader}>Puttha Bonus</Text>
-                <Text style={styles.salaryCardValue}>{fmt(row?.puttha_price)}</Text>
-              </View>
-              <View style={styles.salaryCard}>
-                <Text style={styles.salaryCardHeader}>Gross Salary</Text>
-                <Text style={[styles.salaryCardValue, { color: '#1d4ed8' }]}>{fmt(row?.gross_salary)}</Text>
-              </View>
-              <View style={styles.salaryCard}>
-                <Text style={styles.salaryCardHeader}>Total Deductions</Text>
-                <Text style={[styles.salaryCardValue, { color: '#dc2626' }]}>-{fmt(row?.total_deductions)}</Text>
-              </View>
-              <View style={styles.netSalaryCard}>
-                <Text style={styles.netSalaryLabel}>Net Salary Paid</Text>
-                <Text style={styles.netSalaryValue}>{fmt(row?.net_salary)}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Footer & Signature */}
-          <View style={styles.footer}>
-            <View>
-              <Text style={styles.footerText}>This is an official pay envelope slip generated for {row?.emp_name}.</Text>
-              <Text style={styles.footerText}>Issued by: HR & Payroll Department</Text>
-            </View>
-            <View style={styles.sigBox}>
-              <Text style={styles.sigText}>Receiver Signature</Text>
+            <View style={styles.salaryCard}>
+              <Text style={styles.salaryLabel}>SALARY</Text>
+              <Text style={styles.salaryValue}>{fmt(row?.net_salary)}</Text>
             </View>
           </View>
         </View>

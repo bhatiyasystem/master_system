@@ -3,9 +3,7 @@ import POSheet from './POSheet'
 
 export default function PreviewModal({ po, revisionNote, onClose }) {
   return (
-    <Modal
-      open={!!po}
-      onClose={onClose}
+    <Modal open={!!po} onClose={onClose} 
       title="Purchase Order Preview"
       size="xl"
       footer={
@@ -17,8 +15,7 @@ export default function PreviewModal({ po, revisionNote, onClose }) {
             Print / Save PDF
           </button>
         </>
-      }
-    >
+      }>
       {po && (
         <div className="bg-[#EEF1F6] p-4" id="po-print-area">
           <POSheet po={po} revisionNote={revisionNote} />

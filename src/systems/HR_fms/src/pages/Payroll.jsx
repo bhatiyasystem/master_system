@@ -228,10 +228,10 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
               .envelope-container {
                 border: 2px solid #1e3a8a;
                 border-radius: 12px;
-                padding: 24px;
-                background: #f8fafc;
+                padding: 32px;
+                background: #ffffff;
                 box-sizing: border-box;
-                min-height: 170mm;
+                min-height: 160mm;
                 display: flex;
                 flex-direction: column;
                 justify-content: space-between;
@@ -239,116 +239,83 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
               .header-band {
                 background-color: #1e3a8a;
                 color: #ffffff;
-                padding: 16px 24px;
+                padding: 20px 28px;
                 border-radius: 8px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
               }
               .company-name {
-                font-size: 22px;
+                font-size: 24px;
                 font-weight: 800;
                 letter-spacing: 0.5px;
               }
               .company-sub {
-                font-size: 10px;
+                font-size: 11px;
                 color: #93c5fd;
                 margin-top: 4px;
                 letter-spacing: 1px;
-                font-weight: 600;
+                font-weight: 700;
               }
               .period-label {
-                font-size: 10px;
+                font-size: 11px;
                 color: #93c5fd;
                 text-align: right;
                 font-weight: 700;
                 letter-spacing: 1px;
               }
               .period-val {
-                font-size: 16px;
+                font-size: 20px;
                 font-weight: 800;
                 color: #ffffff;
                 margin-top: 2px;
               }
-              .info-grid {
+              .body-grid {
                 display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 16px;
-                background: #ffffff;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+                margin-top: 40px;
+                margin-bottom: 40px;
+                align-items: center;
+              }
+              .card-name {
+                background: #f8fafc;
                 border: 1px solid #cbd5e1;
-                padding: 16px 20px;
-                border-radius: 8px;
-                margin-top: 20px;
+                padding: 28px;
+                border-radius: 12px;
               }
-              .info-label {
-                font-size: 10px;
-                color: #64748b;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-              }
-              .info-val {
-                font-size: 15px;
-                font-weight: 700;
-                color: #0f172a;
-                margin-top: 4px;
-              }
-              .salary-grid {
-                display: grid;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 12px;
-                margin-top: 20px;
-              }
-              .salary-card {
-                background: #ffffff;
-                border: 1px solid #e2e8f0;
-                padding: 14px;
-                border-radius: 8px;
-              }
-              .salary-card.net {
+              .card-salary {
                 background: #16a34a;
                 color: #ffffff;
-                border: none;
+                padding: 28px;
+                border-radius: 12px;
+                text-align: center;
               }
-              .sal-label {
-                font-size: 10px;
+              .label {
+                font-size: 12px;
                 color: #64748b;
                 font-weight: 700;
                 text-transform: uppercase;
+                letter-spacing: 1px;
               }
-              .net .sal-label {
-                color: #dcfce7;
-              }
-              .sal-val {
-                font-size: 16px;
+              .val-name {
+                font-size: 26px;
                 font-weight: 800;
-                margin-top: 4px;
-                color: #1e293b;
+                color: #0f172a;
+                margin-top: 8px;
               }
-              .net .sal-val {
-                font-size: 22px;
+              .label-sal {
+                font-size: 12px;
+                color: #dcfce7;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              }
+              .val-sal {
+                font-size: 36px;
+                font-weight: 900;
                 color: #ffffff;
-              }
-              .footer {
-                border-top: 1px dashed #94a3b8;
-                padding-top: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-                margin-top: 20px;
-              }
-              .footer-text {
-                font-size: 10px;
-                color: #64748b;
-                line-height: 1.4;
-              }
-              .sig-box {
-                border-top: 1px solid #64748b;
-                width: 160px;
-                text-align: center;
-                padding-top: 4px;
-                font-size: 10px;
-                color: #475569;
+                margin-top: 8px;
               }
             </style>
           </head>
@@ -357,7 +324,7 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
               <div class="header-band">
                 <div>
                   <div class="company-name">BHATIA ENTERPRISES</div>
-                  <div class="company-sub">SALARY DISBURSEMENT ENVELOPE — CONFIDENTIAL</div>
+                  <div class="company-sub">PAY ENVELOPE</div>
                 </div>
                 <div>
                   <div class="period-label">PAY PERIOD</div>
@@ -365,54 +332,16 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
                 </div>
               </div>
 
-              <div class="info-grid">
-                <div>
-                  <div class="info-label">Employee Name</div>
-                  <div class="info-val">${row.emp_name}</div>
+              <div class="body-grid">
+                <div class="card-name">
+                  <div class="label">Employee Name</div>
+                  <div class="val-name">${row.emp_name}</div>
                 </div>
-                <div>
-                  <div class="info-label">Employee Code</div>
-                  <div class="info-val">${row.emp_code}</div>
-                </div>
-                <div>
-                  <div class="info-label">Payable Days</div>
-                  <div class="info-val">${row.payable_days ?? '—'}</div>
-                </div>
-                <div>
-                  <div class="info-label">Status</div>
-                  <div class="info-val" style="color:#16a34a;">${(row.status || 'PAID').toUpperCase()}</div>
-                </div>
-              </div>
 
-              <div class="salary-grid">
-                <div class="salary-card">
-                  <div class="sal-label">Basic Salary</div>
-                  <div class="sal-val">${fmt(row.basic_salary)}</div>
+                <div class="card-salary">
+                  <div class="label-sal">Salary</div>
+                  <div class="val-sal">${fmt(row.net_salary)}</div>
                 </div>
-                <div class="salary-card">
-                  <div class="sal-label">Puttha Bonus</div>
-                  <div class="sal-val">${fmt(row.puttha_price)}</div>
-                </div>
-                <div class="salary-card">
-                  <div class="sal-label">Gross Salary</div>
-                  <div class="sal-val" style="color:#1d4ed8;">${fmt(row.gross_salary)}</div>
-                </div>
-                <div class="salary-card">
-                  <div class="sal-label">Total Deductions</div>
-                  <div class="sal-val" style="color:#dc2626;">-${fmt(row.total_deductions)}</div>
-                </div>
-                <div class="salary-card net">
-                  <div class="sal-label">Net Salary Paid</div>
-                  <div class="sal-val">${fmt(row.net_salary)}</div>
-                </div>
-              </div>
-
-              <div class="footer">
-                <div class="footer-text">
-                  Official pay envelope for <strong>${row.emp_name}</strong> (${row.emp_code}).<br/>
-                  Issued by: HR & Payroll Department
-                </div>
-                <div class="sig-box">Receiver Signature</div>
               </div>
             </div>
             <script>
@@ -443,7 +372,7 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
               <p className="text-blue-300 text-xs uppercase tracking-widest font-semibold">Employee Pay Envelope</p>
             </div>
             <h2 className="text-2xl font-bold mt-1">{row.emp_name}</h2>
-            <p className="text-blue-200 text-sm mt-0.5">{row.emp_code} · {monthName} {row.year}</p>
+            <p className="text-blue-200 text-sm mt-0.5">{monthName} {row.year}</p>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
             <X size={20} className="text-blue-200" />
@@ -452,50 +381,26 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
 
         {/* Envelope Preview Box */}
         <div className="p-6 space-y-6">
-          <div className="border-2 border-indigo-200 bg-indigo-50/50 rounded-xl p-5 relative overflow-hidden shadow-inner">
+          <div className="border-2 border-indigo-200 bg-indigo-50/50 rounded-xl p-6 relative overflow-hidden shadow-inner">
             <div className="absolute right-3 top-3 text-[10px] uppercase font-bold text-indigo-500 border border-indigo-200 bg-white/80 px-2 py-0.5 rounded tracking-widest">
               Landscape Envelope Format
             </div>
 
-            {/* Top Details */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 pb-4 border-b border-indigo-100">
-              <div>
-                <p className="text-[11px] text-gray-500 font-semibold uppercase">Month & Year</p>
-                <p className="text-sm font-bold text-gray-800">{monthName} {row.year}</p>
+            {/* Pay Period, Employee Name & Salary Only */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-2">
+              <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Pay Period</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">{monthName} {row.year}</p>
               </div>
-              <div>
-                <p className="text-[11px] text-gray-500 font-semibold uppercase">Employee Name</p>
-                <p className="text-sm font-bold text-gray-800">{row.emp_name}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-gray-500 font-semibold uppercase">Emp Code</p>
-                <p className="text-sm font-bold text-gray-800">{row.emp_code}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-gray-500 font-semibold uppercase">Pay Status</p>
-                <span className="inline-block text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full mt-0.5">
-                  {(row.status || 'paid').toUpperCase()}
-                </span>
-              </div>
-            </div>
 
-            {/* Salary Breakdown */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm">
-                <p className="text-xs text-gray-500 font-medium">Basic Salary</p>
-                <p className="text-sm font-bold text-gray-900">{fmt(row.basic_salary)}</p>
+              <div className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Employee Name</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">{row.emp_name}</p>
               </div>
-              <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm">
-                <p className="text-xs text-gray-500 font-medium">Gross Salary</p>
-                <p className="text-sm font-bold text-blue-700">{fmt(row.gross_salary)}</p>
-              </div>
-              <div className="bg-white rounded-lg p-3 border border-indigo-100 shadow-sm">
-                <p className="text-xs text-gray-500 font-medium">Deductions</p>
-                <p className="text-sm font-bold text-red-600">-{fmt(row.total_deductions)}</p>
-              </div>
-              <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg p-3 text-white shadow-sm">
-                <p className="text-xs text-emerald-100 font-semibold">Net Salary</p>
-                <p className="text-lg font-black">{fmt(row.net_salary)}</p>
+
+              <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl p-4 text-white shadow-sm flex flex-col justify-center">
+                <p className="text-xs text-emerald-100 font-bold uppercase tracking-wider">Salary</p>
+                <p className="text-2xl font-black mt-1">{fmt(row.net_salary)}</p>
               </div>
             </div>
           </div>
@@ -916,6 +821,194 @@ const Payroll = () => {
     await loadPayroll();
   };
 
+  const handlePrintAllEnvelopes = (targetRows) => {
+    const rowsToPrint = targetRows && targetRows.length > 0 ? targetRows : payrollData;
+    if (!rowsToPrint || rowsToPrint.length === 0) {
+      notify('No payroll records available to print envelopes', 'warn');
+      return;
+    }
+
+    try {
+      const printWindow = window.open('', '_blank', 'width=1000,height=700');
+      if (!printWindow) {
+        alert('Please allow popups for printing.');
+        return;
+      }
+
+      const envelopesHtml = rowsToPrint.map((row) => {
+        const monthName = MONTHS[(row.month || filterMonth || 1) - 1];
+        const year = row.year || filterYear;
+        return `
+          <div class="envelope-page">
+            <div class="envelope-container">
+              <div class="header-band">
+                <div>
+                  <div class="company-name">BHATIA ENTERPRISES</div>
+                  <div class="company-sub">PAY ENVELOPE</div>
+                </div>
+                <div>
+                  <div class="period-label">PAY PERIOD</div>
+                  <div class="period-val">${monthName} ${year}</div>
+                </div>
+              </div>
+
+              <div class="body-grid">
+                <div class="card-name">
+                  <div class="label">Employee Name</div>
+                  <div class="val-name">${row.emp_name}</div>
+                </div>
+
+                <div class="card-salary">
+                  <div class="label-sal">Salary</div>
+                  <div class="val-sal">${fmt(row.net_salary)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>All Pay Envelopes - ${MONTHS[filterMonth - 1]} ${filterYear}</title>
+            <style>
+              @page {
+                size: A4 landscape;
+                margin: 10mm;
+              }
+              body {
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 0;
+                color: #0f172a;
+                background-color: #ffffff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .envelope-page {
+                page-break-after: always;
+                break-after: page;
+                padding: 15px;
+                box-sizing: border-box;
+              }
+              .envelope-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+              }
+              .envelope-container {
+                border: 2px solid #1e3a8a;
+                border-radius: 12px;
+                padding: 32px;
+                background: #ffffff;
+                box-sizing: border-box;
+                min-height: 160mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+              }
+              .header-band {
+                background-color: #1e3a8a;
+                color: #ffffff;
+                padding: 20px 28px;
+                border-radius: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+              }
+              .company-name {
+                font-size: 24px;
+                font-weight: 800;
+                letter-spacing: 0.5px;
+              }
+              .company-sub {
+                font-size: 11px;
+                color: #93c5fd;
+                margin-top: 4px;
+                letter-spacing: 1px;
+                font-weight: 700;
+              }
+              .period-label {
+                font-size: 11px;
+                color: #93c5fd;
+                text-align: right;
+                font-weight: 700;
+                letter-spacing: 1px;
+              }
+              .period-val {
+                font-size: 20px;
+                font-weight: 800;
+                color: #ffffff;
+                margin-top: 2px;
+              }
+              .body-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+                margin-top: 40px;
+                margin-bottom: 40px;
+                align-items: center;
+              }
+              .card-name {
+                background: #f8fafc;
+                border: 1px solid #cbd5e1;
+                padding: 28px;
+                border-radius: 12px;
+              }
+              .card-salary {
+                background: #16a34a;
+                color: #ffffff;
+                padding: 28px;
+                border-radius: 12px;
+                text-align: center;
+              }
+              .label {
+                font-size: 12px;
+                color: #64748b;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              }
+              .val-name {
+                font-size: 26px;
+                font-weight: 800;
+                color: #0f172a;
+                margin-top: 8px;
+              }
+              .label-sal {
+                font-size: 12px;
+                color: #dcfce7;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              }
+              .val-sal {
+                font-size: 36px;
+                font-weight: 900;
+                color: #ffffff;
+                margin-top: 8px;
+              }
+            </style>
+          </head>
+          <body>
+            ${envelopesHtml}
+            <script>
+              window.onload = function() {
+                window.focus();
+                window.print();
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (err) {
+      console.error('Error printing envelopes', err);
+      notify('Failed to print envelopes', 'error');
+    }
+  };
+
   const filtered = payrollData;
 
   const toggleSelect = (id) => setSelectedIds(p => p.includes(id) ? p.filter(i => i !== id) : [...p, id]);
@@ -943,15 +1036,26 @@ const Payroll = () => {
           <h1 className="text-2xl font-bold text-gray-900">Payroll Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">Generate & manage monthly payroll from attendance data</p>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 shadow-md disabled:opacity-50 transition-all"
-        >
-          {generating
-            ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating...</>
-            : <><Play size={15} /> Generate Payroll</>}
-        </button>
+        <div className="flex items-center gap-2">
+          {payrollData.length > 0 && (
+            <button
+              onClick={() => handlePrintAllEnvelopes(payrollData)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-xl font-semibold text-sm hover:bg-purple-700 shadow-md transition-all"
+            >
+              <Printer size={15} />
+              Print All Envelopes
+            </button>
+          )}
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 shadow-md disabled:opacity-50 transition-all"
+          >
+            {generating
+              ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating...</>
+              : <><Play size={15} /> Generate Payroll</>}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -1059,6 +1163,13 @@ const Payroll = () => {
                   {btn.label}
                 </button>
               ))}
+              <button
+                onClick={() => handlePrintAllEnvelopes(payrollData.filter(r => selectedIds.includes(r.id)))}
+                className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-purple-700 transition-all"
+              >
+                <Printer size={13} />
+                Print Selected Envelopes ({selectedIds.length})
+              </button>
               <button onClick={() => setSelectedIds([])} className="text-gray-500 hover:text-gray-700 ml-auto">
                 <X size={16} />
               </button>
