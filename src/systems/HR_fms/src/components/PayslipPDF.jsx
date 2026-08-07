@@ -237,7 +237,7 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
           <View style={[styles.salaryCard, styles.salaryCardGreen]}>
             <Text style={styles.salaryCardLabel}>Earned Basic Salary</Text>
             <Text style={[styles.salaryCardValue, styles.salaryCardValueGreen]}>{fmt(row.earned_basic ?? ((actualSalary / totalDaysInMonth) * payableDays))}</Text>
-            <Text style={styles.salaryCardSub}>For {payableDays} payable days @ {actualSalary > 0 ? fmt(actualSalary / totalDaysInMonth) + '/day' : '—'}</Text>
+            <Text style={styles.salaryCardSub}>For {payableDays} present days @ {actualSalary > 0 ? fmt(actualSalary / totalDaysInMonth) + '/day' : '—'}</Text>
           </View>
         </View>
 
@@ -275,7 +275,7 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
           <View style={styles.column}>
             <Text style={styles.sectionHeading}>EARNINGS</Text>
             <View style={styles.lineRow}>
-              <Text style={styles.lineLabel}>Earned Basic ({payableDays} days)</Text>
+              <Text style={styles.lineLabel}>Earned Basic ({payableDays} present days)</Text>
               <Text style={styles.lineValue}>{fmt(row.earned_basic ?? ((actualSalary / totalDaysInMonth) * payableDays))}</Text>
             </View>
             {(row.ot_amount > 0 || row.ot_hours > 0) && (

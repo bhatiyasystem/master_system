@@ -48,11 +48,11 @@ const PayslipModal = ({ row, onClose }) => {
               <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Earnings</p>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Contracted Salary</span>
+                  <span className="text-gray-600">Base Salary</span>
                   <span className="font-medium text-gray-900">{fmt(row.basic_salary)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Earned Basic ({row.payable_days || 0} days)</span>
+                  <span className="text-gray-600">Earned Basic ({row.payable_days || 0} present days)</span>
                   <span className="font-medium text-gray-900">{fmt(row.earned_basic ?? ((row.basic_salary / 30) * (row.payable_days || 0)))}</span>
                 </div>
                 {(row.ot_amount > 0 || row.ot_hours > 0) && (
@@ -249,85 +249,75 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
                 justify-content: space-between;
               }
               .header-band {
-                background-color: #1e3a8a;
+                background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 50%, #0f172a 100%);
                 color: #ffffff;
-                padding: 20px 28px;
-                border-radius: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                padding: 24px 32px;
+                border-radius: 12px;
               }
-              .company-name {
-                font-size: 24px;
-                font-weight: 800;
-                letter-spacing: 0.5px;
-              }
-              .company-sub {
+              .header-sub {
                 font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
                 color: #93c5fd;
+                font-weight: 700;
+              }
+              .header-title {
+                font-size: 26px;
+                font-weight: 800;
+                color: #ffffff;
                 margin-top: 4px;
-                letter-spacing: 1px;
-                font-weight: 700;
               }
-              .period-label {
-                font-size: 11px;
-                color: #93c5fd;
-                text-align: right;
-                font-weight: 700;
-                letter-spacing: 1px;
-              }
-              .period-val {
-                font-size: 20px;
-                font-weight: 800;
-                color: #ffffff;
+              .header-sub2 {
+                font-size: 13px;
+                color: #bfdbfe;
                 margin-top: 2px;
               }
               .body-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 24px;
-                margin-top: 40px;
-                margin-bottom: 40px;
-                align-items: center;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 20px;
+                margin-top: 36px;
+                margin-bottom: 36px;
+                align-items: stretch;
               }
-              .card-name {
-                background: #f8fafc;
+              .card-box {
+                background: #ffffff;
                 border: 1px solid #cbd5e1;
-                padding: 28px;
+                padding: 24px;
                 border-radius: 12px;
               }
               .card-salary {
                 background: #16a34a;
                 color: #ffffff;
-                padding: 28px;
+                padding: 24px;
                 border-radius: 12px;
-                text-align: center;
               }
               .label {
-                font-size: 12px;
+                font-size: 11px;
                 color: #64748b;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 1px;
               }
-              .val-name {
-                font-size: 26px;
+              .val {
+                font-size: 20px;
                 font-weight: 800;
                 color: #0f172a;
-                margin-top: 8px;
+                margin-top: 6px;
+                word-break: break-word;
               }
               .label-sal {
-                font-size: 12px;
+                font-size: 11px;
                 color: #dcfce7;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 1px;
               }
               .val-sal {
-                font-size: 36px;
+                font-size: 28px;
                 font-weight: 900;
                 color: #ffffff;
-                margin-top: 8px;
+                margin-top: 6px;
               }
             </style>
           </head>
@@ -335,19 +325,21 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
             <div class="envelope-container">
               <div class="header-band">
                 <div>
-                  <div class="company-name">BHATIA ENTERPRISES</div>
-                  <div class="company-sub">PAY ENVELOPE</div>
-                </div>
-                <div>
-                  <div class="period-label">PAY PERIOD</div>
-                  <div class="period-val">${monthName} ${row.year}</div>
+                  <div class="header-sub">EMPLOYEE PAY ENVELOPE</div>
+                  <div class="header-title">${row.emp_name}</div>
+                  <div class="header-sub2">${monthName} ${row.year}</div>
                 </div>
               </div>
 
               <div class="body-grid">
-                <div class="card-name">
+                <div class="card-box">
+                  <div class="label">Pay Period</div>
+                  <div class="val">${monthName} ${row.year}</div>
+                </div>
+
+                <div class="card-box">
                   <div class="label">Employee Name</div>
-                  <div class="val-name">${row.emp_name}</div>
+                  <div class="val">${row.emp_name}</div>
                 </div>
 
                 <div class="card-salary">
@@ -741,19 +733,21 @@ const Payroll = () => {
             <div class="envelope-container">
               <div class="header-band">
                 <div>
-                  <div class="company-name">BHATIA ENTERPRISES</div>
-                  <div class="company-sub">PAY ENVELOPE</div>
-                </div>
-                <div>
-                  <div class="period-label">PAY PERIOD</div>
-                  <div class="period-val">${monthName} ${year}</div>
+                  <div class="header-sub">EMPLOYEE PAY ENVELOPE</div>
+                  <div class="header-title">${row.emp_name}</div>
+                  <div class="header-sub2">${monthName} ${year}</div>
                 </div>
               </div>
 
               <div class="body-grid">
-                <div class="card-name">
+                <div class="card-box">
+                  <div class="label">Pay Period</div>
+                  <div class="val">${monthName} ${year}</div>
+                </div>
+
+                <div class="card-box">
                   <div class="label">Employee Name</div>
-                  <div class="val-name">${row.emp_name}</div>
+                  <div class="val">${row.emp_name}</div>
                 </div>
 
                 <div class="card-salary">
@@ -807,85 +801,75 @@ const Payroll = () => {
                 justify-content: space-between;
               }
               .header-band {
-                background-color: #1e3a8a;
+                background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 50%, #0f172a 100%);
                 color: #ffffff;
-                padding: 20px 28px;
-                border-radius: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                padding: 24px 32px;
+                border-radius: 12px;
               }
-              .company-name {
-                font-size: 24px;
-                font-weight: 800;
-                letter-spacing: 0.5px;
-              }
-              .company-sub {
+              .header-sub {
                 font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
                 color: #93c5fd;
+                font-weight: 700;
+              }
+              .header-title {
+                font-size: 26px;
+                font-weight: 800;
+                color: #ffffff;
                 margin-top: 4px;
-                letter-spacing: 1px;
-                font-weight: 700;
               }
-              .period-label {
-                font-size: 11px;
-                color: #93c5fd;
-                text-align: right;
-                font-weight: 700;
-                letter-spacing: 1px;
-              }
-              .period-val {
-                font-size: 20px;
-                font-weight: 800;
-                color: #ffffff;
+              .header-sub2 {
+                font-size: 13px;
+                color: #bfdbfe;
                 margin-top: 2px;
               }
               .body-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 24px;
-                margin-top: 40px;
-                margin-bottom: 40px;
-                align-items: center;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 20px;
+                margin-top: 36px;
+                margin-bottom: 36px;
+                align-items: stretch;
               }
-              .card-name {
-                background: #f8fafc;
+              .card-box {
+                background: #ffffff;
                 border: 1px solid #cbd5e1;
-                padding: 28px;
+                padding: 24px;
                 border-radius: 12px;
               }
               .card-salary {
                 background: #16a34a;
                 color: #ffffff;
-                padding: 28px;
+                padding: 24px;
                 border-radius: 12px;
-                text-align: center;
               }
               .label {
-                font-size: 12px;
+                font-size: 11px;
                 color: #64748b;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 1px;
               }
-              .val-name {
-                font-size: 26px;
+              .val {
+                font-size: 20px;
                 font-weight: 800;
                 color: #0f172a;
-                margin-top: 8px;
+                margin-top: 6px;
+                word-break: break-word;
               }
               .label-sal {
-                font-size: 12px;
+                font-size: 11px;
                 color: #dcfce7;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 1px;
               }
               .val-sal {
-                font-size: 36px;
+                font-size: 28px;
                 font-weight: 900;
                 color: #ffffff;
-                margin-top: 8px;
+                margin-top: 6px;
               }
             </style>
           </head>
@@ -907,7 +891,27 @@ const Payroll = () => {
     }
   };
 
-  const filtered = payrollData;
+  const totalDaysInMonth = (filterYear && filterMonth) ? new Date(filterYear, filterMonth, 0).getDate() : 30;
+
+  const filtered = payrollData.map(r => {
+    const presentDays = parseFloat(r.payable_days) || 0;
+    const baseSalary = parseFloat(r.basic_salary) || 0;
+    const earnedBasic = parseFloat(((baseSalary / totalDaysInMonth) * presentDays).toFixed(2));
+    const otAmount = parseFloat(r.ot_amount || 0);
+    const putthaPrice = parseFloat(r.puttha_price || 0);
+
+    const grossSalary = parseFloat((earnedBasic + otAmount + putthaPrice).toFixed(2));
+    const totalDeductions = parseFloat(r.total_deductions || 0);
+    const rawNet = Math.max(0, grossSalary - totalDeductions);
+    const netSalary = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
+
+    return {
+      ...r,
+      earned_basic: earnedBasic,
+      gross_salary: grossSalary,
+      net_salary: netSalary,
+    };
+  });
 
   const toggleSelect = (id) => setSelectedIds(p => p.includes(id) ? p.filter(i => i !== id) : [...p, id]);
   const toggleAll = () => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(r => r.id));

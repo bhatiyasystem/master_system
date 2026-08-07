@@ -441,17 +441,18 @@ export function parseOtHours(otValue) {
 export function calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice = 0, advance = 0, loanDeduction = 0, salaryAdvanceDeduction = 0, otHours = 0) {
   const monthlySalary = parseFloat(employee.salary || 0);
 
-  // Basic Salary column matches full month Employee Base Salary without present-day deduction
+  // Basic Salary column matches full month Employee Base Salary (same as Employee Management)
   const basicSalary = parseFloat(monthlySalary.toFixed(2));
 
-  // Earned Basic Salary is calculated based on how many days the employee was present
+  // Earned Basic Salary for Gross calculation based on present days
   const daysInMonth = totalDaysInMonth > 0 ? totalDaysInMonth : 30;
-  const earnedBasic = parseFloat(((monthlySalary / daysInMonth) * payableDays).toFixed(2));
+  const presentDays = parseFloat(payableDays) || 0;
+  const earnedBasic = parseFloat(((monthlySalary / daysInMonth) * presentDays).toFixed(2));
 
   const parsedOtHours = parseOtHours(otHours);
   const otAmount = parseFloat((parsedOtHours * 50).toFixed(2));
 
-  // Gross Salary is based on present days: Earned Basic + Puttha Price + OT Amount (at ₹50/hr)
+  // Gross Salary = (basic_salary / totalDaysInMonth * presentDays) + Puttha Price + OT Amount
   const gross = parseFloat((earnedBasic + putthaPrice + otAmount).toFixed(2));
 
   // Deductions
@@ -459,8 +460,7 @@ export function calculatePayroll(employee, payableDays, totalDaysInMonth, puttha
   const salAdvDed = parseFloat(salaryAdvanceDeduction.toFixed(2));
   const totalDeductions = parseFloat((loanDed + salAdvDed).toFixed(2));
 
-  // Net Salary = Gross Salary - Total Deductions
-  // Roundoff UPWARDS to nearest 10 (e.g. 5381 -> 5390, not 5380)
+  // Net Salary = Gross Salary - Total Deductions (round up to nearest 10)
   const rawNet = parseFloat((gross - totalDeductions).toFixed(2));
   const net = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
@@ -886,9 +886,9 @@ export async function fetchPayrollPaginated({ year, month, status, empCode, sear
       .select('employee_id, puttha_status, salary')
       .in('employee_id', empCodes);
 
+    const empSalaryMap = {};
     if (emps && emps.length > 0) {
       const empStatusMap = {};
-      const empSalaryMap = {};
       emps.forEach(e => {
         empStatusMap[e.employee_id] = e.puttha_status || 'Yes';
         if (e.salary !== undefined && e.salary !== null) {
@@ -917,11 +917,17 @@ export async function fetchPayrollPaginated({ year, month, status, empCode, sear
       }
     }
 
-    // Check if any row has net_salary that is not rounded UPWARDS to nearest 10 (e.g., 5381 -> 5390)
+    // Check if any row has gross_salary or net_salary that requires recalculation
     data.forEach(r => {
-      const rawNet = Math.max(0, (parseFloat(r.gross_salary) || 0) - (parseFloat(r.total_deductions) || 0));
+      const daysInMonth = (year && month) ? new Date(year, month, 0).getDate() : 30;
+      const presentDays = parseFloat(r.payable_days) || 0;
+      const baseSalary = empSalaryMap[r.emp_code] !== undefined ? empSalaryMap[r.emp_code] : (parseFloat(r.basic_salary) || 0);
+      const earnedBasic = parseFloat(((baseSalary / daysInMonth) * presentDays).toFixed(2));
+      const expectedGross = parseFloat((earnedBasic + (parseFloat(r.ot_amount) || 0) + (parseFloat(r.puttha_price) || 0)).toFixed(2));
+      const rawNet = Math.max(0, expectedGross - (parseFloat(r.total_deductions) || 0));
       const expectedNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
-      if (parseFloat(r.net_salary) !== expectedNet) {
+
+      if (Math.abs(parseFloat(r.gross_salary) - expectedGross) > 0.01 || parseFloat(r.net_salary) !== expectedNet) {
         needsRecalc = true;
       }
     });
@@ -1110,15 +1116,16 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
   // Update every payroll row in the batch
   for (const row of payrollRows) {
-    const days = parseFloat(row.payable_days) || 0;
-    const isEligible = days >= 15 && (row.puttha_status || 'Yes') !== 'No';
+    const presentDays = parseFloat(row.payable_days) || 0;
+    const isEligible = presentDays >= 15 && (row.puttha_status || 'Yes') !== 'No';
 
     const putthaPrice = isEligible ? batchPutthaPrice : 0;
-    const basicSalary = empSalaryMap[row.emp_code] !== undefined
+    const empBaseSalary = empSalaryMap[row.emp_code] !== undefined
       ? empSalaryMap[row.emp_code]
-      : parseFloat(row.basic_salary || 0);
+      : (parseFloat(row.basic_salary) || 0);
 
-    const earnedBasic = parseFloat(((basicSalary / totalDaysInMonth) * days).toFixed(2));
+    const basicSalary = parseFloat(empBaseSalary.toFixed(2));
+    const earnedBasic = parseFloat(((empBaseSalary / totalDaysInMonth) * presentDays).toFixed(2));
     const otHours = parseOtHours(row.ot_hours || row.total_ot || 0);
     const otAmount = parseFloat((otHours * 50).toFixed(2));
 
@@ -1145,7 +1152,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
 export async function syncPayrollForEmployeeSalary(empCode, salary) {
   if (!empCode || salary === undefined || salary === null) return;
-  const basicSalary = parseFloat(salary) || 0;
+  const _empBaseSalary = parseFloat(salary) || 0;
 
   const { data: payrollRows, error } = await supabase
     .from('payroll')
@@ -1158,9 +1165,11 @@ export async function syncPayrollForEmployeeSalary(empCode, salary) {
     const year = row.year || new Date().getFullYear();
     const month = row.month || (new Date().getMonth() + 1);
     const totalDaysInMonth = new Date(year, month, 0).getDate() || 30;
-    const days = parseFloat(row.payable_days) || 0;
+    const presentDays = parseFloat(row.payable_days) || 0;
 
-    const earnedBasic = parseFloat(((basicSalary / totalDaysInMonth) * days).toFixed(2));
+    const empBaseSalary = parseFloat(salary) || 0;
+    const basicSalary = parseFloat(empBaseSalary.toFixed(2));
+    const earnedBasic = parseFloat(((empBaseSalary / totalDaysInMonth) * presentDays).toFixed(2));
     const putthaPrice = parseFloat(row.puttha_price || 0);
     const otHours = parseOtHours(row.ot_hours || row.total_ot || 0);
     const otAmount = parseFloat((otHours * 50).toFixed(2));

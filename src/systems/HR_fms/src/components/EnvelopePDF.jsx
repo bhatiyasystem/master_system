@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
 const fmt = (n) =>
   `₹${(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const EnvelopePDF = ({ row, companyName = 'Bhatia Enterprises' }) => {
+const EnvelopePDF = ({ row, _companyName = 'Bhatia Enterprises' }) => {
   const monthName = MONTHS[(row?.month || 1) - 1];
   const year = row?.year || new Date().getFullYear();
 
@@ -119,17 +119,19 @@ const EnvelopePDF = ({ row, companyName = 'Bhatia Enterprises' }) => {
           {/* Header */}
           <View style={styles.headerBand}>
             <View>
-              <Text style={styles.companyName}>{companyName}</Text>
-              <Text style={styles.companyTagline}>PAY ENVELOPE</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <Text style={styles.payslipLabel}>PAY PERIOD</Text>
-              <Text style={styles.payPeriod}>{monthName} {year}</Text>
+              <Text style={styles.envelopeSub}>EMPLOYEE PAY ENVELOPE</Text>
+              <Text style={styles.empTitle}>{row?.emp_name || '—'}</Text>
+              <Text style={styles.periodSub}>{monthName} {year}</Text>
             </View>
           </View>
 
-          {/* Main Content - Employee Name & Salary Only */}
+          {/* Main Content - Pay Period, Employee Name & Salary */}
           <View style={styles.bodyContent}>
+            <View style={styles.infoCard}>
+              <Text style={styles.label}>PAY PERIOD</Text>
+              <Text style={styles.empNameValue}>{monthName} {year}</Text>
+            </View>
+
             <View style={styles.infoCard}>
               <Text style={styles.label}>EMPLOYEE NAME</Text>
               <Text style={styles.empNameValue}>{row?.emp_name || '—'}</Text>
