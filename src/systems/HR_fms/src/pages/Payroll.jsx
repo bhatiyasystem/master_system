@@ -1126,8 +1126,15 @@ const Payroll = () => {
                               {row.payable_days ?? '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.payable_days ? (row.basic_salary / row.payable_days) * 31 : 0)}</td>
-                          <td className="px-4 py-3 text-right text-sm text-gray-700">{(row.ot_amount > 0 || row.ot_hours > 0) ? (<span className="inline-flex items-center gap-1 font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-xs border border-amber-200">{row.ot_hours} hrs ({fmt(row.ot_amount)})</span>) : ('—')}
+                          <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-700">
+                            {(row.ot_amount > 0 || row.ot_hours > 0) ? (
+                              <span className="inline-flex items-center gap-1 font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-xs border border-amber-200">
+                                {row.ot_hours} hrs ({fmt(row.ot_amount)})
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.puttha_price)}</td>
                           <td className="px-4 py-3 text-center text-sm">
