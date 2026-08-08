@@ -106,7 +106,7 @@ const EmployeeModal = ({ existing, onSave, onClose }) => {
           <div className="grid grid-cols-2 gap-3">
             {textField('Employee ID', 'employee_id', 'e.g. EMP1001', true)}
             {textField('Full Name', 'name', 'Enter name', true)}
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date of Joining *</label>
               <input
@@ -140,7 +140,7 @@ const EmployeeModal = ({ existing, onSave, onClose }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">puttha status</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Puttha Status</label>
                 <select
                   value={form.puttha_status}
                   onChange={(e) => set('puttha_status', e.target.value)}
@@ -603,22 +603,20 @@ const Employee = () => {
         <div className="border-b border-gray-200 bg-gray-50">
           <nav className="flex -mb-px">
             <button
-              className={`py-4 px-6 font-semibold text-sm border-b-2 flex items-center transition-colors ${
-                activeTab === 'joining'
-                  ? 'border-indigo-600 text-indigo-600 bg-white'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-6 font-semibold text-sm border-b-2 flex items-center transition-colors ${activeTab === 'joining'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               onClick={() => setActiveTab('joining')}
             >
               <CheckCircle size={16} className="mr-2" />
               Active ({activeCount})
             </button>
             <button
-              className={`py-4 px-6 font-semibold text-sm border-b-2 flex items-center transition-colors ${
-                activeTab === 'leaving'
-                  ? 'border-indigo-600 text-indigo-600 bg-white'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-6 font-semibold text-sm border-b-2 flex items-center transition-colors ${activeTab === 'leaving'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               onClick={() => setActiveTab('leaving')}
             >
               <Clock size={16} className="mr-2" />

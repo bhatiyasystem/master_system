@@ -185,7 +185,13 @@ function DiffCell({ orderQty, approvedQty }) {
                   className="flex items-center gap-1.5 text-left text-[13px] font-bold text-[#173254]"
                 >
                   {expanded[v] ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                  {v} <span className="font-normal text-gray-500">({items.length} item{items.length > 1 ? 's' : ''})</span>
+                  <span>{v}</span>
+                  <span className="font-normal text-gray-500">({items.length} item{items.length > 1 ? 's' : ''})</span>
+                  {items.length > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1">
+                      {items.length}
+                    </span>
+                  )}
                 </button>
                <div className="flex items-center gap-2">
                   <button

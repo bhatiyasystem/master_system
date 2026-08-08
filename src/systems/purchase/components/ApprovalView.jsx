@@ -24,14 +24,21 @@ export default function ApprovalView() {
     load();
   }, []);
 
+  const pendingCount = useMemo(() => (indents || []).filter((i) => i.orderFormula > 0 && i.status === 'Pending').length, [indents]);
+
   return (
     <CardPanel title="Second Stage Approval" desc="Items with Order Formula > 0, grouped by vendor — approve or reject a whole vendor's items in one action, and adjust quantity if needed.">
-      <div className="mb-4 inline-flex rounded-lg bg-gray-100 p-1">
+      <div className="mb-4 inline-flex rounded-lg bg-gray-100 p-1 items-center">
         <button
-          className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}
+          className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}
           onClick={() => setTab('pending')}
         >
-          Pending
+          <span>Pending</span>
+          {pendingCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+              {pendingCount}
+            </span>
+          )}
         </button>
         <button
           className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'history' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}

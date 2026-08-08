@@ -1,9 +1,12 @@
 import { X, CalendarClock, Users2, MessageSquareText } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-;
-;
+import { motion } from 'framer-motion';
+import TemplatePicker from './TemplatePicker';
+import AudienceSelector from './AudienceSelector';
+import ScheduleSummary from './ScheduleSummary';
+import TemplatePreview from './TemplatePreview';
 import supabase from '../../../../../SupabaseClient';
-import { fetchApprovedTemplates, createSchedule, updateSchedule, resolveAndScheduleRecipients, reResolveRecipients,  } from '../../services/festivalSchedulerService';
+import { fetchApprovedTemplates, createSchedule, updateSchedule, resolveAndScheduleRecipients, reResolveRecipients, } from '../../services/festivalSchedulerService';
 import { useMagicToast } from '../../../../../context/MagicToastContext';
 
 const emptyForm = {

@@ -39,14 +39,22 @@ export default function ReceivingView() {
         return map;
     }, [pos]);
 
+    const receivedDeliveryIds = useMemo(() => new Set((receivings || []).map((r) => r.deliveryId)), [receivings]);
+    const pendingCount = useMemo(() => (deliveries || []).filter((d) => !receivedDeliveryIds.has(d.id)).length, [deliveries, receivedDeliveryIds]);
+
     return (
         <CardPanel title="Receiving" desc="Confirm goods received against each delivery, product by product.">
-            <div className="mb-4 inline-flex rounded-lg bg-gray-100 p-1">
+            <div className="mb-4 inline-flex rounded-lg bg-gray-100 p-1 items-center">
                 <button
-                    className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}
+                    className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}
                     onClick={() => setTab('pending')}
                 >
-                    Pending
+                    <span>Pending</span>
+                    {pendingCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                            {pendingCount}
+                        </span>
+                    )}
                 </button>
                 <button
                     className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'history' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}

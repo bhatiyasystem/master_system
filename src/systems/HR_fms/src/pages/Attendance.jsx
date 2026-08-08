@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { FileSpreadsheet, X, Upload, Users, AlertCircle, CheckCircle, Search, RefreshCw, Calendar, Eye, Edit3 } from 'lucide-react';
-import { parseAttendanceExcel, createUploadRecord, updateUploadRecord, saveAttendanceRows, fetchAttendanceMonthlyPaginated, updatePayableDaysOverride, STATUS_COLORS, STATUS_LABELS, MONTHS,  } from '../services/supabaseHR';
+import { parseAttendanceExcel, createUploadRecord, updateUploadRecord, saveAttendanceRows, fetchAttendanceMonthlyPaginated, fetchAttendanceMonthlyStats, calculateRowLeaveStats, updatePayableDaysOverride, STATUS_COLORS, STATUS_LABELS, MONTHS } from '../services/supabaseHR';
+import { fillDailyStatusFromSummary } from '../services/supabaseHR';
 
 // ── Upload Zone ───────────────────────────────────────────────────────────────
 const UploadZone = ({ onFile, uploading }) => {
@@ -56,7 +57,7 @@ const OverrideModal = ({ row, onSave, onClose }) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(row.id, parseFloat(days), reason);
+      await onSave(row.id || row.emp_code, parseFloat(days), reason, row.year, row.month);
       onClose();
     } finally {
       setSaving(false);
@@ -118,6 +119,9 @@ const OverrideModal = ({ row, onSave, onClose }) => {
 
 // ── Daily Grid Modal ──────────────────────────────────────────────────────────
 const DailyGridModal = ({ row, daysInMonth, onClose }) => {
+  const leaveStats = calculateRowLeaveStats(row);
+  const dailyStatusMap = fillDailyStatusFromSummary(row, row.year, row.month);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-screen overflow-y-auto">
@@ -131,7 +135,7 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
         <div className="p-6">
           <div className="grid grid-cols-7 gap-2 mb-6">
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
-              const code = row.daily_status?.[day] || row.daily_status?.[String(day)];
+              const code = dailyStatusMap?.[day] || dailyStatusMap?.[String(day)];
               const color = code ? (STATUS_COLORS[code] || '#94a3b8') : '#f3f4f6';
               return (
                 <div
@@ -349,8 +353,8 @@ const AttendanceMonthly = () => {
 
   const filteredData = tableData;
 
-  const handleOverrideSave = async (id, days, reason) => {
-    await updatePayableDaysOverride(id, days, reason);
+  const handleOverrideSave = async (id, days, reason, year, month) => {
+    await updatePayableDaysOverride(id, days, reason, year || filterYear, month || filterMonth);
     await loadData();
   };
 
@@ -515,36 +519,71 @@ const AttendanceMonthly = () => {
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">#</th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">Emp Code</th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">Name</th>
+                        {previewData && Array.from({ length: new Date(previewData.year, previewData.month, 0).getDate() }, (_, i) => i + 1).map(d => (
+                          <th key={d} className="px-1 py-2.5 text-center text-xs font-semibold text-indigo-900">{d}</th>
+                        ))}
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-800">P</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-700">A</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-purple-700">H</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-700">HP</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-600">WO</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-blue-700">WOP</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">Leave</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">CL</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">PL</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">SL</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">Other Leave</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-800">Total Leave</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-900">Total Present</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-900">Total Pay Days</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-800">OT</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-800">Payable Days</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-800">Late</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-orange-800">Early</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {previewData.employees.map((emp, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-3 py-2.5 text-gray-400 text-xs">{idx + 1}</td>
-                          <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{emp.emp_code || '—'}</td>
-                          <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{emp.emp_name || '—'}</td>
-                          <td className="px-3 py-2.5 text-center font-semibold text-green-700">{emp.total_present ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center font-semibold text-red-600">{emp.total_absent ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{emp.total_holiday ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-gray-500">{emp.total_wo ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-blue-600">{emp.total_wop ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-amber-600">{emp.total_leave ?? '—'}</td>
-                          <td className="px-3 py-2.5 text-center text-amber-700 font-medium">{emp.total_ot || (emp.ot_hours ? `${emp.ot_hours} hrs` : '—')}</td>
-                          <td className="px-3 py-2.5 text-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
-                              {emp.payable_days ?? '—'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {previewData.employees.map((emp, idx) => {
+                        const leaveStats = calculateRowLeaveStats(emp);
+                        const dailyStatusMap = fillDailyStatusFromSummary(emp, previewData.year, previewData.month);
+                        const daysInMonthForPreview = new Date(previewData.year, previewData.month, 0).getDate();
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-3 py-2.5 text-gray-400 text-xs">{idx + 1}</td>
+                            <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{emp.emp_code || '—'}</td>
+                            <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{emp.emp_name || '—'}</td>
+                            {Array.from({ length: daysInMonthForPreview }, (_, i) => i + 1).map(d => {
+                              const code = dailyStatusMap?.[d] || dailyStatusMap?.[String(d)] || '';
+                              const textColor = code ? (STATUS_COLORS[code] || '#475569') : '#d1d5db';
+                              return (
+                                <td key={d} className="px-1 py-2 text-center" style={{ minWidth: 26 }}>
+                                  <span
+                                    className="text-xs font-bold rounded"
+                                    style={{ color: textColor, fontSize: 10 }}
+                                    title={STATUS_LABELS[code] || code}
+                                  >
+                                    {code || '·'}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                            <td className="px-3 py-2.5 text-center font-semibold text-green-700">{emp.total_present ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center font-semibold text-red-600">{emp.total_absent ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{emp.total_holiday ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-indigo-600 font-semibold">{emp.total_half_present ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-gray-500">{emp.total_wo ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-blue-600">{emp.total_wop ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-600 font-medium">{leaveStats.cl}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-600 font-medium">{leaveStats.pl}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-600 font-medium">{leaveStats.sl}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-600">{emp.total_other_leave ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-700 font-semibold">{emp.total_leave ?? leaveStats.totalLeave}</td>
+                            <td className="px-3 py-2.5 text-center text-green-800 font-bold">{emp.total_present ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-indigo-800 font-bold">{emp.payable_days ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-700 font-medium">{emp.total_ot || '00:00'}</td>
+                            <td className="px-3 py-2.5 text-center text-red-600">{emp.total_late ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center text-orange-600">{emp.total_early ?? 0}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -646,114 +685,142 @@ const AttendanceMonthly = () => {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-indigo-50 border-b border-indigo-100">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">#</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">Emp Code</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">Name</th>
-                      {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
-                        <th key={d} className="px-1 py-3 text-center text-xs font-semibold text-indigo-900">{d}</th>
-                      ))}
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-green-800 bg-green-50">P</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-red-800 bg-red-50">A</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-purple-800 bg-purple-50">H</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 bg-gray-50">WO</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-blue-800 bg-blue-50">WOP</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">OT</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-800 bg-indigo-50">Payable</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredData.map((row, idx) => {
-                      const effectiveDays = row.payable_days_override ?? row.payable_days;
-                      const hasOverride = row.payable_days_override != null;
-                      return (
-                        <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm text-gray-400">{row.sl_no || idx + 1}</td>
-                          <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
-                          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
-                            const code = row.daily_status?.[d] || row.daily_status?.[String(d)] || '';
-                            const textColor = code ? STATUS_COLORS[code] : '#d1d5db';
-                            return (
-                              <td key={d} className="px-1 py-2 text-center" style={{ minWidth: 28 }}>
-                                <span
-                                  className="text-xs font-bold rounded"
-                                  style={{ color: textColor, fontSize: 10 }}
-                                  title={STATUS_LABELS[code] || code}
-                                >
-                                  {code || '·'}
-                                </span>
-                              </td>
-                            );
-                          })}
-                          <td className="px-3 py-3 text-center text-sm font-semibold text-green-700">{row.total_present}</td>
-                          <td className="px-3 py-3 text-center text-sm font-semibold text-red-600">{row.total_absent}</td>
-                          <td className="px-3 py-3 text-center text-sm text-purple-700 font-semibold">{row.total_holiday ?? 0}</td>
-                          <td className="px-3 py-3 text-center text-sm text-gray-500">{row.total_wo}</td>
-                          <td className="px-3 py-3 text-center text-sm text-blue-600">{row.total_wop}</td>
-                          <td className="px-3 py-3 text-center text-sm text-amber-700 font-medium">{row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : '—')}</td>
-                          <td className="px-3 py-3 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
-                              ${hasOverride ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
-                              {effectiveDays}
-                              {hasOverride && <span className="ml-1 text-amber-500" title={`Override: ${row.override_reason}`}>⚠</span>}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-1 justify-center">
-                              <button
-                                onClick={() => setGridRow(row)}
-                                title="View day-wise grid"
-                                className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600"
-                              >
-                                <Eye size={14} />
-                              </button>
-                              <button
-                                onClick={() => setOverrideRow(row)}
-                                title="Override payable days"
-                                className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600"
-                              >
-                                <Edit3 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="bg-indigo-50 border-b border-indigo-100">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">#</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">Emp Code</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">Name</th>
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                          <th key={d} className="px-1 py-3 text-center text-xs font-semibold text-indigo-900">{d}</th>
+                        ))}
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-green-800 bg-green-50">P</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-red-800 bg-red-50">A</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-purple-800 bg-purple-50">H</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-800 bg-indigo-50">HP</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 bg-gray-50">WO</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-blue-800 bg-blue-50">WOP</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">CL</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">PL</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">SL</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">Other Leave</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-900 bg-amber-100">Total Leave</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-green-900 bg-green-100">Total Present</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900 bg-indigo-100">Total Pay Days</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">OT</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-red-800 bg-red-50">Late</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-orange-800 bg-orange-50">Early</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredData.map((row, idx) => {
+                        const leaveStats = calculateRowLeaveStats(row);
+                        const dailyStatusMap = fillDailyStatusFromSummary(row, row.year || filterYear, row.month || filterMonth);
+                        const meta = row.daily_status?._meta || {};
+                        const effectiveDays = row.payable_days_override ?? row.payable_days ?? meta.payable_days ?? 0;
+                        const hasOverride = row.payable_days_override != null;
+                        const hpCount = row.total_half_present ?? row.total_hp ?? meta.total_hp ?? 0;
+                        const otherLeave = row.total_other_leave ?? meta.total_other_leave ?? 0;
+                        const totalLeaveVal = row.total_leave ?? leaveStats.totalLeave ?? meta.total_leave ?? 0;
+                        const totalPresentVal = row.total_present ?? meta.total_present ?? 0;
+                        const lateVal = row.total_late ?? meta.total_late ?? 0;
+                        const earlyVal = row.total_early ?? meta.total_early ?? 0;
 
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-white gap-3 rounded-b-2xl">
-                <div className="text-xs text-gray-500 font-medium">
-                  Showing <span className="font-bold text-gray-800">{totalRecords > 0 ? (page - 1) * pageSize + 1 : 0}</span> to{' '}
-                  <span className="font-bold text-gray-800">{Math.min(page * pageSize, totalRecords)}</span> of{' '}
-                  <span className="font-bold text-gray-800">{totalRecords}</span> records (Page {page} of {totalPages || 1})
+                        return (
+                          <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-sm text-gray-400">{row.sl_no || idx + 1}</td>
+                            <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
+                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
+                              const code = dailyStatusMap?.[d] || dailyStatusMap?.[String(d)] || '';
+                              const textColor = code ? (STATUS_COLORS[code] || '#475569') : '#d1d5db';
+                              return (
+                                <td key={d} className="px-1 py-2 text-center" style={{ minWidth: 28 }}>
+                                  <span
+                                    className="text-xs font-bold rounded"
+                                    style={{ color: textColor, fontSize: 10 }}
+                                    title={STATUS_LABELS[code] || code}
+                                  >
+                                    {code || '·'}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                            <td className="px-3 py-3 text-center text-sm font-semibold text-green-700">{row.total_present ?? 0}</td>
+                            <td className="px-3 py-3 text-center text-sm font-semibold text-red-600">{row.total_absent ?? 0}</td>
+                            <td className="px-3 py-3 text-center text-sm text-purple-700 font-semibold">{row.total_holiday ?? 0}</td>
+                            <td className="px-3 py-3 text-center text-sm text-indigo-600 font-semibold">{hpCount}</td>
+                            <td className="px-3 py-3 text-center text-sm text-gray-500">{row.total_wo ?? 0}</td>
+                            <td className="px-3 py-3 text-center text-sm text-blue-600">{row.total_wop ?? 0}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">{leaveStats.cl}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">{leaveStats.pl}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">{leaveStats.sl}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600">{otherLeave}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-700 font-semibold">{totalLeaveVal}</td>
+                            <td className="px-3 py-3 text-center text-sm text-green-800 font-bold">{totalPresentVal}</td>
+                            <td className="px-3 py-3 text-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+                              ${hasOverride ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                                {effectiveDays}
+                                {hasOverride && <span className="ml-1 text-amber-500" title={`Override: ${row.override_reason}`}>⚠</span>}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-700 font-medium">{row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : '00:00')}</td>
+                            <td className="px-3 py-3 text-center text-sm text-red-600">{lateVal}</td>
+                            <td className="px-3 py-3 text-center text-sm text-orange-600">{earlyVal}</td>
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-1 justify-center">
+                                <button
+                                  onClick={() => setGridRow(row)}
+                                  title="View day-wise grid"
+                                  className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600"
+                                >
+                                  <Eye size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setOverrideRow(row)}
+                                  title="Override payable days"
+                                  className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600"
+                                >
+                                  <Edit3 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page <= 1 || loading}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-xs font-semibold px-2.5 py-1 bg-gray-100 rounded-md text-gray-800">
-                    {page} / {totalPages || 1}
-                  </span>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages || loading}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
+
+                {/* Pagination Controls */}
+                <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-white gap-3 rounded-b-2xl">
+                  <div className="text-xs text-gray-500 font-medium">
+                    Showing <span className="font-bold text-gray-800">{totalRecords > 0 ? (page - 1) * pageSize + 1 : 0}</span> to{' '}
+                    <span className="font-bold text-gray-800">{Math.min(page * pageSize, totalRecords)}</span> of{' '}
+                    <span className="font-bold text-gray-800">{totalRecords}</span> records (Page {page} of {totalPages || 1})
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1 || loading}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs font-semibold px-2.5 py-1 bg-gray-100 rounded-md text-gray-800">
+                      {page} / {totalPages || 1}
+                    </span>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages || loading}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
-              </div>
               </>
             )}
           </div>

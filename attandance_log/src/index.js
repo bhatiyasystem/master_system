@@ -9,9 +9,7 @@ import { toCsv } from './csv.js';
 const today = new Date();
 
 const program = new Command();
-program
-  .name('attendance-log')
-  .description('Fetch attendance log entries from the eSSL/ZKTeco web portal')
+program.name('attendance-log').description('Fetch attendance log entries from the eSSL/ZKTeco web portal')
   .option('-d, --day <day>', 'day of month', String(today.getDate()))
   .option('-m, --month <month>', 'month (1-12)', String(today.getMonth() + 1))
   .option('-y, --year <year>', 'year', String(today.getFullYear()))

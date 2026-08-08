@@ -28,13 +28,7 @@ const PAGE_META = {
 
 export default function InventoryPage() {
   const dispatch = useDispatch();
-  const {
-    loading,
-    error,
-    materials,
-    transactions,
-    indents = [],
-  } = useSelector((state) => state.inventory);
+  const { loading, error, materials, transactions, indents = [] } = useSelector((state) => state.inventory);
 
   const { tabId } = useParams();
   const navigate = useNavigate();
@@ -76,7 +70,7 @@ export default function InventoryPage() {
         localStorage.getItem("sp_simulated_loc")
       ),
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userStateSeq]);
 
   // Filter visible tabs based on role page restriction
@@ -105,7 +99,7 @@ export default function InventoryPage() {
     if (!visibleTabs.includes(activeTab)) {
       setActiveTab("dashboard");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleTabs, activeTab]);
 
   const handleReloadCredentials = () => {

@@ -97,11 +97,21 @@ export default function DashboardView({ onTabChange }) {
           <button className="rounded-lg bg-[#173254] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0E2138]" onClick={() => onTabChange('import')}>
             1. Import Indent
           </button>
-          <button className="rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white" onClick={() => onTabChange('approval')}>
-            2. Approvals
+          <button className="flex items-center gap-1.5 rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white" onClick={() => onTabChange('approval')}>
+            <span>2. Approvals</span>
+            {statApproval > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {statApproval}
+              </span>
+            )}
           </button>
-          <button className="rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white" onClick={() => onTabChange('popending')}>
-            3. Create PO
+          <button className="flex items-center gap-1.5 rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white" onClick={() => onTabChange('popending')}>
+            <span>3. Create PO</span>
+            {statPending > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {statPending}
+              </span>
+            )}
           </button>
           <button className="rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white" onClick={() => onTabChange('polist')}>
             4. Purchase Orders
