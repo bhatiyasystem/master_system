@@ -7,7 +7,7 @@
  * — separate from the master system Supabase credentials.
  */
 
-import supabase from './supabaseHRClient.js';
+import supabase, { hrSupabaseProjectUrl } from './supabaseHRClient.js';
 import masterSupabase from '../../../../SupabaseClient.js';
 
 // Fetch puttha_status from the MASTER project's users table, keyed by name
@@ -50,6 +50,7 @@ export const STATUS_COLORS = {
   '½P': '#84cc16',
   'WO': '#94a3b8',
   'A': '#ef4444',
+  '-': '#94a3b8',
 };
 
 export const STATUS_LABELS = {
@@ -63,6 +64,7 @@ export const STATUS_LABELS = {
   '½P': 'Half Day',
   'WO': 'Weekly Off',
   'A': 'Absent',
+  '-': 'No Data',
 };
 
 /**
@@ -124,8 +126,6 @@ export function fillDailyStatusFromSummary(emp, year, month) {
     return existingDaily;
   }
 
-  const result = { ...existingDaily };
-
   const totalPresent = parseFloat(emp.total_present ?? emp.total_p) || 0;
   const totalAbsent = parseFloat(emp.total_absent ?? emp.total_a) || 0;
   const totalHoliday = parseFloat(emp.total_holiday ?? emp.total_h) || 0;
@@ -133,6 +133,15 @@ export function fillDailyStatusFromSummary(emp, year, month) {
   const totalWOP = parseFloat(emp.total_wop) || 0;
 
   const leaveObj = calculateRowLeaveStats(emp);
+
+  const hasSummaryMetrics = (totalPresent > 0 || totalAbsent > 0 || totalHoliday > 0 || totalWO > 0 || totalWOP > 0 || leaveObj.totalLeave > 0 || populatedDays > 0);
+
+  if (!hasSummaryMetrics) {
+    return { ...existingDaily };
+  }
+
+  const result = { ...existingDaily };
+
   let remCL = leaveObj.cl;
   let remPL = leaveObj.pl;
   let remSL = leaveObj.sl;
@@ -203,7 +212,7 @@ export function fillDailyStatusFromSummary(emp, year, month) {
   // Fallback for any remaining unassigned days
   for (let d = 1; d <= daysInMonth; d++) {
     if (!result[d]) {
-      result[d] = remP > 0 ? 'P' : (remA > 0 ? 'A' : 'P');
+      result[d] = remP > 0 ? 'P' : (remA > 0 ? 'A' : '');
     }
   }
 
@@ -1102,13 +1111,13 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const rawOverride = dbAtt?.payable_days_override ?? att?.payable_days_override;
     const rawPayable = dbAtt?.payable_days ?? att?.payable_days;
 
-    let payableDays = totalDaysInMonth;
+    let payableDays = 0;
     if (rawOverride !== null && rawOverride !== undefined && String(rawOverride).trim() !== '') {
       payableDays = parseFloat(rawOverride);
     } else if (rawPayable !== null && rawPayable !== undefined && String(rawPayable).trim() !== '' && !att.is_synthesized) {
       payableDays = parseFloat(rawPayable);
     } else {
-      payableDays = totalDaysInMonth;
+      payableDays = 0;
     }
     return payableDays >= 15;
   });
@@ -1134,13 +1143,13 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const rawOverride = dbAtt?.payable_days_override ?? att?.payable_days_override;
     const rawPayable = dbAtt?.payable_days ?? att?.payable_days;
 
-    let payableDays = totalDaysInMonth;
+    let payableDays = 0;
     if (rawOverride !== null && rawOverride !== undefined && String(rawOverride).trim() !== '') {
       payableDays = parseFloat(rawOverride);
     } else if (rawPayable !== null && rawPayable !== undefined && String(rawPayable).trim() !== '' && !att.is_synthesized) {
       payableDays = parseFloat(rawPayable);
     } else {
-      payableDays = totalDaysInMonth;
+      payableDays = 0;
     }
     const isPutthaEligible = (employee.puttha_status || 'Yes') !== 'No' && payableDays >= 15;
     const putthaPrice = isPutthaEligible ? putthaPerEmployee : 0;
@@ -1475,13 +1484,13 @@ export async function fetchPayrollPaginated({ year, month, status, statusNot, em
       const rawOverride = att?.payable_days_override;
       const rawPayable = att?.payable_days ?? r.payable_days;
 
-      let presentDays = daysInMonth;
+      let presentDays = 0;
       if (rawOverride !== null && rawOverride !== undefined && String(rawOverride).trim() !== '') {
         presentDays = parseFloat(rawOverride);
-      } else if (rawPayable !== null && rawPayable !== undefined && String(rawPayable).trim() !== '' && (att || r.payable_days !== 0)) {
+      } else if (rawPayable !== null && rawPayable !== undefined && String(rawPayable).trim() !== '' && att) {
         presentDays = parseFloat(rawPayable);
       } else {
-        presentDays = daysInMonth;
+        presentDays = 0;
       }
 
       if (parseFloat(r.payable_days || 0) !== presentDays) {
@@ -1541,6 +1550,37 @@ export async function fetchPayrollPaginated({ year, month, status, statusNot, em
   };
 }
 
+const normalizedAmount = value => Number.parseFloat(value) || 0;
+
+// Keep database schemas independent from the component's display model.
+export const normalizeAdvance = row => ({
+  ...row,
+  employee_id: row.employee_id ?? '',
+  employee_name: row.employee_name ?? '',
+  amount: normalizedAmount(row.amount),
+  monthly_deduction: normalizedAmount(row.monthly_deduction),
+  remaining_amount: row.remaining_amount == null ? normalizedAmount(row.amount) : normalizedAmount(row.remaining_amount),
+  deduction: row.deduction ?? 'Yes',
+  reason: row.reason ?? '',
+  date: row.date ?? row.created_at?.slice(0, 10) ?? '',
+  status: row.status ?? 'Pending',
+});
+
+export const normalizeLoan = row => ({
+  ...row,
+  employee_id: row.employee_id ?? '',
+  employee_name: row.employee_name ?? '',
+  amount: normalizedAmount(row.amount),
+  // salary_advances has no loan-balance columns; retain the current UI without
+  // writing invented fields back to the database.
+  monthly_deduction: normalizedAmount(row.monthly_deduction),
+  remaining_amount: row.remaining_amount == null ? normalizedAmount(row.amount) : normalizedAmount(row.remaining_amount),
+  deduction: row.deduction ?? 'Yes',
+  reason: row.reason ?? '',
+  date: row.date ?? row.created_at?.slice(0, 10) ?? '',
+  status: row.status ?? 'Pending',
+});
+
 export async function fetchAdvancesPaginated({ page = 1, pageSize = 50, search = '' } = {}) {
   const from = (page - 1) * pageSize;
   const to = page * pageSize - 1;
@@ -1554,11 +1594,17 @@ export async function fetchAdvancesPaginated({ page = 1, pageSize = 50, search =
     query = query.or(`employee_name.ilike.%${search}%,employee_id.ilike.%${search}%`);
   }
 
+  console.log('[Advance] Supabase project:', hrSupabaseProjectUrl);
+  console.log('[Advance] Fetching table: advances');
   const { data, count, error } = await query.range(from, to);
-  if (error) throw error;
+  console.log('[Advance] Raw response:', data);
+  if (error) {
+    console.error('[Advance] Fetch error:', error);
+    throw error;
+  }
 
   return {
-    data: data || [],
+    data: (data || []).map(normalizeAdvance),
     totalRecords: count || 0,
     currentPage: page,
     pageSize,
@@ -1684,10 +1730,10 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
     if (rawOverride !== null && rawOverride !== undefined && String(rawOverride).trim() !== '') {
       return parseFloat(rawOverride);
-    } else if (rawPayable !== null && rawPayable !== undefined && String(rawPayable).trim() !== '' && (att || r.payable_days !== 0)) {
+    } else if (rawPayable !== null && rawPayable !== undefined && String(rawPayable).trim() !== '' && att) {
       return parseFloat(rawPayable);
     }
-    return totalDaysInMonth;
+    return 0;
   };
 
   // Count eligible employees (puttha_status != 'No' AND presentDays >= 15)
@@ -1993,12 +2039,18 @@ export async function syncPayrollForEmployeeAdvance(empCode) {
 }
 
 export async function fetchSalaryAdvances() {
+  console.log('[Loan] Supabase project:', hrSupabaseProjectUrl);
+  console.log('[Loan] Fetching table: salary_advances');
   const { data, error } = await supabase
     .from('salary_advances')
     .select('*')
     .order('date', { ascending: false });
-  if (error) throw error;
-  return data;
+  console.log('[Loan] Raw response:', data);
+  if (error) {
+    console.error('[Loan] Fetch error:', error);
+    throw error;
+  }
+  return (data || []).map(normalizeLoan);
 }
 
 export async function upsertSalaryAdvance(advance) {

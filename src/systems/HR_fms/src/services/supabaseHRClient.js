@@ -16,6 +16,9 @@ import { createClient } from '@supabase/supabase-js';
 const hrSupabaseURL = import.meta.env.VITE_HR_SUPABASE_URL;
 const hrSupabaseKey = import.meta.env.VITE_HR_SUPABASE_ANON_KEY;
 
+// Safe to expose for browser diagnostics; this is the public project URL, not a key.
+export const hrSupabaseProjectUrl = hrSupabaseURL || '';
+
 if (!hrSupabaseURL || hrSupabaseURL === 'YOUR_HR_FMS_SUPABASE_URL_HERE') {
   console.warn(
     '[HR FMS] ⚠ Supabase not configured.\n' +

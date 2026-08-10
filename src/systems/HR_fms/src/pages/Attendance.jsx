@@ -148,7 +148,7 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
                     className="mt-1 text-xs font-bold rounded px-1"
                     style={{ color, fontSize: 10 }}
                   >
-                    {code || '—'}
+                    {code}
                   </span>
                 </div>
               );
@@ -213,11 +213,16 @@ const AttendanceMonthly = () => {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
 
+      if (!rawRows.some(row => row.some(cell => String(cell).trim() !== ''))) {
+        setPreviewErrors(['Attendance Excel is empty. Upload an attendance Excel file.']);
+        return;
+      }
+
       const { uploadMeta, employees } = parseAttendanceExcel(rawRows);
 
       const errors = [];
       if (employees.length === 0) {
-        errors.push('No employee rows found. Check the Excel format.');
+        errors.push('No attendance rows found. Upload an attendance Excel file with employee data.');
       }
       if (!uploadMeta.period_from) {
         errors.push('Could not detect pay period from the file. Ensure the period row is present.');
@@ -560,7 +565,7 @@ const AttendanceMonthly = () => {
                                     style={{ color: textColor, fontSize: 10 }}
                                     title={STATUS_LABELS[code] || code}
                                   >
-                                    {code || '·'}
+                                    {code}
                                   </span>
                                 </td>
                               );
@@ -728,7 +733,7 @@ const AttendanceMonthly = () => {
                         const earlyVal = row.total_early ?? meta.total_early ?? 0;
 
                         return (
-                          <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={row.id || row.emp_code || `row-${idx}`} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 text-sm text-gray-400">{row.sl_no || idx + 1}</td>
                             <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
                             <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
@@ -742,7 +747,7 @@ const AttendanceMonthly = () => {
                                     style={{ color: textColor, fontSize: 10 }}
                                     title={STATUS_LABELS[code] || code}
                                   >
-                                    {code || '·'}
+                                    {code}
                                   </span>
                                 </td>
                               );
