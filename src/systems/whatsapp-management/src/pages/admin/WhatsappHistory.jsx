@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-;
+import React from 'react';
 import { useMagicToast } from '@/context/MagicToastContext';
 import { whatsappLogService } from '@/services/whatsappService';
 import supabase from '@/SupabaseClient';
@@ -136,7 +136,7 @@ const WhatsappHistory = () => {
             const fileExt = file.name.split('.').pop();
             const fileName = `wa_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const bucketName = 'task-instructions';
-            
+
             // Upload to Supabase Storage
             const { _data, error: uploadError } = await supabase.storage
                 .from(bucketName)
@@ -233,7 +233,7 @@ const WhatsappHistory = () => {
         }
     };
 
-    const emojiList = ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓","😎","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤠","👿","👻","💀","👽","👾","🤖","🎃","👋","🤚","🖐️","✋","🖖","👌","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","✍️","💅","🤳","💪","🦾","🦵","🦶","👂","👃","🧠","🦷","🦴","👀","👁️","👅","👄","💋","❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","🔥","🎉","✨","🌟","🎈","🎂"];
+    const emojiList = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜", "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨", "😰", "😥", "😓", "🤗", "🤔", "🤭", "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🤠", "👿", "👻", "💀", "👽", "👾", "🤖", "🎃", "👋", "🤚", "🖐️", "✋", "🖖", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝️", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🙌", "👐", "🤲", "🤝", "🙏", "✍️", "💅", "🤳", "💪", "🦾", "🦵", "🦶", "👂", "👃", "🧠", "🦷", "🦴", "👀", "👁️", "👅", "👄", "💋", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "🔥", "🎉", "✨", "🌟", "🎈", "🎂"];
 
     const gifList = [
         { name: "Wave", url: "https://media.giphy.com/media/3ornk57KwDXf81rjWM/giphy.gif" },
@@ -373,7 +373,7 @@ const WhatsappHistory = () => {
         }
 
         // Fallback: Parse dynamically using client-side fetched templates (for realtime updates or unsynced items)
-        
+
         // 1. Try "Template: name | Params: Param1 | Param2" format
         if (messageContent.startsWith("Template: ")) {
             try {
@@ -584,9 +584,9 @@ const WhatsappHistory = () => {
 
             contact.profileImage = matchUser?.image || null;
 
-            const namedLog = contact.logs.find(l => 
-                l.recipient_name && 
-                l.recipient_name.trim().toLowerCase() !== 'unknown' && 
+            const namedLog = contact.logs.find(l =>
+                l.recipient_name &&
+                l.recipient_name.trim().toLowerCase() !== 'unknown' &&
                 l.recipient_name.trim().toLowerCase() !== 'whatsapp user' &&
                 !/^\+?\d+$/.test(l.recipient_name.trim())
             );
@@ -672,9 +672,9 @@ const WhatsappHistory = () => {
             return <CheckCheck size={15} className="text-[#53bdeb] shrink-0" />;
         }
         return (
-            <XCircle 
-                size={14} 
-                className="text-rose-500 shrink-0 cursor-help" 
+            <XCircle
+                size={14}
+                className="text-rose-500 shrink-0 cursor-help"
                 title={`Failed: ${msg.error_message || 'Unknown Error'}${msg.error_code ? ` (Code: ${msg.error_code})` : ''}`}
             />
         );
@@ -703,7 +703,7 @@ const WhatsappHistory = () => {
         if (!msgToForward) return;
         try {
             const { sendWhatsAppTextMessage } = await import('@/services/whatsappService');
-            
+
             if (msgToForward.media_url) {
                 // Insert a media message log entry
                 const logEntry = {
@@ -889,10 +889,10 @@ const WhatsappHistory = () => {
                                 `}
                             >
                                 {contact.profileImage ? (
-                                    <img 
-                                        src={getDisplayableImageUrl(contact.profileImage)} 
-                                        alt={contact.name} 
-                                        className="w-12 h-12 rounded-full object-cover shrink-0" 
+                                    <img
+                                        src={getDisplayableImageUrl(contact.profileImage)}
+                                        alt={contact.name}
+                                        className="w-12 h-12 rounded-full object-cover shrink-0"
                                     />
                                 ) : (
                                     <div className="w-12 h-12 rounded-full bg-[#d2e0d7] flex items-center justify-center text-[#0b6656] text-lg font-bold shrink-0">
@@ -937,10 +937,10 @@ const WhatsappHistory = () => {
                                     <ChevronLeft size={24} />
                                 </button>
                                 {selectedContact.profileImage ? (
-                                    <img 
-                                        src={getDisplayableImageUrl(selectedContact.profileImage)} 
-                                        alt={selectedContact.name} 
-                                        className="w-10 h-10 rounded-full object-cover shrink-0" 
+                                    <img
+                                        src={getDisplayableImageUrl(selectedContact.profileImage)}
+                                        alt={selectedContact.name}
+                                        className="w-10 h-10 rounded-full object-cover shrink-0"
                                     />
                                 ) : (
                                     <div className="w-10 h-10 rounded-full bg-[#d2e0d7] flex items-center justify-center text-[#0b6656] text-sm font-bold shrink-0">
@@ -1104,8 +1104,8 @@ const WhatsappHistory = () => {
                                                                                             const ext = (rawFileName.split('.').pop() || 'PDF').toUpperCase().slice(0, 4);
 
                                                                                             return (
-                                                                                                <a 
-                                                                                                    href={msg.media_url || '#'} 
+                                                                                                <a
+                                                                                                    href={msg.media_url || '#'}
                                                                                                     target={msg.media_url ? "_blank" : "_self"}
                                                                                                     rel="noopener noreferrer"
                                                                                                     download={rawFileName}
@@ -1136,7 +1136,7 @@ const WhatsappHistory = () => {
                                                                                                     </div>
 
                                                                                                     {/* Circular Download Icon Button (WhatsApp Web Style) */}
-                                                                                                    <div 
+                                                                                                    <div
                                                                                                         className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-[#54656f] group-hover/doc:bg-[#00a884] group-hover/doc:text-white group-hover/doc:border-[#00a884] group-hover/doc:scale-110 transition-all shrink-0 cursor-pointer"
                                                                                                         title="Download Document"
                                                                                                     >
@@ -1181,18 +1181,18 @@ const WhatsappHistory = () => {
                                                                             {showReactionDetailsMsgId === msg.id && (() => {
                                                                                 const reactionEmoji = reactions[msg.id];
                                                                                 const userProfileImg = localStorage.getItem("profile_image");
-                                                                                
+
                                                                                 return (
                                                                                     <>
                                                                                         {/* Transparent backdrop so BG doesn't get muted */}
-                                                                                        <div 
+                                                                                        <div
                                                                                             className="fixed inset-0 z-30 bg-transparent cursor-default"
                                                                                             onClick={(e) => {
                                                                                                 e.stopPropagation();
                                                                                                 setShowReactionDetailsMsgId(null);
                                                                                             }}
                                                                                         />
-                                                                                        <div 
+                                                                                        <div
                                                                                             onClick={(e) => e.stopPropagation()}
                                                                                             className={`absolute top-full ${isIncoming ? 'left-0' : 'right-0'} mt-2 z-40 bg-white rounded-2xl shadow-2xl w-[300px] sm:w-[320px] flex flex-col p-4 border border-slate-100 animate-in zoom-in-95 duration-100 text-left`}
                                                                                         >
@@ -1208,13 +1208,13 @@ const WhatsappHistory = () => {
                                                                                                     type="button"
                                                                                                     className="pb-2 px-3 text-[#54656f] flex items-center gap-1.5 focus:outline-none"
                                                                                                 >
-                                                                                                    <span>{reactionEmoji}</span> 
+                                                                                                    <span>{reactionEmoji}</span>
                                                                                                     <span className="text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">1</span>
                                                                                                 </button>
                                                                                             </div>
 
                                                                                             {/* User Row / List of Reacted Users */}
-                                                                                            <div 
+                                                                                            <div
                                                                                                 onClick={() => {
                                                                                                     handleReact(msg.id, reactionEmoji);
                                                                                                     setShowReactionDetailsMsgId(null);
@@ -1223,10 +1223,10 @@ const WhatsappHistory = () => {
                                                                                             >
                                                                                                 <div className="flex items-center gap-3">
                                                                                                     {userProfileImg ? (
-                                                                                                        <img 
-                                                                                                            src={getDisplayableImageUrl(userProfileImg)} 
-                                                                                                            alt="You" 
-                                                                                                            className="w-10 h-10 rounded-full object-cover shrink-0" 
+                                                                                                        <img
+                                                                                                            src={getDisplayableImageUrl(userProfileImg)}
+                                                                                                            alt="You"
+                                                                                                            className="w-10 h-10 rounded-full object-cover shrink-0"
                                                                                                         />
                                                                                                     ) : (
                                                                                                         <div className="w-10 h-10 rounded-full bg-[#d2e0d7] flex items-center justify-center text-[#0b6656] text-sm font-bold shrink-0">
@@ -1344,19 +1344,19 @@ const WhatsappHistory = () => {
                         {/* Chat Footer / Input Area */}
                         <form onSubmit={handleSendMessage} className="px-4 py-2 bg-[#ebf2ee] flex items-center gap-3 h-[62px] shrink-0 relative">
                             {/* Hidden Inputs for File Selection */}
-                            <input 
-                                type="file" 
-                                ref={mediaInputRef} 
-                                className="hidden" 
-                                accept="image/*,video/*" 
-                                onChange={handleMediaChange} 
+                            <input
+                                type="file"
+                                ref={mediaInputRef}
+                                className="hidden"
+                                accept="image/*,video/*"
+                                onChange={handleMediaChange}
                             />
-                            <input 
-                                type="file" 
-                                ref={docInputRef} 
-                                className="hidden" 
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
-                                onChange={handleDocChange} 
+                            <input
+                                type="file"
+                                ref={docInputRef}
+                                className="hidden"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                                onChange={handleDocChange}
                             />
 
                             {/* Emoji/GIF/Sticker Panel */}
@@ -1364,21 +1364,21 @@ const WhatsappHistory = () => {
                                 <div className="absolute bottom-[70px] left-14 z-50 bg-white border border-[#d1d7db] shadow-xl rounded-xl w-[320px] h-[340px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
                                     {/* Tabs Header */}
                                     <div className="flex bg-[#f0f2f5] border-b border-[#d1d7db] text-[13px] font-semibold text-[#54656f]">
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => setActiveEmojiTab('emoji')}
                                             className={`flex-1 py-2 text-center transition-colors ${activeEmojiTab === 'emoji' ? 'bg-white text-[#00a884] border-b-2 border-[#00a884]' : 'hover:bg-black/5'}`}
                                         >
                                             Emoji
                                         </button>
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => setActiveEmojiTab('gif')}
                                             className={`flex-1 py-2 text-center transition-colors ${activeEmojiTab === 'gif' ? 'bg-white text-[#00a884] border-b-2 border-[#00a884]' : 'hover:bg-black/5'}`}
                                         >
                                             GIF
                                         </button>
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => setActiveEmojiTab('sticker')}
                                             className={`flex-1 py-2 text-center transition-colors ${activeEmojiTab === 'sticker' ? 'bg-white text-[#00a884] border-b-2 border-[#00a884]' : 'hover:bg-black/5'}`}
@@ -1555,9 +1555,9 @@ const WhatsappHistory = () => {
 
                                     {/* Caption Input */}
                                     <div className="relative">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Add a caption..." 
+                                        <input
+                                            type="text"
+                                            placeholder="Add a caption..."
                                             value={fileCaption}
                                             onChange={(e) => setFileCaption(e.target.value)}
                                             className="w-full h-11 border border-slate-200 rounded-lg px-4 text-sm text-[#111b21] focus:outline-none focus:border-[#00a884] placeholder-slate-400"
@@ -1625,18 +1625,18 @@ const WhatsappHistory = () => {
                                     {/* Contacts List */}
                                     <div className="max-h-[220px] overflow-y-auto custom-scrollbar space-y-2 pr-1">
                                         {contacts
-                                            .filter(c => 
-                                                c.name.toLowerCase().includes(forwardSearch.toLowerCase()) || 
+                                            .filter(c =>
+                                                c.name.toLowerCase().includes(forwardSearch.toLowerCase()) ||
                                                 c.phone?.includes(forwardSearch)
                                             )
                                             .map(c => (
                                                 <div key={c.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
                                                     <div className="flex items-center gap-2.5 min-w-0">
                                                         {c.profileImage ? (
-                                                            <img 
-                                                                src={getDisplayableImageUrl(c.profileImage)} 
-                                                                alt={c.name} 
-                                                                className="w-8 h-8 rounded-full object-cover shrink-0" 
+                                                            <img
+                                                                src={getDisplayableImageUrl(c.profileImage)}
+                                                                alt={c.name}
+                                                                className="w-8 h-8 rounded-full object-cover shrink-0"
                                                             />
                                                         ) : (
                                                             <div className="w-8 h-8 rounded-full bg-[#d2e0d7] flex items-center justify-center text-[#0b6656] text-xs font-bold shrink-0">
