@@ -1155,7 +1155,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const putthaPrice = isPutthaEligible ? putthaPerEmployee : 0;
     const advanceAmount = parseFloat(advanceMap[empCode] || 0);
 
-    let loanDeduction = 0;
+    let advancesDeductionAmount = 0;
     const empAdvs = employeeActiveAdvs[empCode] || [];
     for (const adv of empAdvs) {
       if (adv.deduction === 'No') continue;
@@ -1174,14 +1174,14 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
       });
 
       adv.remaining = newRemaining;
-      loanDeduction += dec;
+      advancesDeductionAmount += dec;
     }
 
     const otHours = att.total_ot || att.ot_hours || 0;
-    const tempCalc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, advanceAmount, loanDeduction, 0, otHours);
+    const tempCalc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, advanceAmount, 0, advancesDeductionAmount, otHours);
     let currentNetSalary = tempCalc.net_salary;
 
-    let salaryAdvanceDeduction = 0;
+    let loansDeductionAmount = 0;
     const empSalAdvs = employeeSalaryAdvs[empCode] || [];
     const salaryAdvsToUpdate = [];
 
@@ -1192,7 +1192,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
       const deductionAmount = Math.min(amount, currentNetSalary);
       if (deductionAmount <= 0) continue;
 
-      salaryAdvanceDeduction += deductionAmount;
+      loansDeductionAmount += deductionAmount;
       currentNetSalary -= deductionAmount;
 
       salaryAdvsToUpdate.push({
@@ -1202,7 +1202,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
       });
     }
 
-    const calc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, advanceAmount, loanDeduction, salaryAdvanceDeduction, otHours);
+    const calc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, advanceAmount, loansDeductionAmount, advancesDeductionAmount, otHours);
 
     payrollRows.push({
       emp_code: att.emp_code || employee.employee_id,
