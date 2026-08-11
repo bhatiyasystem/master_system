@@ -211,17 +211,13 @@ const Advance = () => {
     }
 
     const isEditing = !!editingLoanId;
-    const existing = isEditing ? advances.find(a => a.id === editingLoanId) : null;
+    const existing = isEditing ? salaryAdvances.find(a => a.id === editingLoanId) : null;
 
     const newRequest = {
       ...(isEditing ? { id: editingLoanId } : {}),
       employee_id: finalEmployeeId,
       employee_name: finalEmployeeName,
       amount: parseFloat(newAdvance.amount),
-      monthly_deduction: parseFloat(newAdvance.monthlyDeduction),
-      remaining_amount: isEditing
-        ? (existing?.remaining_amount ?? parseFloat(newAdvance.amount))
-        : parseFloat(newAdvance.amount),
       reason: newAdvance.reason,
       deduction: newAdvance.deduction,
       date: isEditing
@@ -231,7 +227,7 @@ const Advance = () => {
     };
 
     try {
-      await upsertAdvance(newRequest);
+      await upsertSalaryAdvance(newRequest);
       setNewAdvance({ amount: "", monthlyDeduction: "", reason: "", deduction: "Yes" });
       setSelectedEmployeeName("");
       setEditingLoanId(null);
@@ -277,16 +273,17 @@ const Advance = () => {
               employee.employeeName.toLowerCase().trim() === employeeName.toLowerCase()
             );
             return {
-            employee_id: idx.employeeId >= 0 ? String(r[idx.employeeId] || "").trim() : matchedEmployee?.employeeId || "",
-            employee_name: employeeName,
-            amount: idx.amount >= 0 ? parseFloat(r[idx.amount]) || 0 : 0,
-            monthly_deduction: idx.monthlyDeduction >= 0 ? parseFloat(r[idx.monthlyDeduction]) || 0 : 0,
-            remaining_amount: idx.amount >= 0 ? parseFloat(r[idx.amount]) || 0 : 0,
-            deduction: idx.deduction >= 0 && r[idx.deduction] ? String(r[idx.deduction]).trim() : "Yes",
-            reason: idx.reason >= 0 ? String(r[idx.reason] || "").trim() : "",
-            date: idx.date >= 0 && r[idx.date] ? toISODate(r[idx.date]) : new Date().toISOString().split("T")[0],
-            status: "Approved"
-          }})
+              employee_id: idx.employeeId >= 0 ? String(r[idx.employeeId] || "").trim() : matchedEmployee?.employeeId || "",
+              employee_name: employeeName,
+              amount: idx.amount >= 0 ? parseFloat(r[idx.amount]) || 0 : 0,
+              monthly_deduction: idx.monthlyDeduction >= 0 ? parseFloat(r[idx.monthlyDeduction]) || 0 : 0,
+              remaining_amount: idx.amount >= 0 ? parseFloat(r[idx.amount]) || 0 : 0,
+              deduction: idx.deduction >= 0 && r[idx.deduction] ? String(r[idx.deduction]).trim() : "Yes",
+              reason: idx.reason >= 0 ? String(r[idx.reason] || "").trim() : "",
+              date: idx.date >= 0 && r[idx.date] ? toISODate(r[idx.date]) : new Date().toISOString().split("T")[0],
+              status: "Approved"
+            }
+          })
           .filter(row => row.employee_id);
 
         if (rows.length === 0)
@@ -317,7 +314,7 @@ const Advance = () => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      await updateAdvanceStatus(id, newStatus);
+      await updateSalaryAdvanceStatus(id, newStatus);
       toast.success(`Loan request ${newStatus.toLowerCase()}`);
       loadData();
     } catch (err) {
@@ -340,7 +337,7 @@ const Advance = () => {
   const handleDeleteLoan = async id => {
     if (!window.confirm("Delete this loan record? This cannot be undone.")) return;
     try {
-      await deleteAdvance(id);
+      await deleteSalaryAdvance(id);
       toast.success("Loan record deleted");
       loadData();
     } catch (err) {
@@ -390,7 +387,7 @@ const Advance = () => {
     }
 
     const isEditing = !!editingSalaryAdvanceId;
-    const existing = isEditing ? salaryAdvances.find(a => a.id === editingSalaryAdvanceId) : null;
+    const existing = isEditing ? advances.find(a => a.id === editingSalaryAdvanceId) : null;
 
     const advanceDateISO = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-01`;
 
@@ -399,6 +396,8 @@ const Advance = () => {
       employee_id: finalEmployeeId,
       employee_name: finalEmployeeName,
       amount: amount,
+      monthly_deduction: amount,
+      remaining_amount: amount,
       deduction: newSalaryAdvance.deduction,
       reason: newSalaryAdvance.reason,
       date: isEditing ? (existing?.date ?? advanceDateISO) : advanceDateISO,
@@ -406,7 +405,7 @@ const Advance = () => {
     };
 
     try {
-      await upsertSalaryAdvance(newRequest);
+      await upsertAdvance(newRequest);
       setNewSalaryAdvance({ amount: "", reason: "", deduction: "Yes", date: new Date().toISOString().split("T")[0] });
       setSelectedSalEmpName("");
       setEditingSalaryAdvanceId(null);
@@ -709,7 +708,7 @@ const Advance = () => {
   const displayedSalaryAdvances = isAdmin
     ? salaryAdvances
     : salaryAdvances.filter(adv => adv.employee_id === employeeId);
-  const liveTotalDebit = activeTab === "Advance" 
+  const liveTotalDebit = activeTab === "Advance"
     ? displayedAdvances.reduce((sum, adv) => sum + parseAmount(adv.amount), 0)
     : displayedSalaryAdvances.reduce((sum, adv) => sum + parseAmount(adv.amount), 0);
 

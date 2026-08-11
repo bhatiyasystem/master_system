@@ -1,4 +1,4 @@
-import { StyleSheet } from '@react-pdf/renderer';
+import { StyleSheet, Page, Document, View, Text } from '@react-pdf/renderer';
 import { MONTHS, parseOtHours, formatOtDisplay } from '../services/supabaseHR';
 
 const styles = StyleSheet.create({
@@ -177,12 +177,12 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
   const totalDaysInMonth = new Date(row.year, row.month, 0).getDate();
 
   // Attendance figures — prefer attendance row, fall back to payroll row fields
-  const payableDays  = parseFloat(attendance?.payable_days_override ?? attendance?.payable_days ?? row.payable_days ?? 0);
-  const leaveDays    = parseInt(attendance?.total_leave   ?? row.total_leave   ?? 0);
-  const woDays       = parseInt(attendance?.total_wo      ?? row.total_wo      ?? 0);
-  const presentDays  = parseFloat(attendance?.total_present ?? row.total_present ?? 0);
-  const absentDays   = parseInt(attendance?.total_absent  ?? row.total_absent  ?? 0);
-  const holidayDays  = parseInt(attendance?.total_holiday ?? row.total_holiday ?? 0);
+  const payableDays = parseFloat(attendance?.payable_days_override ?? attendance?.payable_days ?? row.payable_days ?? 0);
+  const leaveDays = parseInt(attendance?.total_leave ?? row.total_leave ?? 0);
+  const woDays = parseInt(attendance?.total_wo ?? row.total_wo ?? 0);
+  const presentDays = parseFloat(attendance?.total_present ?? row.total_present ?? 0);
+  const absentDays = parseInt(attendance?.total_absent ?? row.total_absent ?? 0);
+  const holidayDays = parseInt(attendance?.total_holiday ?? row.total_holiday ?? 0);
 
   return (
     <Document>
@@ -210,7 +210,7 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
             <Text style={styles.infoLabel}>Employee Code</Text>
             <Text style={styles.infoValue}>{row.emp_code}</Text>
           </View>
-          {employee?.designation && (
+          {Boolean(employee?.designation) && (
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Designation</Text>
               <Text style={styles.infoValue}>{employee.designation}</Text>
@@ -329,7 +329,7 @@ const PayslipPDF = ({ row, employee, attendance, companyName = 'Bhatia Enterpris
         </View>
 
         {/* ── Remarks ── */}
-        {row.remarks && (
+        {Boolean(row.remarks) && (
           <View style={styles.remarksBox}>
             <Text style={styles.remarksLabel}>Remarks</Text>
             <Text style={styles.remarksText}>{row.remarks}</Text>
