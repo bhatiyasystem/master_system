@@ -1,7 +1,7 @@
 import { PieChart } from 'lucide-react';
 import { TrendingUp, CheckCircle, Clock, AlertCircle, Phone, Calendar, X } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
-;
+import { Save } from 'lucide-react';
 import supabase from "../../../../SupabaseClient";
 
 const isAudioUrl = (url) => {
@@ -99,7 +99,7 @@ export default function EAView() {
 
     useEffect(() => {
         fetchEATasks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchEATasks = async () => {

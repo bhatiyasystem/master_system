@@ -1,7 +1,8 @@
 import { CheckCircle2, AlertTriangle, Clock, X, Search, Loader2, User, Calendar } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
-;
-;
+import { animate, AnimatePresence } from 'framer-motion';
+import { ListTodo } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { fetchDashboardDataApi } from '../../../redux/api/dashboardApi';
 
 const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, departmentFilter, dateRange }) => {
@@ -30,7 +31,7 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
       setHasMore(true);
       fetchTasks(1, debouncedSearch, true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, type, dashboardType, staffFilter, departmentFilter, dateRange, debouncedSearch]);
 
   const fetchTasks = async (pageNum, search, reset = false) => {
@@ -74,19 +75,19 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || isLoading || !hasMore) return;
-    
+
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     if (scrollHeight - scrollTop <= clientHeight + 100) {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchTasks(nextPage, debouncedSearch);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, isLoading, hasMore, debouncedSearch]);
 
   const getStatusIcon = (status) => {
     const s = status?.toLowerCase() || '';
-    if (s.includes('completed') || s.includes('approved') || s === 'yes' || s === 'done') 
+    if (s.includes('completed') || s.includes('approved') || s === 'yes' || s === 'done')
       return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
     if (s.includes('overdue')) return <AlertTriangle className="w-4 h-4 text-rose-500" />;
     if (s.includes('pending')) return <Clock className="w-4 h-4 text-amber-500" />;
@@ -180,7 +181,7 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
           </div> */}
 
           {/* Content Area */}
-          <div 
+          <div
             ref={scrollRef}
             onScroll={handleScroll}
             className="flex-1 overflow-auto p-4 custom-scrollbar"
@@ -262,13 +263,13 @@ const TaskModal = ({ isOpen, onClose, type, title, dashboardType, staffFilter, d
                     </div>
                   </motion.div>
                 ))}
-                
+
                 {isLoading && (
                   <div className="flex justify-center p-8">
                     <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
                   </div>
                 )}
-                
+
                 {!hasMore && tasks.length > 0 && (
                   <div className="text-center p-8 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
                     End of results

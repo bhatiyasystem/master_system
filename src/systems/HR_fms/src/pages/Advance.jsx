@@ -223,7 +223,7 @@ const Advance = () => {
       date: isEditing
         ? (existing?.date ?? new Date().toISOString().split("T")[0])
         : new Date().toISOString().split("T")[0],
-      status: isEditing ? (existing?.status ?? "Approved") : isAdmin ? "Approved" : "Pending"
+      status: isEditing ? (existing?.status ?? "Approved") : "Approved"
     };
 
     try {
@@ -401,7 +401,7 @@ const Advance = () => {
       deduction: newSalaryAdvance.deduction,
       reason: newSalaryAdvance.reason,
       date: isEditing ? (existing?.date ?? advanceDateISO) : advanceDateISO,
-      status: isEditing ? (existing?.status ?? "Approved") : isAdmin ? "Approved" : "Pending"
+      status: isEditing ? (existing?.status ?? "Approved") : "Approved"
     };
 
     try {

@@ -6,7 +6,7 @@ import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/su
 const LeaveRequest = () => {
   const employeeId = localStorage.getItem("employeeId");
   const rawUser = localStorage.getItem("user");
-  const user = rawUser ? JSON.parse(rawUser) : {}; 
+  const user = rawUser ? JSON.parse(rawUser) : {};
   const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [leavesData, setLeavesData] = useState([]);
@@ -27,60 +27,60 @@ const LeaveRequest = () => {
   });
 
   const fetchEmployeeData = async () => {
-  try {
-    const response = await supabaseFetchSheet('JOINING');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const result = await response.json();
-    const rawData = result.data || result;
-    
-    if (!Array.isArray(rawData)) {
-      throw new Error('Expected array data not received');
-    }
+    try {
+      const response = await supabaseFetchSheet('JOINING');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      const rawData = result.data || result;
 
-    // Find the employee data based on employeeId
-    const employeeRow = rawData.find(row => 
-      row[1]?.toString().trim() === employeeId?.toString().trim()
-    );
-    
-    if (employeeRow) {
-      // Column I (index 8) contains designation
-      const designation = employeeRow[8] || '';
-      setFormData(prev => ({
-        ...prev,
-        designation: designation
-      }));
-    }
-  } catch (error) {
-    console.error('Error fetching employee data:', error);
-  }
-};
+      if (!Array.isArray(rawData)) {
+        throw new Error('Expected array data not received');
+      }
 
-// Call this function in useEffect
-useEffect(() => {
-  fetchLeaveData();
-  fetchEmployeeData(); // Add this line
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+      // Find the employee data based on employeeId
+      const employeeRow = rawData.find(row =>
+        row[1]?.toString().trim() === employeeId?.toString().trim()
+      );
+
+      if (employeeRow) {
+        // Column I (index 8) contains designation
+        const designation = employeeRow[8] || '';
+        setFormData(prev => ({
+          ...prev,
+          designation: designation
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching employee data:', error);
+    }
+  };
+
+  // Call this function in useEffect
+  useEffect(() => {
+    fetchLeaveData();
+    fetchEmployeeData(); // Add this line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch employees from JOINING sheet
   const fetchEmployees = async () => {
     try {
       const response = await supabaseFetchSheet('JOINING');
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch employee data');
       }
-      
+
       const rawData = result.data || result;
-      
+
       if (!Array.isArray(rawData)) {
         throw new Error('Expected array data not received');
       }
@@ -114,9 +114,9 @@ useEffect(() => {
 
   const calculateDays = (startDateStr, endDateStr) => {
     if (!startDateStr || !endDateStr) return 0;
-    
+
     let startDate, endDate;
-    
+
     // Handle different date formats
     if (startDateStr.includes('/')) {
       const [startDay, startMonth, startYear] = startDateStr.split('/').map(Number);
@@ -124,14 +124,14 @@ useEffect(() => {
     } else {
       startDate = new Date(startDateStr);
     }
-    
+
     if (endDateStr.includes('/')) {
       const [endDay, endMonth, endYear] = endDateStr.split('/').map(Number);
       endDate = new Date(endYear, endMonth - 1, endDay);
     } else {
       endDate = new Date(endDateStr);
     }
-    
+
     const diffTime = endDate - startDate;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays;
@@ -139,23 +139,23 @@ useEffect(() => {
 
   const formatDOB = (dateString) => {
     if (!dateString) return '';
-    
+
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
       return dateString; // Return as-is if not a valid date
     }
-    
+
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
-    
+
     return `${day}/${month}/${year}`;
   };
 
   // Function to parse date string in DD/MM/YYYY format
   const parseDate = (dateStr) => {
     if (!dateStr) return null;
-    
+
     // Handle different date formats that might come from the API
     if (dateStr.includes('/')) {
       const [day, month, year] = dateStr.split('/').map(Number);
@@ -163,17 +163,17 @@ useEffect(() => {
     } else if (dateStr.includes('-')) {
       return new Date(dateStr);
     }
-    
+
     return null;
   };
 
   // Check if a date falls within a specific month
   const isDateInMonth = (dateStr, monthIndex) => {
     if (!dateStr || monthIndex === 'all') return true;
-    
+
     const date = parseDate(dateStr);
     if (!date) return false;
-    
+
     return date.getMonth() === parseInt(monthIndex);
   };
 
@@ -184,26 +184,26 @@ useEffect(() => {
 
     try {
       const response = await supabaseFetchSheet('Leave Management');
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch leave data');
       }
-      
+
       const rawData = result.data || result;
       console.log("Raw data from API:", rawData);
-      
+
       if (!Array.isArray(rawData)) {
         throw new Error('Expected array data not received');
       }
 
       const dataRows = rawData.length > 1 ? rawData.slice(1) : [];
-      
+
       // Process and filter data by employee name
       const processedData = dataRows
         .map((row, index) => ({
@@ -222,10 +222,10 @@ useEffect(() => {
           approvedBy: row[9] || '', // Adjust index if needed
         }))
         .filter(item => item.employeeName === user.Name);
-      
+
       console.log("Filtered leave data:", processedData);
       setLeavesData(processedData);
-     
+
     } catch (error) {
       console.error('Error fetching leave data:', error);
       setError(error.message);
@@ -239,7 +239,7 @@ useEffect(() => {
   useEffect(() => {
     fetchLeaveData();
     fetchEmployees();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e) => {
@@ -308,14 +308,14 @@ useEffect(() => {
   // Calculate leave balance based on approved leaves for the specific employee
   const calculateLeaveBalance = () => {
     // Filter for approved leaves for this specific employee
-    const approvedLeaves = leavesData.filter(leave => 
-      leave.status && leave.status.toLowerCase() === 'approved' && 
+    const approvedLeaves = leavesData.filter(leave =>
+      leave.status && leave.status.toLowerCase() === 'approved' &&
       leave.employeeName === user.Name &&
-      (selectedMonth === 'all' || 
-       isDateInMonth(leave.startDate, selectedMonth) || 
-       isDateInMonth(leave.endDate, selectedMonth))
+      (selectedMonth === 'all' ||
+        isDateInMonth(leave.startDate, selectedMonth) ||
+        isDateInMonth(leave.endDate, selectedMonth))
     );
-    
+
     return {
       'Casual Leave': 7 - approvedLeaves
         .filter(leave => leave.leaveType === 'Casual Leave')
@@ -331,14 +331,14 @@ useEffect(() => {
 
   // Calculate approved leave counts for each type for this employee
   const calculateApprovedLeaveCounts = () => {
-    const approvedLeaves = leavesData.filter(leave => 
-      leave.status && leave.status.toLowerCase() === 'approved' && 
+    const approvedLeaves = leavesData.filter(leave =>
+      leave.status && leave.status.toLowerCase() === 'approved' &&
       leave.employeeName === user.Name &&
-      (selectedMonth === 'all' || 
-       isDateInMonth(leave.startDate, selectedMonth) || 
-       isDateInMonth(leave.endDate, selectedMonth))
+      (selectedMonth === 'all' ||
+        isDateInMonth(leave.startDate, selectedMonth) ||
+        isDateInMonth(leave.endDate, selectedMonth))
     );
-    
+
     return {
       'Casual Leave': approvedLeaves
         .filter(leave => leave.leaveType === 'Casual Leave')
@@ -376,7 +376,7 @@ useEffect(() => {
     <div className="space-y-6 page-content p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Leave Request</h1>
-        <button 
+        <button
           onClick={() => setShowModal(true)}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
         >
@@ -410,13 +410,13 @@ useEffect(() => {
       {/* Leave Balance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Object.entries(leaveBalance).map(([leaveType, remaining]) => {
-          const total = 
+          const total =
             leaveType === 'Casual Leave' ? 7 :
-            leaveType === 'Earned Leave' ? 15 : 10;
-          
+              leaveType === 'Earned Leave' ? 15 : 10;
+
           const used = approvedCounts[leaveType];
           const percentage = total > 0 ? (used / total) * 100 : 0;
-          
+
           return (
             <div key={leaveType} className="bg-white rounded-xl shadow-lg border p-6">
               <div className="flex items-center justify-between">
@@ -436,8 +436,8 @@ useEffect(() => {
               </div>
               <div className="mt-4">
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-indigo-600 h-2 rounded-full" 
+                  <div
+                    className="bg-indigo-600 h-2 rounded-full"
                     style={{ width: `${percentage}%` }}
                   ></div>
                 </div>
@@ -471,38 +471,37 @@ useEffect(() => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {leavesData
-                    .filter(leave => 
-                      selectedMonth === 'all' || 
-                      isDateInMonth(leave.startDate, selectedMonth) || 
+                    .filter(leave =>
+                      selectedMonth === 'all' ||
+                      isDateInMonth(leave.startDate, selectedMonth) ||
                       isDateInMonth(leave.endDate, selectedMonth)
                     )
                     .map((request) => (
-                    <tr key={request.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.leaveType}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.startDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.endDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.days}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{request.reason}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          request.status === 'approved' 
-                            ? 'bg-green-100 text-green-800' 
-                            : request.status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {request.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {request.appliedDate}
-                      </td>
-                    </tr>
-                  ))}
+                      <tr key={request.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.leaveType}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {request.startDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {request.endDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.days}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{request.reason}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full ${request.status === 'approved'
+                              ? 'bg-green-100 text-green-800'
+                              : request.status === 'rejected'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                            {request.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {request.appliedDate}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
               {leavesData.length === 0 && (
@@ -549,15 +548,15 @@ useEffect(() => {
               </div>
 
               <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-  <input
-    type="text"
-    name="designation"
-    value={formData.designation}
-    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 focus:outline-none"
-    readOnly
-  />
-</div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                <input
+                  type="text"
+                  name="designation"
+                  value={formData.designation}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 focus:outline-none"
+                  readOnly
+                />
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">HOD Name *</label>
@@ -649,17 +648,16 @@ useEffect(() => {
                 </button>
                 <button
                   type="submit"
-                  className={`px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 min-h-[42px] flex items-center justify-center ${
-                    submitting ? 'opacity-75 cursor-not-allowed' : ''
-                  }`}
+                  className={`px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 min-h-[42px] flex items-center justify-center ${submitting ? 'opacity-75 cursor-not-allowed' : ''
+                    }`}
                   disabled={submitting}
                 >
                   {submitting ? (
                     <div className="flex items-center">
-                      <svg 
-                        className="animate-spin h-4 w-4 text-white mr-2" 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        fill="none" 
+                      <svg
+                        className="animate-spin h-4 w-4 text-white mr-2"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
                         viewBox="0 0 24 24"
                       >
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

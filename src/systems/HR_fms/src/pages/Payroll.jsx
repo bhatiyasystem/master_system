@@ -477,7 +477,6 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
             <table className="min-w-full">
               <thead>
                 <tr className="bg-indigo-900 text-white">
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Actions</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Emp Code</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
@@ -489,30 +488,17 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Advance</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Loan Ded.</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Adv. Ded.</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Pay Cycle</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Total Ded.</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-green-900 bg-opacity-50">Net Salary</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredPaid.map((row) => (
                   <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Column 1: Actions */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleDownloadSingle(row)}
-                        disabled={downloadingId === row.emp_code}
-                        title="View PDF Payslip"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 border border-green-200 transition-colors"
-                      >
-                        {downloadingId === row.emp_code ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <FileText size={13} />
-                        )}
-                        <span>View PDF</span>
-                      </button>
-                    </td>
+
                     <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
                     <td className="px-4 py-3 text-center">
@@ -543,9 +529,25 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                     <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.advance)}</td>
                     <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.loan_deduction || 0)}</td>
                     <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.salary_advance_deduction || 0)}</td>
+                    <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td>
                     <td className="px-4 py-3 text-right text-sm text-red-700 font-medium">{fmt(row.total_deductions)}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(row.net_salary)}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={row.status} /></td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleDownloadSingle(row)}
+                        disabled={downloadingId === row.emp_code}
+                        title="View PDF Payslip"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50 border border-green-200 transition-colors"
+                      >
+                        {downloadingId === row.emp_code ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <FileText size={13} />
+                        )}
+                        <span>View PDF</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -566,8 +568,10 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                   <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filteredPaid.reduce((s, r) => s + (r.advance || 0), 0))}</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filteredPaid.reduce((s, r) => s + (r.loan_deduction || 0), 0))}</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filteredPaid.reduce((s, r) => s + (r.salary_advance_deduction || 0), 0))}</td>
+                  <td className="px-4 py-3" />
                   <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(totalDeductions)}</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(totalNet)}</td>
+                  <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
                 </tr>
               </tfoot>
@@ -983,6 +987,7 @@ const Payroll = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Emp Code</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Pay Cycle</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Basic Salary</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">OT</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Puttha Price</th>
@@ -1011,6 +1016,8 @@ const Payroll = () => {
                               {row.payable_days ?? '—'}
                             </span>
                           </td>
+                          <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td>
+
                           <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">
                             {(row.ot_amount > 0 || parseOtHours(row.ot_hours) > 0) ? (
@@ -1074,6 +1081,7 @@ const Payroll = () => {
                         <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.advance || 0), 0))}</td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.loan_deduction || 0), 0))}</td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(filtered.reduce((s, r) => s + (r.salary_advance_deduction || 0), 0))}</td>
+                        <td className="px-4 py-3" />
                         <td className="px-4 py-3 text-right text-sm font-bold text-red-700">{fmt(totalDeductions)}</td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(totalNet)}</td>
                         <td colSpan={3} />
