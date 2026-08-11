@@ -480,6 +480,7 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Emp Code</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Pay Cycle</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Basic Salary</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase">OT</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Puttha Price</th>
@@ -488,7 +489,6 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Advance</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Loan Ded.</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Adv. Ded.</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Pay Cycle</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-red-900 bg-opacity-40">Total Ded.</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase bg-green-900 bg-opacity-50">Net Salary</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase">Status</th>
@@ -506,6 +506,7 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                         {row.payable_days ?? '—'}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td>
                     <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
                     <td className="px-4 py-3 text-right text-sm text-gray-700">
                       {(row.ot_amount > 0 || parseOtHours(row.ot_hours) > 0) ? (
@@ -529,7 +530,6 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
                     <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.advance)}</td>
                     <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.loan_deduction || 0)}</td>
                     <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.salary_advance_deduction || 0)}</td>
-                    <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td>
                     <td className="px-4 py-3 text-right text-sm text-red-700 font-medium">{fmt(row.total_deductions)}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-green-700">{fmt(row.net_salary)}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={row.status} /></td>
@@ -987,7 +987,7 @@ const Payroll = () => {
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Emp Code</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Name</th>
                         <th className="px-4 py-3 text-center text-xs font-semibold uppercase bg-indigo-800 bg-opacity-40">Present Days</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Pay Cycle</th>
+                        {/* <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Pay Cycle</th> */}
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Basic Salary</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">OT</th>
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase">Puttha Price</th>
@@ -1016,7 +1016,7 @@ const Payroll = () => {
                               {row.payable_days ?? '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td>
+                          {/* <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td> */}
 
                           <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">
