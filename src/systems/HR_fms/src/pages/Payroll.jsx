@@ -108,8 +108,8 @@ const PayslipModal = ({ row, onClose }) => {
 // ── Edit Deductions Modal ─────────────────────────────────────────────────────
 const EditDeductionsModal = ({ row, onSave, onClose }) => {
   const [form, setForm] = useState({
-    loan_deduction: row.loan_deduction || 0,
-    salary_advance_deduction: row.salary_advance_deduction || 0,
+    loan_deduction: row.loan_deduction ?? 0,
+    salary_advance_deduction: row.salary_advance_deduction ?? 0,
     remarks: row.remarks || '',
   });
   const [saving, setSaving] = useState(false);
@@ -1057,9 +1057,11 @@ const Payroll = () => {
                               <button onClick={() => setEnvelopeRow(row)} title="Employee Envelope" className="p-1.5 rounded-lg hover:bg-purple-50 text-purple-600">
                                 <Mail size={14} />
                               </button>
-                              <button onClick={() => setEditRow(row)} title="Adjust advance deduction" className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600">
-                                <Edit3 size={14} />
-                              </button>
+                              {row.status !== 'paid' && (
+                                <button onClick={() => setEditRow(row)} title="Adjust advance deduction" className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600">
+                                  <Edit3 size={14} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1137,7 +1139,7 @@ const Payroll = () => {
       {payslipRow && <PayslipModal row={payslipRow} onClose={() => setPayslipRow(null)} />}
       {envelopeRow && <EmployeeEnvelopeModal row={envelopeRow} onClose={() => setEnvelopeRow(null)} />}
       {editRow && (
-        <EditDeductionsModal row={editRow} onSave={handleEditSave} onClose={() => setEditRow(null)} />
+        <EditDeductionsModal key={editRow.id} row={editRow} onSave={handleEditSave} onClose={() => setEditRow(null)} />
       )}
     </div>
   );

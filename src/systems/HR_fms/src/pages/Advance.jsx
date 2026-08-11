@@ -218,6 +218,8 @@ const Advance = () => {
       employee_id: finalEmployeeId,
       employee_name: finalEmployeeName,
       amount: parseFloat(newAdvance.amount),
+      monthly_deduction: parseFloat(newAdvance.monthlyDeduction) || 0,
+      remaining_amount: isEditing && parseFloat(newAdvance.amount) === parseFloat(existing?.amount) ? (existing?.remaining_amount ?? parseFloat(newAdvance.amount)) : parseFloat(newAdvance.amount),
       reason: newAdvance.reason,
       deduction: newAdvance.deduction,
       date: isEditing
@@ -397,7 +399,7 @@ const Advance = () => {
       employee_name: finalEmployeeName,
       amount: amount,
       monthly_deduction: amount,
-      remaining_amount: amount,
+      remaining_amount: isEditing && amount === parseFloat(existing?.amount) ? (existing?.remaining_amount ?? amount) : amount,
       deduction: newSalaryAdvance.deduction,
       reason: newSalaryAdvance.reason,
       date: isEditing ? (existing?.date ?? advanceDateISO) : advanceDateISO,
@@ -709,8 +711,8 @@ const Advance = () => {
     ? salaryAdvances
     : salaryAdvances.filter(adv => adv.employee_id === employeeId);
   const liveTotalDebit = activeTab === "Advance"
-    ? displayedAdvances.reduce((sum, adv) => sum + parseAmount(adv.amount), 0)
-    : displayedSalaryAdvances.reduce((sum, adv) => sum + parseAmount(adv.amount), 0);
+    ? displayedAdvances.reduce((sum, adv) => sum + parseAmount(adv.remaining_amount !== undefined && adv.remaining_amount !== null ? adv.remaining_amount : adv.amount), 0)
+    : displayedSalaryAdvances.reduce((sum, adv) => sum + parseAmount(adv.remaining_amount !== undefined && adv.remaining_amount !== null ? adv.remaining_amount : adv.amount), 0);
 
   return (
     <div className="space-y-6">
@@ -1162,6 +1164,9 @@ const Advance = () => {
                         Amount
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Remaining Balance
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
                       {isAdmin && (
@@ -1174,7 +1179,7 @@ const Advance = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
                       <tr>
-                        <td colSpan={isAdmin ? 5 : 3} className="px-6 py-12 text-center text-gray-500">
+                        <td colSpan={isAdmin ? 6 : 4} className="px-6 py-12 text-center text-gray-500">
                           <div className="flex justify-center flex-col items-center">
                             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
                             <span className="text-sm font-medium">Loading advance requests...</span>
@@ -1183,7 +1188,7 @@ const Advance = () => {
                       </tr>
                     ) : loadError.Advance ? (
                       <tr>
-                        <td colSpan={isAdmin ? 5 : 3} className="px-6 py-8 text-center text-red-600">
+                        <td colSpan={isAdmin ? 6 : 4} className="px-6 py-8 text-center text-red-600">
                           Unable to load advance requests.
                         </td>
                       </tr>
@@ -1200,6 +1205,17 @@ const Advance = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                             ₹
                             {parseAmount(adv.amount || adv.advance_amount).toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            ₹
+                            {parseAmount(
+                              adv.remaining_amount !== undefined && adv.remaining_amount !== null
+                                ? adv.remaining_amount
+                                : adv.amount || adv.advance_amount
+                            ).toLocaleString("en-IN", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
                             })}
