@@ -1,7 +1,8 @@
 import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Search, DollarSign, Edit3, Mail, Printer } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, updateEmployeePutthaStatus, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, } from '../services/supabaseHR';
+import { getPreviousProcessingPeriod } from '../utils/dateUtils.js';
+import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, updateEmployeePutthaStatus, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, fetchEmployeeLoanBalance, fetchEmployeeAdvanceBalance, } from '../services/supabaseHR';
 import EnvelopePDF from '../components/EnvelopePDF';
 import PayslipPDF from '../components/PayslipPDF';
 import { PayEnvelopeCard, generatePayEnvelopeHTML } from '../components/PayEnvelopeTemplate';
@@ -113,12 +114,71 @@ const EditDeductionsModal = ({ row, onSave, onClose }) => {
     remarks: row.remarks || '',
   });
   const [saving, setSaving] = useState(false);
+  const [dbBalance, setDbBalance] = useState(0);
+  const [dbAdvBalance, setDbAdvBalance] = useState(0);
+  const [loadingLoan, setLoadingLoan] = useState(true);
+  const [loadingAdv, setLoadingAdv] = useState(true);
+  const [validationError, setValidationError] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    async function loadBalances() {
+      try {
+        const [loanBal, advBal] = await Promise.all([
+          fetchEmployeeLoanBalance(row.emp_code),
+          fetchEmployeeAdvanceBalance(row.emp_code)
+        ]);
+        if (active) {
+          setDbBalance(loanBal);
+          setDbAdvBalance(advBal);
+        }
+      } catch (err) {
+        console.error('Error fetching balances:', err);
+      } finally {
+        if (active) {
+          setLoadingLoan(false);
+          setLoadingAdv(false);
+        }
+      }
+    }
+    loadBalances();
+    return () => { active = false; };
+  }, [row.emp_code]);
+
+  const availableBalance = parseFloat((dbBalance + parseFloat(row.loan_deduction || 0)).toFixed(2));
+  const availableAdvBalance = parseFloat(dbAdvBalance.toFixed(2));
 
   const handleSave = async () => {
+    const loanDeduction = parseFloat(form.loan_deduction || 0);
+    if (isNaN(loanDeduction) || loanDeduction < 0) {
+      setValidationError("Loan deduction must be a non-negative number.");
+      return;
+    }
+    if (loanDeduction > 0 && availableBalance <= 0) {
+      setValidationError("This employee has no active loan. Loan deduction cannot be added.");
+      return;
+    }
+    if (loanDeduction > availableBalance) {
+      setValidationError(`Loan deduction cannot be greater than the employee's remaining loan balance of ₹${availableBalance}.`);
+      return;
+    }
+
+    const salaryAdvanceDeduction = parseFloat(form.salary_advance_deduction || 0);
+    if (isNaN(salaryAdvanceDeduction) || salaryAdvanceDeduction < 0) {
+      setValidationError("Advance deduction must be a non-negative number.");
+      return;
+    }
+    if (salaryAdvanceDeduction > 0 && availableAdvBalance <= 0) {
+      setValidationError("This employee has no active advance. Advance deduction cannot be added.");
+      return;
+    }
+    if (salaryAdvanceDeduction > availableAdvBalance) {
+      setValidationError(`Advance deduction cannot be greater than the employee's remaining advance balance of ₹${availableAdvBalance}.`);
+      return;
+    }
+
     setSaving(true);
     try {
-      const loanDeduction = parseFloat(form.loan_deduction || 0);
-      const salaryAdvanceDeduction = parseFloat(form.salary_advance_deduction || 0);
       const advanceDeduction = loanDeduction + salaryAdvanceDeduction;
       const rawNet = Math.max(0, row.gross_salary - advanceDeduction);
       // Upward rounding to nearest 10
@@ -132,6 +192,8 @@ const EditDeductionsModal = ({ row, onSave, onClose }) => {
         remarks: form.remarks,
       });
       onClose();
+    } catch (err) {
+      setValidationError(err.message);
     } finally {
       setSaving(false);
     }
@@ -145,23 +207,62 @@ const EditDeductionsModal = ({ row, onSave, onClose }) => {
           <button onClick={onClose}><X size={20} className="text-gray-500" /></button>
         </div>
         <div className="p-6 space-y-4">
+          {validationError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-3 font-semibold">
+              {validationError}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Loan Deduction (₹)</label>
-            <input
-              type="number" min="0" step="0.01"
-              value={form.loan_deduction}
-              onChange={(e) => setForm(f => ({ ...f, loan_deduction: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-            />
+            {loadingLoan ? (
+              <div className="text-xs text-gray-400">Loading loan balance...</div>
+            ) : (
+              <>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={form.loan_deduction}
+                  onChange={(e) => {
+                    setForm(f => ({ ...f, loan_deduction: e.target.value }));
+                    setValidationError(null);
+                  }}
+                  disabled={availableBalance === 0}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-400"
+                />
+                <div className="text-[10px] mt-1 font-semibold text-gray-500">
+                  {availableBalance === 0 ? (
+                    <span className="text-red-500">No active loan available for this employee.</span>
+                  ) : (
+                    <span>Available Loan Balance: ₹{availableBalance}</span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Advance Deduction (₹)</label>
-            <input
-              type="number" min="0" step="0.01"
-              value={form.salary_advance_deduction}
-              onChange={(e) => setForm(f => ({ ...f, salary_advance_deduction: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-            />
+            {loadingAdv ? (
+              <div className="text-xs text-gray-400">Loading advance balance...</div>
+            ) : (
+              <>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={form.salary_advance_deduction}
+                  onChange={(e) => {
+                    setForm(f => ({ ...f, salary_advance_deduction: e.target.value }));
+                    setValidationError(null);
+                  }}
+                  disabled={availableAdvBalance === 0}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-400"
+                />
+                <div className="text-[10px] mt-1 font-semibold text-gray-500">
+                  {availableAdvBalance === 0 ? (
+                    <span className="text-red-500">No active advance available for this employee.</span>
+                  ) : (
+                    <span>Available Advance Balance: ₹{availableAdvBalance}</span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Remarks</label>
@@ -175,7 +276,7 @@ const EditDeductionsModal = ({ row, onSave, onClose }) => {
         </div>
         <div className="flex gap-3 px-6 pb-6">
           <button onClick={onClose} className="flex-1 border border-gray-300 rounded-lg py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 bg-indigo-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving || loadingLoan || loadingAdv} className="flex-1 bg-indigo-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
@@ -594,8 +695,9 @@ const Payroll = () => {
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const prevPeriod = getPreviousProcessingPeriod();
+  const [filterYear, setFilterYear] = useState(prevPeriod.year);
+  const [filterMonth, setFilterMonth] = useState(prevPeriod.month);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
@@ -606,8 +708,7 @@ const Payroll = () => {
   const [envelopeRow, setEnvelopeRow] = useState(null);
   const [editRow, setEditRow] = useState(null);
 
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear - 1, currentYear, currentYear + 1];
+
 
   const notify = (msg, type = 'success') => {
     setNotification({ msg, type });
@@ -644,7 +745,13 @@ const Payroll = () => {
     setGenerating(true);
     setError(null);
     try {
-      const attendance = (await fetchAttendanceMonthly({ year: filterYear, month: filterMonth })) || [];
+      const period = getPreviousProcessingPeriod();
+      const existing = await fetchPayroll({ year: period.year, month: period.month });
+      if (existing && existing.length > 0) {
+        notify(`Payroll for ${MONTHS[period.month - 1]} ${period.year} already generated. Re-generating draft records...`, 'success');
+      }
+
+      const attendance = (await fetchAttendanceMonthly({ year: period.year, month: period.month })) || [];
       const employees = await fetchEmployees();
 
       const activeEmployees = employees
@@ -666,9 +773,10 @@ const Payroll = () => {
         }
       });
 
-      await generatePayrollBatch(attendance, employeeMap, filterYear, filterMonth);
+      await generatePayrollBatch(attendance, employeeMap, period.year, period.month);
       notify(`✓ Payroll generated successfully`);
-      await loadPayroll();
+      setFilterMonth(period.month);
+      setFilterYear(period.year);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -890,20 +998,9 @@ const Payroll = () => {
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <select
-                value={filterYear}
-                onChange={(e) => setFilterYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <select
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
-                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
+              <div className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700 font-medium">
+                {MONTHS[filterMonth - 1]} {filterYear}
+              </div>
               <button
                 onClick={loadPayroll}
                 disabled={loading}

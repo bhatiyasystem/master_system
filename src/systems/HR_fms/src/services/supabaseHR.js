@@ -9,6 +9,7 @@
 
 import supabase, { hrSupabaseProjectUrl } from './supabaseHRClient.js';
 import masterSupabase from '../../../../SupabaseClient.js';
+import { getPreviousProcessingPeriod } from '../utils/dateUtils.js';
 
 // Fetch puttha_status from the MASTER project's users table, keyed by name
 export async function fetchMasterPutthaStatusByName() {
@@ -567,6 +568,10 @@ export async function fetchUploads({ year, month } = {}) {
 // ─── ATTENDANCE MONTHLY ───────────────────────────────────────────────────────
 
 export async function saveAttendanceRows(uploadId, employees, year, month, companyName, department) {
+  const period = getPreviousProcessingPeriod();
+  if (year !== period.year || month !== period.month) {
+    throw new Error(`Enforcement Error: Attendance can only be uploaded and saved for the previous processing month (${period.month}/${period.year})`);
+  }
   const rows = employees.map(emp => ({
     upload_id: uploadId,
     year,
@@ -936,6 +941,41 @@ export async function revertAdvanceDeduction(empCode, revertAmount) {
   }
 }
 
+export async function deductAdvanceAmount(empCode, deductAmount) {
+  if (deductAmount <= 0) return;
+
+  const { data: advs, error } = await supabase
+    .from('advances')
+    .select('*')
+    .eq('employee_id', empCode)
+    .in('status', ['Approved', 'Pending'])
+    .order('date', { ascending: true });
+
+  if (error || !advs || advs.length === 0) return;
+
+  let remainingToDeduct = deductAmount;
+  for (const adv of advs) {
+    if (adv.deduction === 'No') continue;
+    const currentRemaining = parseFloat(adv.remaining_amount !== null && adv.remaining_amount !== undefined ? adv.remaining_amount : adv.amount) || 0;
+    if (currentRemaining <= 0) continue;
+
+    const dec = Math.min(remainingToDeduct, currentRemaining);
+    const newRemaining = parseFloat((currentRemaining - dec).toFixed(2));
+    remainingToDeduct -= dec;
+
+    await supabase
+      .from('advances')
+      .update({
+        remaining_amount: newRemaining,
+        status: newRemaining <= 0 ? 'Fully Paid' : 'Approved',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', adv.id);
+
+    if (remainingToDeduct <= 0) break;
+  }
+}
+
 export async function revertSalaryAdvanceDeduction(empCode, revertAmount) {
   if (revertAmount <= 0) return;
 
@@ -980,6 +1020,11 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
   const month = (attendanceRows && attendanceRows.length > 0) ? attendanceRows[0].month : targetMonth;
 
   if (!year || !month) return [];
+
+  const period = getPreviousProcessingPeriod();
+  if (year !== period.year || month !== period.month) {
+    throw new Error(`Enforcement Error: Payroll can only be generated for the previous processing month (${period.month}/${period.year})`);
+  }
 
   // Fetch database attendance_monthly records for this month to guarantee capturing payable_days_override
   const { data: dbAttRows } = await supabase
@@ -1192,6 +1237,14 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     .select();
 
   if (error) throw error;
+
+  if (data && data.length > 0) {
+    for (const row of data) {
+      const advDed = parseFloat(row.salary_advance_deduction) || 0;
+      const loanDed = parseFloat(row.loan_deduction) || 0;
+      await updateRemainingBalancesForEmployee(row.emp_code, advDed, loanDed, row.status === 'paid' ? row.id : null);
+    }
+  }
 
   return data;
 }
@@ -1581,33 +1634,35 @@ export async function updateRemainingBalancesForEmployee(empCode, advanceDeducti
   const promises = [];
 
   // 1. Sync Advances remaining amount
-  const { data: advs, error: advsError } = await supabase
-    .from('advances')
-    .select('*')
-    .eq('employee_id', empCode)
-    .in('status', ['Approved', 'Pending', 'Fully Paid'])
-    .order('date', { ascending: true });
+  if (payrollId !== null) {
+    const { data: advs, error: advsError } = await supabase
+      .from('advances')
+      .select('*')
+      .eq('employee_id', empCode)
+      .in('status', ['Approved', 'Pending', 'Fully Paid'])
+      .order('date', { ascending: true });
 
-  if (advsError) throw advsError;
+    if (advsError) throw advsError;
 
-  let remAdvDed = advanceDeductionAmount;
-  for (const adv of (advs || [])) {
-    if (adv.deduction === 'No') continue;
-    const original = parseFloat(adv.amount) || 0;
-    const dec = Math.min(remAdvDed, original);
-    const newRemaining = parseFloat((original - dec).toFixed(2));
-    remAdvDed -= dec;
+    let remAdvDed = advanceDeductionAmount;
+    for (const adv of (advs || [])) {
+      if (adv.deduction === 'No') continue;
+      const original = parseFloat(adv.amount) || 0;
+      const dec = Math.min(remAdvDed, original);
+      const newRemaining = parseFloat((original - dec).toFixed(2));
+      remAdvDed -= dec;
 
-    promises.push(
-      supabase
-        .from('advances')
-        .update({
-          remaining_amount: newRemaining,
-          status: newRemaining <= 0 ? 'Fully Paid' : 'Approved',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', adv.id)
-    );
+      promises.push(
+        supabase
+          .from('advances')
+          .update({
+            remaining_amount: newRemaining,
+            status: newRemaining <= 0 ? 'Fully Paid' : 'Approved',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', adv.id)
+      );
+    }
   }
 
   // 2. Sync Loans remaining amount
@@ -1655,6 +1710,40 @@ export async function updatePayrollRow(id, updates) {
     .single();
   if (fetchError) throw fetchError;
 
+  if (updates.loan_deduction !== undefined && updates.loan_deduction !== null) {
+    const newLoanDed = parseFloat(updates.loan_deduction || 0);
+    if (newLoanDed < 0) {
+      throw new Error("Validation Error: Loan deduction cannot be negative.");
+    }
+    const empCode = current.emp_code;
+    const dbLoanBalance = await fetchEmployeeLoanBalance(empCode);
+    const existingDraftLoanDed = parseFloat(current.loan_deduction || 0);
+    const availableLoanBalance = parseFloat((dbLoanBalance + existingDraftLoanDed).toFixed(2));
+
+    if (newLoanDed > 0 && availableLoanBalance <= 0) {
+      throw new Error("Validation Error: This employee has no active loan. Loan deduction cannot be added.");
+    }
+    if (newLoanDed > availableLoanBalance) {
+      throw new Error(`Validation Error: Loan deduction cannot be greater than the employee's remaining loan balance of ₹${availableLoanBalance}.`);
+    }
+  }
+  if (updates.salary_advance_deduction !== undefined && updates.salary_advance_deduction !== null) {
+    const newAdvDed = parseFloat(updates.salary_advance_deduction || 0);
+    if (newAdvDed < 0) {
+      throw new Error("Validation Error: Advance deduction cannot be negative.");
+    }
+    const empCode = current.emp_code;
+    const dbAdvBalance = await fetchEmployeeAdvanceBalance(empCode);
+    const availableAdvBalance = parseFloat(dbAdvBalance.toFixed(2));
+
+    if (newAdvDed > 0 && availableAdvBalance <= 0) {
+      throw new Error("Validation Error: This employee has no active advance. Advance deduction cannot be added.");
+    }
+    if (newAdvDed > availableAdvBalance) {
+      throw new Error(`Validation Error: Advance deduction cannot be greater than the employee's remaining advance balance of ₹${availableAdvBalance}.`);
+    }
+  }
+
   const { data, error } = await supabase
     .from('payroll')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -1663,10 +1752,26 @@ export async function updatePayrollRow(id, updates) {
     .single();
   if (error) throw error;
 
-  // Instantly update remaining balances in advances and salary_advances tables to match current payroll row
-  const advDed = parseFloat(data.salary_advance_deduction) || 0;
+  // Sync Loans (salary_advances): keep existing immediate update behavior
   const loanDed = parseFloat(data.loan_deduction) || 0;
-  await updateRemainingBalancesForEmployee(data.emp_code, advDed, loanDed, data.status === 'paid' ? id : null);
+  await updateRemainingBalancesForEmployee(data.emp_code, 0, loanDed, data.status === 'paid' ? id : null);
+
+  // Sync Advances (advances): ONLY when paid or transitioning
+  const advDed = parseFloat(data.salary_advance_deduction) || 0;
+  const isPayingNow = (current.status !== 'paid' && data.status === 'paid');
+  const isEditingPaid = (current.status === 'paid' && updates.salary_advance_deduction !== undefined);
+
+  if (isPayingNow) {
+    await deductAdvanceAmount(data.emp_code, advDed);
+  } else if (isEditingPaid) {
+    const oldAdvDed = parseFloat(current.salary_advance_deduction) || 0;
+    const diff = advDed - oldAdvDed;
+    if (diff > 0) {
+      await deductAdvanceAmount(data.emp_code, diff);
+    } else if (diff < 0) {
+      await revertAdvanceDeduction(data.emp_code, Math.abs(diff));
+    }
+  }
 
   return data;
 }
@@ -2049,6 +2154,15 @@ export async function syncPayrollForEmployeeSalaryAdvance(empCode) {
 }
 
 export async function upsertAdvance(advance) {
+  if (!advance.id && advance.date) {
+    const d = new Date(advance.date);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const period = getPreviousProcessingPeriod();
+    if (year !== period.year || month !== period.month) {
+      throw new Error(`Enforcement Error: Advances can only be processed for the previous processing month (${period.month}/${period.year})`);
+    }
+  }
   const { data, error } = await supabase
     .from('advances')
     .upsert(advance)
@@ -2160,6 +2274,42 @@ export async function syncPayrollForEmployeeAdvance(empCode) {
   }
 }
 
+export async function fetchEmployeeLoanBalance(employeeId) {
+  const { data, error } = await supabase
+    .from('salary_advances')
+    .select('amount, remaining_amount, status, deduction')
+    .eq('employee_id', employeeId)
+    .in('status', ['Approved', 'Pending']);
+  if (error) throw error;
+
+  let balance = 0;
+  (data || []).forEach(row => {
+    if (row.deduction === 'No') return;
+    const amt = parseFloat(row.amount) || 0;
+    const rem = row.remaining_amount !== null && row.remaining_amount !== undefined ? parseFloat(row.remaining_amount) : amt;
+    balance += rem;
+  });
+  return balance;
+}
+
+export async function fetchEmployeeAdvanceBalance(employeeId) {
+  const { data, error } = await supabase
+    .from('advances')
+    .select('amount, remaining_amount, status, deduction')
+    .eq('employee_id', employeeId)
+    .in('status', ['Approved', 'Pending']);
+  if (error) throw error;
+
+  let balance = 0;
+  (data || []).forEach(row => {
+    if (row.deduction === 'No') return;
+    const amt = parseFloat(row.amount) || 0;
+    const rem = row.remaining_amount !== null && row.remaining_amount !== undefined ? parseFloat(row.remaining_amount) : amt;
+    balance += rem;
+  });
+  return balance;
+}
+
 export async function fetchSalaryAdvances() {
   console.log('[Loan] Supabase project:', hrSupabaseProjectUrl);
   console.log('[Loan] Fetching table: salary_advances');
@@ -2176,6 +2326,15 @@ export async function fetchSalaryAdvances() {
 }
 
 export async function upsertSalaryAdvance(advance) {
+  if (!advance.id && advance.date) {
+    const d = new Date(advance.date);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const period = getPreviousProcessingPeriod();
+    if (year !== period.year || month !== period.month) {
+      throw new Error(`Enforcement Error: Loans can only be processed for the previous processing month (${period.month}/${period.year})`);
+    }
+  }
   const { data, error } = await supabase
     .from('salary_advances')
     .upsert(advance)

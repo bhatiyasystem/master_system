@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { FileSpreadsheet, X, Upload, Users, AlertCircle, CheckCircle, Search, RefreshCw, Calendar, Eye, Edit3 } from 'lucide-react';
 import { parseAttendanceExcel, createUploadRecord, updateUploadRecord, saveAttendanceRows, fetchAttendanceMonthlyPaginated, fetchAttendanceMonthlyStats, calculateRowLeaveStats, updatePayableDaysOverride, STATUS_COLORS, STATUS_LABELS, MONTHS } from '../services/supabaseHR';
 import { fillDailyStatusFromSummary } from '../services/supabaseHR';
+import { getPreviousProcessingPeriod } from '../utils/dateUtils';
 
 // ── Upload Zone ───────────────────────────────────────────────────────────────
 const UploadZone = ({ onFile, uploading }) => {
@@ -188,16 +189,15 @@ const AttendanceMonthly = () => {
   const [error, setError] = useState(null);
 
   // View tab state
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const prevPeriod = getPreviousProcessingPeriod();
+  const [filterYear, setFilterYear] = useState(prevPeriod.year);
+  const [filterMonth, setFilterMonth] = useState(prevPeriod.month);
   const [search, setSearch] = useState('');
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [overrideRow, setOverrideRow] = useState(null);
   const [gridRow, setGridRow] = useState(null);
 
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
 
   // ── Phase 1: Parse Excel → set previewData ──
@@ -231,10 +231,18 @@ const AttendanceMonthly = () => {
       setPreviewErrors(errors);
 
       if (errors.length === 0) {
-        const pf = new Date(uploadMeta.period_from);
-        const year = pf.getFullYear();
-        const month = pf.getMonth() + 1;
-        setPreviewData({ uploadMeta, employees, year, month, fileName: file.name });
+        const period = getPreviousProcessingPeriod();
+        setPreviewData({
+          uploadMeta: {
+            ...uploadMeta,
+            period_from: `${period.year}-${String(period.month).padStart(2, '0')}-01`,
+            period_to: `${period.year}-${String(period.month).padStart(2, '0')}-${new Date(period.year, period.month, 0).getDate()}`
+          },
+          employees,
+          year: period.year,
+          month: period.month,
+          fileName: file.name
+        });
       }
     } catch (err) {
       console.error('Parse error:', err);
@@ -459,22 +467,9 @@ const AttendanceMonthly = () => {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-base font-semibold text-gray-900">Preview —</h2>
-                      <div className="flex gap-1.5 items-center">
-                        <select
-                          value={previewData.month}
-                          onChange={(e) => setPreviewData(prev => ({ ...prev, month: parseInt(e.target.value) }))}
-                          className="border border-gray-300 rounded px-2.5 py-1 text-xs font-semibold text-indigo-900 bg-indigo-50/50 hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        >
-                          {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                        </select>
-                        <select
-                          value={previewData.year}
-                          onChange={(e) => setPreviewData(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                          className="border border-gray-300 rounded px-2.5 py-1 text-xs font-semibold text-indigo-900 bg-indigo-50/50 hover:bg-indigo-50 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        >
-                          {years.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                      </div>
+                      <span className="bg-indigo-50 border border-indigo-200 rounded px-2.5 py-1 text-xs font-semibold text-indigo-900">
+                        {MONTHS[previewData.month - 1]} {previewData.year}
+                      </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1.5">
                       {previewData.uploadMeta.company_name
@@ -634,20 +629,9 @@ const AttendanceMonthly = () => {
                   className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
-              <select
-                value={filterYear}
-                onChange={(e) => setFilterYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-              >
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <select
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-              >
-                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
+              <div className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700 font-medium">
+                {MONTHS[filterMonth - 1]} {filterYear}
+              </div>
               <button
                 onClick={() => loadData()}
                 disabled={loading}
