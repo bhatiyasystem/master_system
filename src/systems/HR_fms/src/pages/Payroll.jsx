@@ -145,7 +145,7 @@ const EditDeductionsModal = ({ row, onSave, onClose }) => {
     return () => { active = false; };
   }, [row.emp_code]);
 
-  const availableBalance = parseFloat((dbBalance + parseFloat(row.loan_deduction || 0)).toFixed(2));
+  const availableBalance = parseFloat(dbBalance.toFixed(2));
   const availableAdvBalance = parseFloat(dbAdvBalance.toFixed(2));
 
   const handleSave = async () => {
@@ -703,6 +703,7 @@ const Payroll = () => {
   const [pageSize] = useState(50);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [paidCount, setPaidCount] = useState(0);
 
   const [payslipRow, setPayslipRow] = useState(null);
   const [envelopeRow, setEnvelopeRow] = useState(null);
@@ -719,17 +720,28 @@ const Payroll = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchPayrollPaginated({
-        year: filterYear,
-        month: filterMonth,
-        statusNot: 'paid',
-        search,
-        page,
-        pageSize
-      });
+      const [res, paidRes] = await Promise.all([
+        fetchPayrollPaginated({
+          year: filterYear,
+          month: filterMonth,
+          statusNot: 'paid',
+          search,
+          page,
+          pageSize
+        }),
+        fetchPayrollPaginated({
+          year: filterYear,
+          month: filterMonth,
+          status: 'paid',
+          page: 1,
+          pageSize: 1   // we only need the count
+        })
+      ]);
       setPayrollData(res.data || []);
+
       setTotalRecords(res.totalRecords || 0);
       setTotalPages(res.totalPages || 1);
+      setPaidCount(paidRes.totalRecords || 0);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -777,6 +789,7 @@ const Payroll = () => {
       notify(`✓ Payroll generated successfully`);
       setFilterMonth(period.month);
       setFilterYear(period.year);
+      await loadPayroll();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -912,7 +925,10 @@ const Payroll = () => {
   const totalGross = filtered.reduce((s, r) => s + (r.gross_salary || 0), 0);
   const totalDeductions = filtered.reduce((s, r) => s + (r.total_deductions || 0), 0);
   const totalNet = filtered.reduce((s, r) => s + (r.net_salary || 0), 0);
-  const paidCount = filtered.filter(r => r.status === 'paid').length;
+  const goto = [
+    { id: 'payroll', label: 'Payroll', },
+    { id: 'payslips', label: 'Payslips', }]
+  // paidCount is fetched from DB — not derived from filtered (which excludes paid rows)
 
   return (
     <div className="space-y-5">
@@ -941,7 +957,7 @@ const Payroll = () => {
               Print All Envelopes
             </button>
           )}
-          <button
+          {activeTab !== "payslips" && <button
             onClick={handleGenerate}
             disabled={generating}
             className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 shadow-md disabled:opacity-50 transition-all"
@@ -949,16 +965,17 @@ const Payroll = () => {
             {generating
               ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating...</>
               : <><Play size={15} /> Generate Payroll</>}
-          </button>
+          </button>}
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-        {[
+        {/* {[
           { id: 'payroll', label: 'Payroll' },
           { id: 'payslips', label: 'Payslips' },
-        ].map(tab => (
+        ].map(tab => ( */}
+        {goto.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

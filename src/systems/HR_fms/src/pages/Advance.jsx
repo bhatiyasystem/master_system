@@ -395,17 +395,37 @@ const Advance = () => {
 
     const advanceDateISO = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-01`;
 
+    // Bug 2 fix: if not explicitly editing, check for an existing record for this
+    // employee + month + year to prevent duplicate rows from being created.
+    let existingForPeriod = null;
+    if (!isEditing) {
+      existingForPeriod = advances.find(a =>
+        String(a.employee_id).trim() === String(finalEmployeeId).trim() &&
+        new Date(a.date).getFullYear() === selectedAdvYear &&
+        (new Date(a.date).getMonth() + 1) === selectedAdvMonth
+      );
+    }
+    const recordId = isEditing ? editingSalaryAdvanceId : existingForPeriod?.id;
+
+    const existingRecord = existing || existingForPeriod;
+    const amountChanged = existingRecord && amount !== parseFloat(existingRecord.amount);
+
     const newRequest = {
-      ...(isEditing ? { id: editingSalaryAdvanceId } : {}),
+      ...(recordId ? { id: recordId } : {}),
       employee_id: finalEmployeeId,
       employee_name: finalEmployeeName,
       amount: amount,
       monthly_deduction: amount,
-      remaining_amount: isEditing && amount === parseFloat(existing?.amount) ? (existing?.remaining_amount ?? amount) : amount,
+      // Preserve remaining_amount when updating: only reset if amount increased (new money added)
+      remaining_amount: existingRecord
+        ? (amountChanged && amount > parseFloat(existingRecord.amount)
+            ? amount  // new higher amount — reset remaining to new full value
+            : (existingRecord.remaining_amount ?? amount))  // keep current balance
+        : amount,
       deduction: newSalaryAdvance.deduction,
       reason: newSalaryAdvance.reason,
-      date: isEditing ? (existing?.date ?? advanceDateISO) : advanceDateISO,
-      status: isEditing ? (existing?.status ?? "Approved") : "Approved"
+      date: existingRecord ? (existingRecord.date ?? advanceDateISO) : advanceDateISO,
+      status: existingRecord ? (existingRecord.status ?? "Approved") : "Approved"
     };
 
     try {
@@ -479,28 +499,51 @@ const Advance = () => {
 
           if (validRows.length > 0) {
             const startDate = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-01`;
-            const lastDay = new Date(selectedAdvYear, selectedAdvMonth, 0).getDate();
-            const endDate = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+            const endDate = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-${String(new Date(selectedAdvYear, selectedAdvMonth, 0).getDate()).padStart(2, "0")}`;
 
-            // Overwrite existing data for the same month in advances table
-            const { error: deleteError } = await supabase
+            // Bug 3 fix: per-employee upsert instead of delete-all-then-insert
+            // Fetch existing records for this month to find matches by employee_id
+            const { data: existingForMonth } = await supabase
               .from("advances")
-              .delete()
+              .select("id, employee_id, remaining_amount, amount")
               .gte("date", startDate)
               .lte("date", endDate);
 
-            if (deleteError) {
-              console.error("Supabase delete existing month advances error:", deleteError);
-              throw deleteError;
-            }
+            const existingMap = {};
+            (existingForMonth || []).forEach(r => {
+              existingMap[String(r.employee_id).trim()] = r;
+            });
 
-            const advanceRows = validRows.map(row => ({
-              ...row,
-              monthly_deduction: row.amount,
-              remaining_amount: row.amount,
-            }));
-            const { error } = await supabase.from("advances").insert(advanceRows);
-            if (error) throw error;
+            for (const row of validRows) {
+              const empIdKey = String(row.employee_id).trim();
+              const matchedExisting = existingMap[empIdKey];
+              if (matchedExisting) {
+                // Update existing record; preserve remaining_amount
+                await supabase
+                  .from("advances")
+                  .update({
+                    amount: row.amount,
+                    monthly_deduction: row.amount,
+                    // Only reset remaining if amount has increased (new money)
+                    remaining_amount: row.amount > parseFloat(matchedExisting.amount || 0)
+                      ? row.amount
+                      : (matchedExisting.remaining_amount ?? row.amount),
+                    deduction: row.deduction,
+                    status: row.status,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq("id", matchedExisting.id);
+              } else {
+                // Insert new record only
+                await supabase
+                  .from("advances")
+                  .insert({
+                    ...row,
+                    monthly_deduction: row.amount,
+                    remaining_amount: row.amount
+                  });
+              }
+            }
           }
 
           if (skipped > 0) {
@@ -626,32 +669,48 @@ const Advance = () => {
 
         if (validRows.length > 0) {
           const startDate = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-01`;
-          const lastDay = new Date(selectedAdvYear, selectedAdvMonth, 0).getDate();
-          const endDate = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+          const endDate = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-${String(new Date(selectedAdvYear, selectedAdvMonth, 0).getDate()).padStart(2, "0")}`;
 
-          // Overwrite existing data for the same month in advances table
-          const { error: deleteError } = await supabase
+          // Bug 3 fix: per-employee upsert instead of delete-all-then-insert
+          const { data: existingForMonth2 } = await supabase
             .from("advances")
-            .delete()
+            .select("id, employee_id, remaining_amount, amount")
             .gte("date", startDate)
             .lte("date", endDate);
 
-          if (deleteError) {
-            console.error("Supabase delete existing month advances error:", deleteError);
-            throw deleteError;
-          }
+          const existingMap2 = {};
+          (existingForMonth2 || []).forEach(r => {
+            existingMap2[String(r.employee_id).trim()] = r;
+          });
 
-          const advanceRows = validRows.map(row => ({
-            ...row,
-            monthly_deduction: row.amount,
-            remaining_amount: row.amount,
-          }));
-          const { data: insertedData, error } = await supabase.from("advances").insert(advanceRows).select();
-          if (error) {
-            console.error("Supabase insert error:", error);
-            throw error;
+          for (const row of validRows) {
+            const empIdKey = String(row.employee_id).trim();
+            const matchedExisting = existingMap2[empIdKey];
+            if (matchedExisting) {
+              await supabase
+                .from("advances")
+                .update({
+                  amount: row.amount,
+                  monthly_deduction: row.amount,
+                  remaining_amount: row.amount > parseFloat(matchedExisting.amount || 0)
+                    ? row.amount
+                    : (matchedExisting.remaining_amount ?? row.amount),
+                  deduction: row.deduction,
+                  status: row.status,
+                  updated_at: new Date().toISOString()
+                })
+                .eq("id", matchedExisting.id);
+            } else {
+              await supabase
+                .from("advances")
+                .insert({
+                  ...row,
+                  monthly_deduction: row.amount,
+                  remaining_amount: row.amount
+                });
+            }
           }
-          console.log("Inserted rows:", insertedData);
+          console.log("Upserted rows:", validRows.length);
         }
 
         if (skipped > 0) {

@@ -213,7 +213,7 @@ const pdfStyles = StyleSheet.create({
   headerBlackBox: {
     border: '2 solid #312e81',
     borderRadius: 10,
-    backgroundColor: '#000000',
+    backgroundColor: '#ffffff',
     padding: 16,
     marginBottom: 24,
   },
@@ -221,7 +221,7 @@ const pdfStyles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 20,
     fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
+    color: '#000000',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
@@ -229,7 +229,7 @@ const pdfStyles = StyleSheet.create({
     textAlign: 'left',
     fontSize: 14,
     fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
+    color: '#000000',
     marginTop: 12,
     marginLeft: 4,
   },
@@ -248,10 +248,11 @@ const pdfStyles = StyleSheet.create({
   },
   salaryCard: {
     flex: 1,
-    backgroundColor: '#16a34a',
+    backgroundColor: '#f8fafc',
     borderRadius: 10,
     padding: 20,
-    marginLeft: 10,
+    border: '1 solid #cbd5e1',
+    marginRight: 10,
   },
   label: {
     fontSize: 11,
@@ -268,7 +269,7 @@ const pdfStyles = StyleSheet.create({
   },
   salaryLabel: {
     fontSize: 11,
-    color: '#dcfce7',
+    color: '#64748b',
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -276,7 +277,7 @@ const pdfStyles = StyleSheet.create({
   },
   salaryValue: {
     fontSize: 26,
-    color: '#ffffff',
+    color: '#000000',
     fontFamily: 'Helvetica-Bold',
   },
 });
@@ -289,8 +290,8 @@ export const SingleEnvelopePDFPage = ({ row }) => {
     <Page size="A4" orientation="landscape" style={pdfStyles.page}>
       <View style={pdfStyles.envelopeContainer}>
         <View style={pdfStyles.headerBlackBox}>
-          <Text style={pdfStyles.headerTitle}>EMPLOYEE PAY ENVELOPE</Text>
-          <Text style={pdfStyles.periodText}>{monthName} {year}</Text>
+          <Text style={pdfStyles.headerTitle}>{monthName} {year}</Text>
+          {/* <Text style={pdfStyles.periodText}>{monthName} {year}</Text> */}
         </View>
         <View style={pdfStyles.bodyGrid}>
           <View style={pdfStyles.infoCard}>

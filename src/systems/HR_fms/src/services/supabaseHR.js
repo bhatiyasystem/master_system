@@ -1013,6 +1013,42 @@ export async function revertSalaryAdvanceDeduction(empCode, revertAmount) {
   }
 }
 
+export async function deductLoanAmount(empCode, deductAmount, payrollId = null) {
+  if (deductAmount <= 0) return;
+
+  const { data: loans, error } = await supabase
+    .from('salary_advances')
+    .select('*')
+    .eq('employee_id', empCode)
+    .in('status', ['Approved', 'Pending'])
+    .order('date', { ascending: true });
+
+  if (error || !loans || loans.length === 0) return;
+
+  let remainingToDeduct = deductAmount;
+  for (const loan of loans) {
+    if (loan.deduction === 'No') continue;
+    const currentRemaining = parseFloat(loan.remaining_amount !== null && loan.remaining_amount !== undefined ? loan.remaining_amount : loan.amount) || 0;
+    if (currentRemaining <= 0) continue;
+
+    const dec = Math.min(remainingToDeduct, currentRemaining);
+    const newRemaining = parseFloat((currentRemaining - dec).toFixed(2));
+    remainingToDeduct -= dec;
+
+    await supabase
+      .from('salary_advances')
+      .update({
+        remaining_amount: newRemaining,
+        status: newRemaining <= 0 ? 'Deducted' : 'Approved',
+        deducted_in_payroll_id: payrollId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', loan.id);
+
+    if (remainingToDeduct <= 0) break;
+  }
+}
+
 export async function generatePayrollBatch(attendanceRows, employeeMap, targetYear, targetMonth) {
   const payrollRows = [];
 
@@ -1103,6 +1139,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
   allAdvances.forEach(adv => {
     if (!adv.employee_id) return;
     const empCodeKey = String(adv.employee_id).trim().toLowerCase();
+    const original  = parseFloat(adv.amount) || 0;
     const remaining = parseFloat(adv.remaining_amount !== null && adv.remaining_amount !== undefined ? adv.remaining_amount : adv.amount) || 0;
     if (remaining > 0 || adv.status === 'Approved') {
       if (!employeeActiveAdvs[empCodeKey]) {
@@ -1110,6 +1147,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
       }
       employeeActiveAdvs[empCodeKey].push({
         ...adv,
+        original,
         remaining
       });
     }
@@ -1185,7 +1223,10 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
 
     // --- 1. ADVANCE DATA from advances table ---
     const empAdvs = employeeActiveAdvs[empCodeKey] || [];
-    const totalActiveAdvance = empAdvs.reduce((sum, adv) => sum + (parseFloat(adv.remaining) || 0), 0);
+    // Advance column  = sum of ORIGINAL amounts (immutable, display-only)
+    const totalOriginalAdvance  = empAdvs.reduce((sum, adv) => sum + (parseFloat(adv.original)  || 0), 0);
+    // Adv. Ded. column = sum of CURRENT remaining balances (pending deduction)
+    const totalRemainingAdvance = empAdvs.reduce((sum, adv) => sum + (parseFloat(adv.remaining) || 0), 0);
 
     // --- 2. LOAN DATA from salary_advances table ---
     const empSalAdvs = employeeSalaryAdvs[empCodeKey] || [];
@@ -1205,14 +1246,14 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const otHours = att.total_ot || att.ot_hours || 0;
 
     // Final payroll calculation:
-    // advance = totalActiveAdvance
-    // loanDeduction = loansDeductionAmount
-    // salaryAdvanceDeduction = totalActiveAdvance
-    const calc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, totalActiveAdvance, loansDeductionAmount, totalActiveAdvance, otHours);
+    // advance               = totalOriginalAdvance  (Advance col: original full amount)
+    // loanDeduction          = loansDeductionAmount
+    // salaryAdvanceDeduction = totalRemainingAdvance (Adv. Ded. col: current remaining balance)
+    const calc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, totalOriginalAdvance, loansDeductionAmount, totalRemainingAdvance, otHours);
 
     console.log(`[Payroll Debug] emp_id: ${att.emp_code || employee.employee_id} (${employee.name || att.emp_name})`);
-    console.log(`  table: advances -> fetched advance amount: ₹${totalActiveAdvance}`);
-    console.log(`  table: salary_advances -> fetched loan monthly deduction: ₹${loansDeductionAmount}`);
+    console.log(`  table: advances -> original: ₹${totalOriginalAdvance}, remaining: ₹${totalRemainingAdvance}`);
+    console.log(`  table: salary_advances -> loan monthly deduction: ₹${loansDeductionAmount}`);
     console.log(`  Payroll Advance: ₹${calc.advance}, Payroll Adv Ded: ₹${calc.salary_advance_deduction}, Payroll Loan Ded: ₹${calc.loan_deduction}, Total Ded: ₹${calc.total_deductions}, Net Salary: ₹${calc.net_salary}`);
 
     payrollRows.push({
@@ -1630,75 +1671,10 @@ export async function fetchSalaryConfigsPaginated({ page = 1, pageSize = 50, sea
 }
 
 export async function updateRemainingBalancesForEmployee(empCode, advanceDeductionAmount, loanDeductionAmount, payrollId = null) {
-  console.log(`[Sync Balances] emp_code: ${empCode}, advanceDeductionAmount: ₹${advanceDeductionAmount}, loanDeductionAmount: ₹${loanDeductionAmount}`);
-  const promises = [];
-
-  // 1. Sync Advances remaining amount
-  if (payrollId !== null) {
-    const { data: advs, error: advsError } = await supabase
-      .from('advances')
-      .select('*')
-      .eq('employee_id', empCode)
-      .in('status', ['Approved', 'Pending', 'Fully Paid'])
-      .order('date', { ascending: true });
-
-    if (advsError) throw advsError;
-
-    let remAdvDed = advanceDeductionAmount;
-    for (const adv of (advs || [])) {
-      if (adv.deduction === 'No') continue;
-      const original = parseFloat(adv.amount) || 0;
-      const dec = Math.min(remAdvDed, original);
-      const newRemaining = parseFloat((original - dec).toFixed(2));
-      remAdvDed -= dec;
-
-      promises.push(
-        supabase
-          .from('advances')
-          .update({
-            remaining_amount: newRemaining,
-            status: newRemaining <= 0 ? 'Fully Paid' : 'Approved',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', adv.id)
-      );
-    }
-  }
-
-  // 2. Sync Loans remaining amount
-  const { data: loans, error: loansError } = await supabase
-    .from('salary_advances')
-    .select('*')
-    .eq('employee_id', empCode)
-    .in('status', ['Approved', 'Pending', 'Deducted'])
-    .order('date', { ascending: true });
-
-  if (loansError) throw loansError;
-
-  let remLoanDed = loanDeductionAmount;
-  for (const adv of (loans || [])) {
-    if (adv.deduction === 'No') continue;
-    const original = parseFloat(adv.amount) || 0;
-    const dec = Math.min(remLoanDed, original);
-    const newRemaining = parseFloat((original - dec).toFixed(2));
-    remLoanDed -= dec;
-
-    promises.push(
-      supabase
-        .from('salary_advances')
-        .update({
-          remaining_amount: newRemaining,
-          status: newRemaining <= 0 ? 'Deducted' : 'Approved',
-          deducted_in_payroll_id: payrollId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', adv.id)
-    );
-  }
-
-  if (promises.length > 0) {
-    await Promise.all(promises);
-  }
+  // This function is now a no-op stub.
+  // Advance and Loan deductions are handled atomically on Mark-as-Paid via
+  // deductAdvanceAmount / deductLoanAmount (called from updatePayrollRow).
+  void empCode; void advanceDeductionAmount; void loanDeductionAmount; void payrollId;
 }
 
 export async function updatePayrollRow(id, updates) {
@@ -1752,24 +1728,31 @@ export async function updatePayrollRow(id, updates) {
     .single();
   if (error) throw error;
 
-  // Sync Loans (salary_advances): keep existing immediate update behavior
+  // Sync Loans (salary_advances): Paid-only gate — mirrors Advance logic
   const loanDed = parseFloat(data.loan_deduction) || 0;
-  await updateRemainingBalancesForEmployee(data.emp_code, 0, loanDed, data.status === 'paid' ? id : null);
-
-  // Sync Advances (advances): ONLY when paid or transitioning
-  const advDed = parseFloat(data.salary_advance_deduction) || 0;
   const isPayingNow = (current.status !== 'paid' && data.status === 'paid');
-  const isEditingPaid = (current.status === 'paid' && updates.salary_advance_deduction !== undefined);
+  const isEditingPaid = (current.status === 'paid' && updates.loan_deduction !== undefined);
 
   if (isPayingNow) {
+    await deductLoanAmount(data.emp_code, loanDed, id);
+    // Also apply advance deduction on paid transition
+    const advDed = parseFloat(data.salary_advance_deduction) || 0;
     await deductAdvanceAmount(data.emp_code, advDed);
   } else if (isEditingPaid) {
+    const oldLoanDed = parseFloat(current.loan_deduction) || 0;
+    const loanDiff = loanDed - oldLoanDed;
+    if (loanDiff > 0) {
+      await deductLoanAmount(data.emp_code, loanDiff, id);
+    } else if (loanDiff < 0) {
+      await revertSalaryAdvanceDeduction(data.emp_code, Math.abs(loanDiff));
+    }
     const oldAdvDed = parseFloat(current.salary_advance_deduction) || 0;
-    const diff = advDed - oldAdvDed;
-    if (diff > 0) {
-      await deductAdvanceAmount(data.emp_code, diff);
-    } else if (diff < 0) {
-      await revertAdvanceDeduction(data.emp_code, Math.abs(diff));
+    const advDed = parseFloat(data.salary_advance_deduction) || 0;
+    const advDiff = advDed - oldAdvDed;
+    if (advDiff > 0) {
+      await deductAdvanceAmount(data.emp_code, advDiff);
+    } else if (advDiff < 0) {
+      await revertAdvanceDeduction(data.emp_code, Math.abs(advDiff));
     }
   }
 
