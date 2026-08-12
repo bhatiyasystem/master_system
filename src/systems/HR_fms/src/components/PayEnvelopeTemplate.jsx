@@ -12,13 +12,13 @@ export const PayEnvelopeCard = ({ row }) => {
 
   return (
     <div className="border-2 border-indigo-900 rounded-xl p-8 bg-white shadow-sm space-y-6">
-      <div className="border-2 border-indigo-900 rounded-xl p-4 bg-black shadow-sm space-y-3">
+      <div className="border-2 border-indigo-900 rounded-xl p-4 bg-white shadow-sm space-y-3">
         {/* CENTERED HEADING */}
-        <h2 className="text-center text-xl font-extrabold text-white tracking-wider uppercase">
+        {/* <h2 className="text-center text-xl font-extrabold text-white tracking-wider uppercase">
           EMPLOYEE PAY ENVELOPE
-        </h2>
+        </h2> */}
         {/* LEFT ALIGNED MONTH YEAR */}
-        <div className="text-left font-bold text-white text-base mx-2">
+        <div className="text-center font-bold text-black text-base mx-2">
           {monthName} {year}
         </div>
       </div>
@@ -30,9 +30,9 @@ export const PayEnvelopeCard = ({ row }) => {
           <p className="text-xl font-extrabold text-slate-900 break-words">{row?.emp_name || '—'}</p>
         </div>
 
-        <div className="bg-emerald-600 rounded-xl p-5 text-white">
-          <p className="text-xs text-emerald-100 font-bold uppercase tracking-wider mb-2">SALARY</p>
-          <p className="text-2xl font-black text-white">{fmt(row?.net_salary)}</p>
+        <div className="bg-slate-50 rounded-xl p-5 text-white">
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">SALARY</p>
+          <p className="text-2xl font-black text-black">{fmt(row?.net_salary)}</p>
         </div>
       </div>
     </div>
@@ -49,9 +49,8 @@ export const generatePayEnvelopeHTML = (rows, title = 'Pay Envelopes') => {
     return `
       <div class="envelope-page">
         <div class="envelope-container">
-          <div class="header-black-box">
-            <div class="envelope-header-title">EMPLOYEE PAY ENVELOPE</div>
-            <div class="envelope-period">${monthName} ${year}</div>
+          <div class="header-box">
+            <div class="period-text">${monthName} ${year}</div>
           </div>
           <div class="envelope-cards">
             <div class="info-card">
@@ -72,6 +71,7 @@ export const generatePayEnvelopeHTML = (rows, title = 'Pay Envelopes') => {
     <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="UTF-8" />
         <title>${title}</title>
         <style>
           @page {
@@ -110,28 +110,18 @@ export const generatePayEnvelopeHTML = (rows, title = 'Pay Envelopes') => {
             flex-direction: column;
             justify-content: flex-start;
           }
-          .header-black-box {
+          .header-box {
             border: 2px solid #312e81;
             border-radius: 12px;
-            background-color: #000000;
+            background-color: #ffffff;
             padding: 16px 20px;
             margin-bottom: 24px;
           }
-          .envelope-header-title {
+          .period-text {
             text-align: center;
-            font-size: 22px;
-            font-weight: 800;
-            color: #ffffff;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-          }
-          .envelope-period {
-            text-align: left;
             font-size: 16px;
             font-weight: 700;
-            color: #ffffff;
-            margin-top: 12px;
-            margin-left: 4px;
+            color: #000000;
           }
           .envelope-cards {
             display: grid;
@@ -146,8 +136,8 @@ export const generatePayEnvelopeHTML = (rows, title = 'Pay Envelopes') => {
             border-radius: 12px;
           }
           .salary-card {
-            background: #16a34a;
-            color: #ffffff;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
             padding: 24px;
             border-radius: 12px;
           }
@@ -167,7 +157,7 @@ export const generatePayEnvelopeHTML = (rows, title = 'Pay Envelopes') => {
           }
           .salary-label {
             font-size: 11px;
-            color: #dcfce7;
+            color: #64748b;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -176,7 +166,7 @@ export const generatePayEnvelopeHTML = (rows, title = 'Pay Envelopes') => {
           .salary-value {
             font-size: 28px;
             font-weight: 900;
-            color: #ffffff;
+            color: #000000;
           }
         </style>
       </head>
