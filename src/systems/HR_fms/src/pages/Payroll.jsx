@@ -1,5 +1,5 @@
 import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Search, DollarSign, Edit3, Mail, Printer } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { getPreviousProcessingPeriod } from '../utils/dateUtils.js';
 import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, updateEmployeePutthaStatus, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, fetchEmployeeLoanBalance, fetchEmployeeAdvanceBalance, } from '../services/supabaseHR';
@@ -396,6 +396,9 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
   const [generating, setGenerating] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
 
+  const notifyRef = useRef(notify);
+  useEffect(() => { notifyRef.current = notify; });
+
   const loadPayslips = useCallback(async () => {
     setLoading(true);
     try {
@@ -411,11 +414,11 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
       setPayslipMap(map);
       setPaidRecords(payrollData || []);
     } catch (err) {
-      notify(`Failed to fetch payslips: ${err.message}`, 'error');
+      notifyRef.current(`Failed to fetch payslips: ${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
-  }, [filterYear, filterMonth, notify]);
+  }, [filterYear, filterMonth]);
 
   useEffect(() => {
     loadPayslips();
@@ -722,10 +725,10 @@ const Payroll = () => {
 
 
 
-  const notify = (msg, type = 'success') => {
+  const notify = useCallback((msg, type = 'success') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 4000);
-  };
+  }, []);
 
   const loadPayroll = useCallback(async () => {
     setLoading(true);

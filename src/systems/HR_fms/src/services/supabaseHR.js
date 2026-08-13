@@ -115,6 +115,7 @@ export function calculateRowLeaveStats(row) {
  * or when daily_status is empty/incomplete.
  * Places WO on Sundays, H on holidays, Leaves (CL/PL/SL/L), P on present days, A on absent days.
  */
+
 export function fillDailyStatusFromSummary(emp, year, month) {
   if (!year || !month || !emp) return emp?.daily_status || {};
 
@@ -566,6 +567,21 @@ export async function fetchUploads({ year, month } = {}) {
 }
 
 // ─── ATTENDANCE MONTHLY ───────────────────────────────────────────────────────
+
+// const fetchattendance = async (url) => {
+//   try {
+//     const response = await fetch(url);
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
+//     const data = await response.json();
+//     return data;
+//   } catch (error) {
+//     console.error('Error fetching attendance:', error);
+//     throw error;
+//   }
+// }
+
 
 export async function saveAttendanceRows(uploadId, employees, year, month, companyName, department) {
   const period = getPreviousProcessingPeriod();
@@ -1139,7 +1155,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
   allAdvances.forEach(adv => {
     if (!adv.employee_id) return;
     const empCodeKey = String(adv.employee_id).trim().toLowerCase();
-    const original  = parseFloat(adv.amount) || 0;
+    const original = parseFloat(adv.amount) || 0;
     const remaining = parseFloat(adv.remaining_amount !== null && adv.remaining_amount !== undefined ? adv.remaining_amount : adv.amount) || 0;
     if (remaining > 0 || adv.status === 'Approved') {
       if (!employeeActiveAdvs[empCodeKey]) {
@@ -1224,7 +1240,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     // --- 1. ADVANCE DATA from advances table ---
     const empAdvs = employeeActiveAdvs[empCodeKey] || [];
     // Advance column  = sum of ORIGINAL amounts (immutable, display-only)
-    const totalOriginalAdvance  = empAdvs.reduce((sum, adv) => sum + (parseFloat(adv.original)  || 0), 0);
+    const totalOriginalAdvance = empAdvs.reduce((sum, adv) => sum + (parseFloat(adv.original) || 0), 0);
     // Adv. Ded. column = sum of CURRENT remaining balances (pending deduction)
     const totalRemainingAdvance = empAdvs.reduce((sum, adv) => sum + (parseFloat(adv.remaining) || 0), 0);
 
