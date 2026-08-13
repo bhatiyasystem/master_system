@@ -43,7 +43,7 @@ const Advance = () => {
   const [advances, setAdvances] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
-  const [newAdvance, setNewAdvance] = useState({ amount: "", monthlyDeduction: "", reason: "", deduction: "Yes" });
+  const [newAdvance, setNewAdvance] = useState({ amount: "", monthlyDeduction: "", reason: "", deduction: "Yes", remainingAmount: "" });
   const [editingLoanId, setEditingLoanId] = useState(null);
   const [employeesList, setEmployeesList] = useState([]);
   const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
@@ -52,7 +52,8 @@ const Advance = () => {
     amount: "",
     reason: "",
     deduction: "Yes",
-    date: new Date().toISOString().split("T")[0]
+    date: new Date().toISOString().split("T")[0],
+    remainingAmount: ""
   });
   const [editingSalaryAdvanceId, setEditingSalaryAdvanceId] = useState(null);
   const [selectedSalEmpName, setSelectedSalEmpName] = useState("");
@@ -82,6 +83,11 @@ const Advance = () => {
   const fileInputRef = useRef(null);
 
   const ADVANCE_FIELDS = [
+    { key: "employeeName", label: "Employee Name", required: true, placeholder: "e.g. Rahul Sharma" },
+    { key: "amount", label: "Amount", required: true, placeholder: "e.g. 5000" }
+  ];
+
+  const SALARY_ADVANCE_FIELDS = [
     { key: "employeeId", label: "Employee ID", required: true, placeholder: "e.g. EMP001" },
     { key: "employeeName", label: "Employee Name", required: true, placeholder: "e.g. Rahul Sharma" },
     { key: "amount", label: "Amount", required: true, placeholder: "e.g. 5000" },
@@ -89,11 +95,6 @@ const Advance = () => {
     { key: "deduction", label: "Deduction", required: false, placeholder: "e.g. Yes" },
     { key: "reason", label: "Reason", required: true, placeholder: "e.g. Medical" },
     { key: "date", label: "Date", required: false, placeholder: "e.g. 5/9/2026" }
-  ];
-
-  const SALARY_ADVANCE_FIELDS = [
-    { key: "employeeName", label: "Employee Name", required: true, placeholder: "e.g. Rahul Sharma" },
-    { key: "amount", label: "Amount", required: true, placeholder: "e.g. 5000" }
   ];
 
   const toISODate = str => {
@@ -197,6 +198,22 @@ const Advance = () => {
       return;
     }
 
+    const fullAmount = parseFloat(newAdvance.amount);
+
+    // Validate remaining amount when editing
+    const isEditing = !!editingLoanId;
+    if (isEditing && newAdvance.remainingAmount !== "") {
+      const rem = parseFloat(newAdvance.remainingAmount);
+      if (isNaN(rem) || rem < 0) {
+        toast.error("Remaining amount must be a valid non-negative number");
+        return;
+      }
+      if (rem > fullAmount) {
+        toast.error(`Remaining amount (₹${rem}) cannot exceed the full loan amount (₹${fullAmount})`);
+        return;
+      }
+    }
+
     let finalEmployeeId = employeeId;
     let finalEmployeeName = employeeName;
 
@@ -212,16 +229,30 @@ const Advance = () => {
       }
     }
 
-    const isEditing = !!editingLoanId;
     const existing = isEditing ? salaryAdvances.find(a => a.id === editingLoanId) : null;
+
+    // Determine remaining_amount:
+    // - Edit mode + user provided a value: use that value (already validated ≤ full amount)
+    // - Edit mode + no value provided: preserve existing balance or fall back to full amount
+    // - New record: remaining = full amount
+    let remainingAmount;
+    if (isEditing) {
+      if (newAdvance.remainingAmount !== "") {
+        remainingAmount = parseFloat(newAdvance.remainingAmount);
+      } else {
+        remainingAmount = existing?.remaining_amount ?? fullAmount;
+      }
+    } else {
+      remainingAmount = fullAmount;
+    }
 
     const newRequest = {
       ...(isEditing ? { id: editingLoanId } : {}),
       employee_id: finalEmployeeId,
       employee_name: finalEmployeeName,
-      amount: parseFloat(newAdvance.amount),
+      amount: fullAmount,
       monthly_deduction: parseFloat(newAdvance.monthlyDeduction) || 0,
-      remaining_amount: isEditing && parseFloat(newAdvance.amount) === parseFloat(existing?.amount) ? (existing?.remaining_amount ?? parseFloat(newAdvance.amount)) : parseFloat(newAdvance.amount),
+      remaining_amount: remainingAmount,
       reason: newAdvance.reason,
       deduction: newAdvance.deduction,
       date: isEditing
@@ -232,7 +263,7 @@ const Advance = () => {
 
     try {
       await upsertSalaryAdvance(newRequest);
-      setNewAdvance({ amount: "", monthlyDeduction: "", reason: "", deduction: "Yes" });
+      setNewAdvance({ amount: "", monthlyDeduction: "", reason: "", deduction: "Yes", remainingAmount: "" });
       setSelectedEmployeeName("");
       setEditingLoanId(null);
       setShowModal(false);
@@ -332,7 +363,12 @@ const Advance = () => {
       amount: String(adv.amount ?? ""),
       monthlyDeduction: String(adv.monthly_deduction ?? ""),
       reason: adv.reason ?? "",
-      deduction: adv.deduction ?? "Yes"
+      deduction: adv.deduction ?? "Yes",
+      remainingAmount: String(
+        adv.remaining_amount !== undefined && adv.remaining_amount !== null
+          ? adv.remaining_amount
+          : (adv.amount ?? "")
+      )
     });
     setSelectedEmployeeName(adv.employee_name ?? "");
     setShowModal(true);
@@ -378,6 +414,20 @@ const Advance = () => {
       return;
     }
 
+    // Validate remaining amount when editing
+    const isEditing = !!editingSalaryAdvanceId;
+    if (isEditing && newSalaryAdvance.remainingAmount !== "") {
+      const rem = parseFloat(newSalaryAdvance.remainingAmount);
+      if (isNaN(rem) || rem < 0) {
+        toast.error("Remaining amount must be a valid non-negative number");
+        return;
+      }
+      if (rem > amount) {
+        toast.error(`Remaining amount (₹${rem}) cannot exceed the full advance amount (₹${amount})`);
+        return;
+      }
+    }
+
     const empConfig = (salaryConfigs || []).find(c => c.emp_code === finalEmployeeId);
 
     if (!empConfig) {
@@ -390,7 +440,6 @@ const Advance = () => {
       }
     }
 
-    const isEditing = !!editingSalaryAdvanceId;
     const existing = isEditing ? advances.find(a => a.id === editingSalaryAdvanceId) : null;
 
     const advanceDateISO = `${selectedAdvYear}-${String(selectedAdvMonth).padStart(2, "0")}-01`;
@@ -406,9 +455,23 @@ const Advance = () => {
       );
     }
     const recordId = isEditing ? editingSalaryAdvanceId : existingForPeriod?.id;
-
     const existingRecord = existing || existingForPeriod;
     const amountChanged = existingRecord && amount !== parseFloat(existingRecord.amount);
+
+    // Determine remaining_amount:
+    // - Edit mode + user provided a value: use that (already validated ≤ full amount)
+    // - Edit mode + no change: preserve existing balance, unless amount increased (reset)
+    // - New record: remaining = full amount
+    let remainingAmount;
+    if (isEditing && newSalaryAdvance.remainingAmount !== "") {
+      remainingAmount = parseFloat(newSalaryAdvance.remainingAmount);
+    } else if (existingRecord) {
+      remainingAmount = amountChanged && amount > parseFloat(existingRecord.amount)
+        ? amount  // new higher amount — reset remaining to new full value
+        : (existingRecord.remaining_amount ?? amount);  // keep current balance
+    } else {
+      remainingAmount = amount;
+    }
 
     const newRequest = {
       ...(recordId ? { id: recordId } : {}),
@@ -416,12 +479,7 @@ const Advance = () => {
       employee_name: finalEmployeeName,
       amount: amount,
       monthly_deduction: amount,
-      // Preserve remaining_amount when updating: only reset if amount increased (new money added)
-      remaining_amount: existingRecord
-        ? (amountChanged && amount > parseFloat(existingRecord.amount)
-            ? amount  // new higher amount — reset remaining to new full value
-            : (existingRecord.remaining_amount ?? amount))  // keep current balance
-        : amount,
+      remaining_amount: remainingAmount,
       deduction: newSalaryAdvance.deduction,
       reason: newSalaryAdvance.reason,
       date: existingRecord ? (existingRecord.date ?? advanceDateISO) : advanceDateISO,
@@ -430,7 +488,7 @@ const Advance = () => {
 
     try {
       await upsertAdvance(newRequest);
-      setNewSalaryAdvance({ amount: "", reason: "", deduction: "Yes", date: new Date().toISOString().split("T")[0] });
+      setNewSalaryAdvance({ amount: "", reason: "", deduction: "Yes", date: new Date().toISOString().split("T")[0], remainingAmount: "" });
       setSelectedSalEmpName("");
       setEditingSalaryAdvanceId(null);
       setShowAdvanceModal(false);
@@ -747,7 +805,12 @@ const Advance = () => {
       amount: String(adv.amount ?? ""),
       reason: adv.reason ?? "",
       deduction: adv.deduction ?? "Yes",
-      date: adv.date ?? new Date().toISOString().split("T")[0]
+      date: adv.date ?? new Date().toISOString().split("T")[0],
+      remainingAmount: String(
+        adv.remaining_amount !== undefined && adv.remaining_amount !== null
+          ? adv.remaining_amount
+          : (adv.amount ?? "")
+      )
     });
     setSelectedSalEmpName(adv.employee_name ?? "");
     setShowAdvanceModal(true);
@@ -1083,11 +1146,42 @@ const Advance = () => {
                       required
                       min="1"
                       value={newAdvance.amount}
-                      onChange={e => setNewAdvance({ ...newAdvance, amount: e.target.value })}
+                      onChange={e => setNewAdvance({ ...newAdvance, amount: e.target.value, remainingAmount: "" })}
                       className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                       placeholder="Enter amount"
                     />
                   </div>
+
+                  {/* Remaining Balance — only shown in edit mode */}
+                  {editingLoanId && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Remaining Balance (₹)
+                        {newAdvance.amount && (
+                          <span className="ml-2 text-xs text-gray-400 font-normal">max: ₹{parseFloat(newAdvance.amount).toLocaleString("en-IN")}</span>
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={newAdvance.amount || undefined}
+                        step="any"
+                        value={newAdvance.remainingAmount}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const max = parseFloat(newAdvance.amount) || Infinity;
+                          if (val === "" || parseFloat(val) <= max) {
+                            setNewAdvance({ ...newAdvance, remainingAmount: val });
+                          } else {
+                            setNewAdvance({ ...newAdvance, remainingAmount: String(max) });
+                          }
+                        }}
+                        className="w-full px-4 py-2 bg-amber-50 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900"
+                        placeholder="Current remaining balance"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Leave blank to keep the existing remaining balance unchanged.</p>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Deduction (₹) *</label>
@@ -1153,6 +1247,7 @@ const Advance = () => {
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             {isAdmin && (
+
               <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-lg w-fit">
                 <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">
                   Total Debit (Advances){" "}
@@ -1403,11 +1498,42 @@ const Advance = () => {
                       required
                       min="1"
                       value={newSalaryAdvance.amount}
-                      onChange={e => setNewSalaryAdvance({ ...newSalaryAdvance, amount: e.target.value })}
+                      onChange={e => setNewSalaryAdvance({ ...newSalaryAdvance, amount: e.target.value, remainingAmount: "" })}
                       className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                       placeholder="Enter amount"
                     />
                   </div>
+
+                  {/* Remaining Balance — only shown in edit mode */}
+                  {editingSalaryAdvanceId && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Remaining Balance (₹)
+                        {newSalaryAdvance.amount && (
+                          <span className="ml-2 text-xs text-gray-400 font-normal">max: ₹{parseFloat(newSalaryAdvance.amount).toLocaleString("en-IN")}</span>
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max={newSalaryAdvance.amount || undefined}
+                        step="any"
+                        value={newSalaryAdvance.remainingAmount}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const max = parseFloat(newSalaryAdvance.amount) || Infinity;
+                          if (val === "" || parseFloat(val) <= max) {
+                            setNewSalaryAdvance({ ...newSalaryAdvance, remainingAmount: val });
+                          } else {
+                            setNewSalaryAdvance({ ...newSalaryAdvance, remainingAmount: String(max) });
+                          }
+                        }}
+                        className="w-full px-4 py-2 bg-amber-50 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900"
+                        placeholder="Current remaining balance"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Leave blank to keep the existing remaining balance unchanged.</p>
+                    </div>
+                  )}
 
                   <div className="flex justify-end space-x-3 pt-4">
                     <button

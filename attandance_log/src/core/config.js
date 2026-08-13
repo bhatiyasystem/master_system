@@ -9,7 +9,13 @@ function required(name) {
 }
 
 export const config = {
-  baseUrl: required('ESSL_BASE_URL').replace(/\/+$/, ''),
-  username: required('ESSL_USERNAME'),
-  password: required('ESSL_PASSWORD'),
+  get baseUrl() {
+    return required('ESSL_BASE_URL').replace(/\/+$/, '');
+  },
+  get username() {
+    return required('ESSL_USERNAME');
+  },
+  get password() {
+    return required('ESSL_PASSWORD');
+  },
 };

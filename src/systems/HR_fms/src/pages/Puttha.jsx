@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 ;
 import toast from 'react-hot-toast';
 import supabase from '../../../../SupabaseClient';
-import { fetchPutthas, upsertPuttha, updatePutthaStatus, deletePuttha, fetchEmployees,  } from '../services/supabaseHR';
+import { fetchPutthas, upsertPuttha, updatePutthaStatus, deletePuttha, fetchEmployees, } from '../services/supabaseHR';
 
 const Puttha = () => {
   const [putthas, setPutthas] = useState([]);
@@ -82,11 +82,11 @@ const Puttha = () => {
 
   useEffect(() => {
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Submit new puttha ─────────────────────────────────────────────────────────
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newPuttha.date || !newPuttha.remark || !newPuttha.cashInHand) {
       toast.error('Please fill in all fields');
@@ -138,7 +138,7 @@ const handleSubmit = async (e) => {
         const header = raw[0].map((h) => String(h).trim().toLowerCase());
         const colIndex = (labels) => header.findIndex((h) => labels.some((l) => h.includes(l)));
 
-      const idx = {
+        const idx = {
           date: colIndex(['date']),
           remark: colIndex(['remark']),
           cashInHand: colIndex(['cash in hand', 'cash_in_hand', 'cash']),
@@ -287,8 +287,8 @@ const handleSubmit = async (e) => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${p.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                          p.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
+                        p.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
                         }`}>
                         {p.status === 'Approved' && <Check size={11} />}
                         {p.status === 'Rejected' && <X size={11} />}
@@ -363,7 +363,7 @@ const handleSubmit = async (e) => {
               </button>
             </div>
 
-           <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
@@ -376,7 +376,7 @@ const handleSubmit = async (e) => {
                 />
               </div>
 
-             <div>
+              <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Remark *</label>
                 <input
                   type="text"

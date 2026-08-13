@@ -389,7 +389,7 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
 
 // ── Payslips Tab ──────────────────────────────────────────────────────────────
 // ── Payslips Tab ──────────────────────────────────────────────────────────────
-const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
+const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsChange }) => {
   const [paidRecords, setPaidRecords] = useState([]);
   const [payslipMap, setPayslipMap] = useState({});
   const [loading, setLoading] = useState(false);
@@ -453,6 +453,14 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify }) => {
       net_salary: netSalary,
     };
   });
+
+  // Notify parent whenever paid records change so it can include them in bulk envelope printing
+  useEffect(() => {
+    if (onPaidRecordsChange) {
+      onPaidRecordsChange(processedPaidRecords);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paidRecords]);
 
   const filteredPaid = processedPaidRecords.filter(r => {
     if (!search) return true;
@@ -705,6 +713,9 @@ const Payroll = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [paidCount, setPaidCount] = useState(0);
 
+  // Tracks processed paid-employee records from PayslipsTab so we can include them in bulk envelope printing
+  const [paidProcessedRecords, setPaidProcessedRecords] = useState([]);
+
   const [payslipRow, setPayslipRow] = useState(null);
   const [envelopeRow, setEnvelopeRow] = useState(null);
   const [editRow, setEditRow] = useState(null);
@@ -863,9 +874,14 @@ const Payroll = () => {
 
 
   const handlePrintAllEnvelopes = (targetRows) => {
-    const rowsToPrint = targetRows && targetRows.length > 0 ? targetRows : payrollData;
+    // If specific rows are passed (e.g. selected rows), print only those.
+    // Otherwise merge unpaid (payroll tab) + paid (payslips tab) employees.
+    const rowsToPrint = targetRows && targetRows.length > 0
+      ? targetRows
+      : [...filtered, ...paidProcessedRecords];
+
     if (!rowsToPrint || rowsToPrint.length === 0) {
-      notify('No payroll records available to print envelopes', 'warn');
+      notify('No records available to print envelopes', 'warn');
       return;
     }
 
@@ -948,13 +964,14 @@ const Payroll = () => {
           <p className="text-sm text-gray-500 mt-0.5">Generate & manage monthly payroll from attendance data</p>
         </div>
         <div className="flex items-center gap-2">
-          {payrollData.length > 0 && (
+          {(payrollData.length > 0 || paidProcessedRecords.length > 0) && (
             <button
-              onClick={() => handlePrintAllEnvelopes(filtered)}
+              onClick={() => handlePrintAllEnvelopes(null)}
               className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-xl font-semibold text-sm hover:bg-purple-700 shadow-md transition-all"
+              title={`Print envelopes for all employees (${filtered.length} payroll + ${paidProcessedRecords.length} paid)`}
             >
               <Printer size={15} />
-              Print All Envelopes
+              Print All Envelopes ({filtered.length + paidProcessedRecords.length})
             </button>
           )}
           {activeTab !== "payslips" && <button
@@ -1246,6 +1263,7 @@ const Payroll = () => {
           filterMonth={filterMonth}
           search={search}
           notify={notify}
+          onPaidRecordsChange={setPaidProcessedRecords}
         />
       )}
 
