@@ -1,8 +1,8 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import { login as getAuthenticatedClient } from "./attandance_log/src/auth.js";
-import { fetchAttendanceLog, fetchAttendanceRange, fetchAttendanceWithoutFilter } from "./attandance_log/src/fetchAttendance.js";
+import { login as getAuthenticatedClient } from "./Attendance_log/src/auth.js";
+import { fetchAttendanceLog, fetchAttendanceRange, fetchAttendanceWithoutFilter } from "./Attendance_log/src/fetchAttendance.js";
 
 const app = express();
 app.use(cors());
@@ -82,5 +82,8 @@ app.get('/api/attendance/range', async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Attendance API running on port ${PORT}`);
+});
 

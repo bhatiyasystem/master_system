@@ -2584,9 +2584,12 @@ export async function syncAttendanceFromPortal(year, month) {
   const from = `${year}-${pad(month)}-01`;
   const to = `${year}-${pad(month)}-${pad(lastDay)}`;
 
-  let backendUrl = import.meta.env.VITE_ESSL_BACKEND_URL || 'http://localhost:5000/api/';
+  let backendUrl = import.meta.env.VITE_ESSL_BACKEND_URL || import.meta.env.VITE_ESSL_BASE || 'http://localhost:5000/api/';
   if (!backendUrl.endsWith('/')) {
     backendUrl += '/';
+  }
+  if (!backendUrl.includes('/api/')) {
+    backendUrl += 'api/';
   }
   const response = await fetch(`${backendUrl}attendance/range?from=${from}&to=${to}`);
   if (!response.ok) {
