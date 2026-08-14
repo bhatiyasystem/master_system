@@ -1,8 +1,10 @@
 import express from 'express';
+import cors from 'cors';
 import { login } from './auth.js';
 import { fetchAttendanceLog, fetchAttendanceRange } from './fetchAttendance.js';
 
 const app = express();
+app.use(cors());
 const PORT = process.env.PORT || 5000;
 
 app.get('/api/attendance', async (req, res) => {

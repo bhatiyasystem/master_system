@@ -2591,12 +2591,30 @@ export async function syncAttendanceFromPortal(year, month) {
   if (!backendUrl.includes('/api/')) {
     backendUrl += 'api/';
   }
-  const response = await fetch(`${backendUrl}attendance/range?from=${from}&to=${to}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch portal attendance range: ${response.statusText}`);
+  // Fetch each day's attendance in parallel to avoid Render's 30-second request timeout limit
+  const dayQueries = [];
+  for (let d = 1; d <= lastDay; d++) {
+    dayQueries.push(d);
   }
-  const result = await response.json();
-  const esslRows = result.rows || [];
+
+  const results = await Promise.all(
+    dayQueries.map(day =>
+      fetch(`${backendUrl}attendance?day=${day}&month=${month}&year=${year}`)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`Failed to fetch for day ${day}: ${res.statusText}`);
+          }
+          return res.json();
+        })
+        .then(json => json.rows || [])
+        .catch(err => {
+          console.warn(`Error fetching logs for day ${day}:`, err.message);
+          return [];
+        })
+    )
+  );
+
+  const esslRows = results.flat();
 
   if (esslRows.length === 0) {
     throw new Error('No attendance logs found in the portal for the selected month.');

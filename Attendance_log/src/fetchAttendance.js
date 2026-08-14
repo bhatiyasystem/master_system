@@ -131,23 +131,19 @@ export async function fetchAttendanceRange(client, { from, to, status = 'All' })
 
   const rows = [];
   let headers = [];
-  const limit = 6;
 
-  for (let i = 0; i < dates.length; i += limit) {
-    const batch = dates.slice(i, i + limit);
-    const results = await Promise.all(
-      batch.map(({ year, month, day }) =>
-        fetchAttendanceLog(client, { day, month, year, status }).catch(err => {
-          console.warn(`Failed to fetch logs for date ${year}-${month}-${day}:`, err.message);
-          return { headers: [], rows: [] };
-        })
-      )
-    );
+  const results = await Promise.all(
+    dates.map(({ year, month, day }) =>
+      fetchAttendanceLog(client, { day, month, year, status }).catch(err => {
+        console.warn(`Failed to fetch logs for date ${year}-${month}-${day}:`, err.message);
+        return { headers: [], rows: [] };
+      })
+    )
+  );
 
-    for (const result of results) {
-      if (result.headers.length > headers.length) headers = result.headers;
-      rows.push(...result.rows);
-    }
+  for (const result of results) {
+    if (result.headers.length > headers.length) headers = result.headers;
+    rows.push(...result.rows);
   }
 
   return { headers, rows };
