@@ -2591,27 +2591,40 @@ export async function syncAttendanceFromPortal(year, month) {
   if (!backendUrl.includes('/api/')) {
     backendUrl += 'api/';
   }
-  // Fetch each day's attendance in parallel to avoid Render's 30-second request timeout limit
+  // Fetch each day's attendance in parallel with a concurrency limit of 3
+  // to avoid overloading the local eSSL server while keeping requests below Render's 30s timeout
   const dayQueries = [];
   for (let d = 1; d <= lastDay; d++) {
     dayQueries.push(d);
   }
 
-  const results = await Promise.all(
-    dayQueries.map(day =>
-      fetch(`${backendUrl}attendance?day=${day}&month=${month}&year=${year}`)
-        .then(res => {
-          if (!res.ok) {
-            throw new Error(`Failed to fetch for day ${day}: ${res.statusText}`);
-          }
-          return res.json();
-        })
-        .then(json => json.rows || [])
-        .catch(err => {
-          console.warn(`Error fetching logs for day ${day}:`, err.message);
-          return [];
-        })
-    )
+  // Concurrency throttling helper
+  async function fetchWithConcurrencyLimit(array, limit, iteratorFn) {
+    const results = [];
+    const executing = [];
+    for (const item of array) {
+      const p = Promise.resolve().then(() => iteratorFn(item));
+      results.push(p);
+      if (limit <= array.length) {
+        const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+        executing.push(e);
+        if (executing.length >= limit) {
+          await Promise.race(executing);
+        }
+      }
+    }
+    return Promise.all(results);
+  }
+
+  const results = await fetchWithConcurrencyLimit(dayQueries, 3, (day) =>
+    fetch(`${backendUrl}attendance?day=${day}&month=${month}&year=${year}`)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch day ${day}: status ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(json => json.rows || [])
   );
 
   const esslRows = results.flat();
