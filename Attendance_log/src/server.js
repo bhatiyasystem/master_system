@@ -7,6 +7,30 @@ const app = express();
 app.use(cors());
 const PORT = process.env.PORT || 5000;
 
+let cachedClientPromise = null;
+
+function getClient() {
+  if (!cachedClientPromise) {
+    cachedClientPromise = login().catch(err => {
+      cachedClientPromise = null;
+      throw err;
+    });
+  }
+  return cachedClientPromise;
+}
+
+async function runWithAuth(fn) {
+  try {
+    const client = await getClient();
+    return await fn(client);
+  } catch (err) {
+    console.warn('Request failed, retrying with fresh authentication...', err.message);
+    cachedClientPromise = null;
+    const client = await getClient();
+    return await fn(client);
+  }
+}
+
 app.get('/api/attendance', async (req, res) => {
   const today = new Date();
   const day = Number(req.query.day ?? today.getDate());
@@ -15,8 +39,9 @@ app.get('/api/attendance', async (req, res) => {
   const status = req.query.status ?? 'All';
 
   try {
-    const client = await login();
-    const { rows } = await fetchAttendanceLog(client, { day, month, year, status });
+    const { rows } = await runWithAuth((client) =>
+      fetchAttendanceLog(client, { day, month, year, status })
+    );
     res.json({ day, month, year, status, count: rows.length, rows });
   } catch (err) {
     res.status(502).json({ error: err.message });
@@ -36,8 +61,9 @@ app.get('/api/attendance/range', async (req, res) => {
   const status = req.query.status ?? 'All';
 
   try {
-    const client = await login();
-    const { rows } = await fetchAttendanceRange(client, { from, to, status });
+    const { rows } = await runWithAuth((client) =>
+      fetchAttendanceRange(client, { from, to, status })
+    );
     res.json({ from, to, status, count: rows.length, rows });
   } catch (err) {
     res.status(502).json({ error: err.message });

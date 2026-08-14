@@ -8,13 +8,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+let cachedClientPromise = null;
+
+function getClient() {
+  if (!cachedClientPromise) {
+    cachedClientPromise = getAuthenticatedClient().catch(err => {
+      cachedClientPromise = null;
+      throw err;
+    });
+  }
+  return cachedClientPromise;
+}
+
 async function runWithAuth(fn) {
   try {
-    const client = await getAuthenticatedClient();
+    const client = await getClient();
     return await fn(client);
   } catch (err) {
     console.warn('Request failed, retrying with fresh authentication...', err.message);
-    const client = await getAuthenticatedClient(true);
+    cachedClientPromise = null;
+    const client = await getClient();
     return await fn(client);
   }
 }
