@@ -774,13 +774,14 @@ const Payroll = () => {
     setGenerating(true);
     setError(null);
     try {
-      const period = getPreviousProcessingPeriod();
-      const existing = await fetchPayroll({ year: period.year, month: period.month });
+      const targetYear = filterYear;
+      const targetMonth = filterMonth;
+      const existing = await fetchPayroll({ year: targetYear, month: targetMonth });
       if (existing && existing.length > 0) {
-        notify(`Payroll for ${MONTHS[period.month - 1]} ${period.year} already generated. Re-generating draft records...`, 'success');
+        notify(`Payroll for ${MONTHS[targetMonth - 1]} ${targetYear} already generated. Re-generating draft records...`, 'success');
       }
 
-      const attendance = (await fetchAttendanceMonthly({ year: period.year, month: period.month })) || [];
+      const attendance = (await fetchAttendanceMonthly({ year: targetYear, month: targetMonth })) || [];
       const employees = await fetchEmployees();
 
       const activeEmployees = employees
@@ -802,10 +803,10 @@ const Payroll = () => {
         }
       });
 
-      await generatePayrollBatch(attendance, employeeMap, period.year, period.month);
+      await generatePayrollBatch(attendance, employeeMap, targetYear, targetMonth);
       notify(`✓ Payroll generated successfully`);
-      setFilterMonth(period.month);
-      setFilterYear(period.year);
+      setFilterMonth(targetMonth);
+      setFilterYear(targetYear);
       await loadPayroll();
     } catch (err) {
       setError(err.message);

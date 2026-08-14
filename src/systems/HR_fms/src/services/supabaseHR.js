@@ -1110,9 +1110,16 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
 
   if (!year || !month) return [];
 
-  const period = getPreviousProcessingPeriod();
-  if (year !== period.year || month !== period.month) {
-    throw new Error(`Enforcement Error: Payroll can only be generated for the previous processing month (${period.month}/${period.year})`);
+  const periodPrev = getPreviousProcessingPeriod();
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+
+  const isPrev = (year === periodPrev.year && month === periodPrev.month);
+  const isCurrent = (year === currentYear && month === currentMonth);
+
+  if (!isPrev && !isCurrent) {
+    throw new Error(`Enforcement Error: Payroll can only be generated for the current month (${currentMonth}/${currentYear}) or the previous month (${periodPrev.month}/${periodPrev.year})`);
   }
 
   // Fetch database attendance_monthly records for this month to guarantee capturing payable_days_override
