@@ -2643,7 +2643,7 @@ export async function syncAttendanceFromPortal(year, month) {
       if (code === 'P' || code === 'p' || code === 'P(OD)') totalPresent++;
       else if (code === 'A') totalAbsent++;
       else if (code === 'L' || code === 'CL' || code === 'PL' || code === 'SL') totalLeave++;
-      else if (code === 'H' || code === 'HP') totalHoliday++;
+      else if (code === 'H') totalHoliday++;
       else if (code === 'HP') totalHalfPresent++;
       else if (code === 'WO') totalWO++;
       else if (code === 'WOP') totalWOP++;
