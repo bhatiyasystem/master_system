@@ -2,11 +2,11 @@
   "name": "attendance-log",
   "version": "1.0.0",
   "description": "Fetch and export attendance logs from the eSSL/ZKTeco web attendance system",
-  "main": "./src/core/index.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/cli/cli.js",
-    "server": "node src/server/server.js"
+    "start": "node src/index.js",
+    "server": "node src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +22,6 @@
     "tough-cookie": "^6.0.2"
   },
   "bin": {
-    "attendance-log": "./src/cli/cli.js"
+    "attendance-log": "src/index.js"
   }
 }

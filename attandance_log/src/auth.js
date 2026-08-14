@@ -76,35 +76,3 @@ export async function login() {
 
   return client;
 }
-
-let cachedClient = null;
-let clientPromise = null;
-
-/**
- * Gets a cached authenticated client or triggers login.
- * If the session expires or is invalid, call with `forceRefresh = true`.
- */
-export async function getAuthenticatedClient(forceRefresh = false) {
-  if (forceRefresh) {
-    cachedClient = null;
-    clientPromise = null;
-  }
-
-  if (cachedClient) {
-    return cachedClient;
-  }
-
-  if (!clientPromise) {
-    clientPromise = login()
-      .then((client) => {
-        cachedClient = client;
-        return client;
-      })
-      .catch((err) => {
-        clientPromise = null;
-        throw err;
-      });
-  }
-
-  return clientPromise;
-}

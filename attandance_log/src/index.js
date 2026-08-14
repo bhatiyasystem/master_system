@@ -2,7 +2,9 @@
 import { Command } from 'commander';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getAuthenticatedClient, fetchAttendanceLog, fetchAttendanceRange, toCsv } from '../core/index.js';
+import { login } from './auth.js';
+import { fetchAttendanceLog, fetchAttendanceRange } from './fetchAttendance.js';
+import { toCsv } from './csv.js';
 
 const today = new Date();
 const pad = (n) => String(n).padStart(2, '0');
@@ -24,7 +26,7 @@ program
 const opts = program.opts();
 
 async function main() {
-  const client = await getAuthenticatedClient();
+  const client = await login();
 
   const isRange = Boolean(opts.from || opts.to);
   const { headers, rows } = isRange

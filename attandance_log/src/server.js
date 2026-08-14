@@ -1,18 +1,9 @@
 import express from 'express';
-import { getAuthenticatedClient, fetchAttendanceLog, fetchAttendanceRange } from '../core/index.js';
+import { login } from './auth.js';
+import { fetchAttendanceLog, fetchAttendanceRange } from './fetchAttendance.js';
 
 const app = express();
-
-async function runWithAuth(fn) {
-  try {
-    const client = await getAuthenticatedClient();
-    return await fn(client);
-  } catch (err) {
-    console.warn('Request failed, retrying with fresh authentication...', err.message);
-    const client = await getAuthenticatedClient(true);
-    return await fn(client);
-  }
-}
+const PORT = process.env.PORT || 3000;
 
 app.get('/api/attendance', async (req, res) => {
   const today = new Date();
@@ -22,15 +13,16 @@ app.get('/api/attendance', async (req, res) => {
   const status = req.query.status ?? 'All';
 
   try {
-    const { rows } = await runWithAuth((client) =>
-      fetchAttendanceLog(client, { day, month, year, status })
-    );
+    const client = await login();
+    const { rows } = await fetchAttendanceLog(client, { day, month, year, status });
     res.json({ day, month, year, status, count: rows.length, rows });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
 });
 
+// Date-range query, e.g. this month to today: GET /api/attendance/range
+// or a specific span: GET /api/attendance/range?from=2026-08-01&to=2026-08-13
 app.get('/api/attendance/range', async (req, res) => {
   const pad = (n) => String(n).padStart(2, '0');
   const today = new Date();
@@ -42,13 +34,14 @@ app.get('/api/attendance/range', async (req, res) => {
   const status = req.query.status ?? 'All';
 
   try {
-    const { rows } = await runWithAuth((client) =>
-      fetchAttendanceRange(client, { from, to, status })
-    );
+    const client = await login();
+    const { rows } = await fetchAttendanceRange(client, { from, to, status });
     res.json({ from, to, status, count: rows.length, rows });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
 });
 
-export default app;
+app.listen(PORT, () => {
+  console.log(`Attendance API running at http://localhost:${PORT}/api/attendance`);
+});
