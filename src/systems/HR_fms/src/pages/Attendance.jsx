@@ -1,49 +1,86 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import * as XLSX from 'xlsx';
-import { FileSpreadsheet, X, Upload, Users, AlertCircle, CheckCircle, Search, RefreshCw, Calendar, Eye, Edit3 } from 'lucide-react';
-import { parseAttendanceExcel, createUploadRecord, updateUploadRecord, saveAttendanceRows, fetchAttendanceMonthlyPaginated, fetchAttendanceMonthlyStats, calculateRowLeaveStats, updatePayableDaysOverride, STATUS_COLORS, STATUS_LABELS, MONTHS } from '../services/supabaseHR';
-import { fillDailyStatusFromSummary } from '../services/supabaseHR';
-import { getPreviousProcessingPeriod } from '../utils/dateUtils';
+import { useState, useEffect, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
+import {
+  FileSpreadsheet,
+  X,
+  Upload,
+  Users,
+  AlertCircle,
+  CheckCircle,
+  Search,
+  RefreshCw,
+  Calendar,
+  Eye,
+  Edit3
+} from "lucide-react";
+import {
+  parseAttendanceExcel,
+  createUploadRecord,
+  updateUploadRecord,
+  saveAttendanceRows,
+  fetchAttendanceMonthlyPaginated,
+  fetchAttendanceMonthlyStats,
+  calculateRowLeaveStats,
+  updatePayableDaysOverride,
+  STATUS_COLORS,
+  STATUS_LABELS,
+  MONTHS,
+  syncAttendanceFromPortal,
+  fetchUploads
+} from "../services/supabaseHR";
+import { fillDailyStatusFromSummary } from "../services/supabaseHR";
+import { getPreviousProcessingPeriod } from "../utils/dateUtils";
 
 // ── Upload Zone ───────────────────────────────────────────────────────────────
 const UploadZone = ({ onFile, uploading }) => {
   const inputRef = useRef();
   const [dragOver, setDragOver] = useState(false);
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) onFile(file);
-  }, [onFile]);
+  const handleDrop = useCallback(
+    e => {
+      e.preventDefault();
+      setDragOver(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) onFile(file);
+    },
+    [onFile]
+  );
 
   return (
     <div
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragOver={e => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
       onClick={() => !uploading && inputRef.current?.click()}
       className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all
-        ${dragOver ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50'}`}
+        ${dragOver ? "border-indigo-500 bg-indigo-50" : "border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50"}`}
     >
       <input
         ref={inputRef}
         type="file"
         accept=".xlsx,.xls,.csv"
         className="hidden"
-        onChange={(e) => { if (e.target.files?.[0]) onFile(e.target.files[0]); e.target.value = ''; }}
+        onChange={e => {
+          if (e.target.files?.[0]) onFile(e.target.files[0]);
+          e.target.value = "";
+        }}
         disabled={uploading}
       />
       <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-        {uploading
-          ? <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          : <FileSpreadsheet size={32} className="text-indigo-600" />}
+        {uploading ? (
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <FileSpreadsheet size={32} className="text-indigo-600" />
+        )}
       </div>
       <p className="text-lg font-semibold text-gray-800">
-        {uploading ? 'Reading Excel...' : 'Drop Monthly Status Report here'}
+        {uploading ? "Reading Excel..." : "Drop Monthly Status Report here"}
       </p>
       <p className="text-sm text-gray-500 mt-1">
-        {uploading ? 'Please wait' : 'or click to browse — supports .xlsx, .xls'}
+        {uploading ? "Please wait" : "or click to browse — supports .xlsx, .xls"}
       </p>
     </div>
   );
@@ -52,7 +89,7 @@ const UploadZone = ({ onFile, uploading }) => {
 // ── Override Modal ────────────────────────────────────────────────────────────
 const OverrideModal = ({ row, onSave, onClose }) => {
   const [days, setDays] = useState(row.payable_days_override ?? row.payable_days);
-  const [reason, setReason] = useState(row.override_reason || '');
+  const [reason, setReason] = useState(row.override_reason || "");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -70,7 +107,9 @@ const OverrideModal = ({ row, onSave, onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-96 max-w-full">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-gray-900">Override Payable Days</h3>
-          <button onClick={onClose}><X size={20} className="text-gray-500" /></button>
+          <button onClick={onClose}>
+            <X size={20} className="text-gray-500" />
+          </button>
         </div>
         <p className="text-sm text-gray-600 mb-4">
           <span className="font-medium">{row.emp_name}</span> ({row.emp_code})<br />
@@ -84,7 +123,7 @@ const OverrideModal = ({ row, onSave, onClose }) => {
             min="0"
             max="31"
             value={days}
-            onChange={(e) => setDays(e.target.value)}
+            onChange={e => setDays(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
@@ -92,7 +131,7 @@ const OverrideModal = ({ row, onSave, onClose }) => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
           <textarea
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={e => setReason(e.target.value)}
             rows={2}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 resize-none"
             placeholder="Optional reason..."
@@ -110,7 +149,7 @@ const OverrideModal = ({ row, onSave, onClose }) => {
             disabled={saving}
             className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
           >
-            {saving ? 'Saving...' : 'Save Override'}
+            {saving ? "Saving..." : "Save Override"}
           </button>
         </div>
       </div>
@@ -129,26 +168,27 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold text-gray-900">{row.emp_name}</h3>
-            <p className="text-sm text-gray-500">{row.emp_code} · {MONTHS[row.month - 1]} {row.year}</p>
+            <p className="text-sm text-gray-500">
+              {row.emp_code} · {MONTHS[row.month - 1]} {row.year}
+            </p>
           </div>
-          <button onClick={onClose}><X size={22} className="text-gray-500" /></button>
+          <button onClick={onClose}>
+            <X size={22} className="text-gray-500" />
+          </button>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-7 gap-2 mb-6">
             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
               const code = dailyStatusMap?.[day] || dailyStatusMap?.[String(day)];
-              const color = code ? (STATUS_COLORS[code] || '#94a3b8') : '#f3f4f6';
+              const color = code ? STATUS_COLORS[code] || "#94a3b8" : "#f3f4f6";
               return (
                 <div
                   key={day}
                   className="rounded-lg p-2 flex flex-col items-center text-center"
-                  style={{ backgroundColor: color + '22', border: `1px solid ${color}44` }}
+                  style={{ backgroundColor: color + "22", border: `1px solid ${color}44` }}
                 >
                   <span className="text-xs text-gray-500 font-medium">{day}</span>
-                  <span
-                    className="mt-1 text-xs font-bold rounded px-1"
-                    style={{ color, fontSize: 10 }}
-                  >
+                  <span className="mt-1 text-xs font-bold rounded px-1" style={{ color, fontSize: 10 }}>
                     {code}
                   </span>
                 </div>
@@ -157,17 +197,23 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
           </div>
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: 'Present (P)', value: row.total_present, color: '#22c55e' },
-              { label: 'Absent (A)', value: row.total_absent, color: '#ef4444' },
-              { label: 'Weekly Off', value: row.total_wo, color: '#94a3b8' },
-              { label: 'WO Present', value: row.total_wop, color: '#3b82f6' },
-              { label: 'Leave (L)', value: row.total_leave, color: '#f59e0b' },
-              { label: 'Holiday (H)', value: row.total_holiday, color: '#8b5cf6' },
-              { label: 'Overtime (OT)', value: row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : '00:00'), color: '#d97706' },
-              { label: 'Payable Days', value: row.payable_days_override ?? row.payable_days, color: '#6366f1' },
+              { label: "Present (P)", value: row.total_present, color: "#22c55e" },
+              { label: "Absent (A)", value: row.total_absent, color: "#ef4444" },
+              { label: "Weekly Off", value: row.total_wo, color: "#94a3b8" },
+              { label: "WO Present", value: row.total_wop, color: "#3b82f6" },
+              { label: "Leave (L)", value: row.total_leave, color: "#f59e0b" },
+              { label: "Holiday (H)", value: row.total_holiday, color: "#8b5cf6" },
+              {
+                label: "Overtime (OT)",
+                value: row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : "00:00"),
+                color: "#d97706"
+              },
+              { label: "Payable Days", value: row.payable_days_override ?? row.payable_days, color: "#6366f1" }
             ].map(item => (
               <div key={item.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                <p className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</p>
+                <p className="text-2xl font-bold" style={{ color: item.color }}>
+                  {item.value}
+                </p>
                 <p className="text-xs text-gray-500 mt-1">{item.label}</p>
               </div>
             ))}
@@ -180,8 +226,8 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const AttendanceMonthly = () => {
-  const [tab, setTab] = useState('view'); // 'upload' | 'view'
-  const [uploading, setUploading] = useState(false);   // parsing phase
+  const [tab, setTab] = useState("view"); // 'upload' | 'view'
+  const [uploading, setUploading] = useState(false); // parsing phase
   const [submitting, setSubmitting] = useState(false); // DB write phase
   const [previewData, setPreviewData] = useState(null); // { uploadMeta, employees, year, month, fileName }
   const [previewErrors, setPreviewErrors] = useState([]);
@@ -192,7 +238,7 @@ const AttendanceMonthly = () => {
   const prevPeriod = getPreviousProcessingPeriod();
   const [filterYear, setFilterYear] = useState(prevPeriod.year);
   const [filterMonth, setFilterMonth] = useState(prevPeriod.month);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [overrideRow, setOverrideRow] = useState(null);
@@ -200,8 +246,37 @@ const AttendanceMonthly = () => {
 
   const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
 
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+
+  const [syncing, setSyncing] = useState(false);
+  const [isPortalSync, setIsPortalSync] = useState(false);
+
+  const handlePortalSync = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      const res = await syncAttendanceFromPortal(filterYear, filterMonth);
+      setUploadResult({
+        success: true,
+        count: res.count,
+        meta: { company_name: "Portal Sync", department: "Portal Sync" },
+        year: filterYear,
+        month: filterMonth
+      });
+      setTab("view");
+      loadData(filterYear, filterMonth);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // ── Phase 1: Parse Excel → set previewData ──
-  const handleFile = async (file) => {
+  const handleFile = async file => {
     setError(null);
     setUploading(true);
     setPreviewData(null);
@@ -209,12 +284,12 @@ const AttendanceMonthly = () => {
     setUploadResult(null);
     try {
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array', raw: false, cellText: true, cellDates: false });
+      const wb = XLSX.read(buffer, { type: "array", raw: false, cellText: true, cellDates: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" });
 
-      if (!rawRows.some(row => row.some(cell => String(cell).trim() !== ''))) {
-        setPreviewErrors(['Attendance Excel is empty. Upload an attendance Excel file.']);
+      if (!rawRows.some(row => row.some(cell => String(cell).trim() !== ""))) {
+        setPreviewErrors(["Attendance Excel is empty. Upload an attendance Excel file."]);
         return;
       }
 
@@ -222,30 +297,29 @@ const AttendanceMonthly = () => {
 
       const errors = [];
       if (employees.length === 0) {
-        errors.push('No attendance rows found. Upload an attendance Excel file with employee data.');
+        errors.push("No attendance rows found. Upload an attendance Excel file with employee data.");
       }
       if (!uploadMeta.period_from) {
-        errors.push('Could not detect pay period from the file. Ensure the period row is present.');
+        errors.push("Could not detect pay period from the file. Ensure the period row is present.");
       }
 
       setPreviewErrors(errors);
 
       if (errors.length === 0) {
-        const period = getPreviousProcessingPeriod();
         setPreviewData({
           uploadMeta: {
             ...uploadMeta,
-            period_from: `${period.year}-${String(period.month).padStart(2, '0')}-01`,
-            period_to: `${period.year}-${String(period.month).padStart(2, '0')}-${new Date(period.year, period.month, 0).getDate()}`
+            period_from: `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`,
+            period_to: `${filterYear}-${String(filterMonth).padStart(2, "0")}-${new Date(filterYear, filterMonth, 0).getDate()}`
           },
           employees,
-          year: period.year,
-          month: period.month,
+          year: filterYear,
+          month: filterMonth,
           fileName: file.name
         });
       }
     } catch (err) {
-      console.error('Parse error:', err);
+      console.error("Parse error:", err);
       setError(err.message);
     } finally {
       setUploading(false);
@@ -268,22 +342,15 @@ const AttendanceMonthly = () => {
         fileName,
         uploadedBy: null,
         year,
-        month,
+        month
       });
 
-      await saveAttendanceRows(
-        uploadRecord.id,
-        employees,
-        year,
-        month,
-        uploadMeta.company_name,
-        uploadMeta.department,
-      );
+      await saveAttendanceRows(uploadRecord.id, employees, year, month, uploadMeta.company_name, uploadMeta.department);
 
       await updateUploadRecord(uploadRecord.id, {
-        status: 'processed',
+        status: "processed",
         total_rows: employees.length,
-        processed_rows: employees.length,
+        processed_rows: employees.length
       });
 
       setUploadResult({ success: true, count: employees.length, meta: uploadMeta, year, month });
@@ -292,9 +359,12 @@ const AttendanceMonthly = () => {
 
       setFilterYear(year);
       setFilterMonth(month);
-      setTimeout(() => { setTab('view'); loadData(year, month); }, 600);
+      setTimeout(() => {
+        setTab("view");
+        loadData(year, month);
+      }, 600);
     } catch (err) {
-      console.error('Submit error:', err);
+      console.error("Submit error:", err);
       setError(err.message);
     } finally {
       setSubmitting(false);
@@ -319,6 +389,15 @@ const AttendanceMonthly = () => {
     setLoading(true);
     setError(null);
     try {
+      try {
+        const uploads = await fetchUploads({ year, month });
+        const hasPortalSync = uploads && uploads.some(u => u.file_name === "Portal Sync");
+        setIsPortalSync(hasPortalSync);
+      } catch (err) {
+        console.warn("Failed to check portal sync status:", err);
+        setIsPortalSync(false);
+      }
+
       const res = await fetchAttendanceMonthlyPaginated({
         year,
         month,
@@ -342,6 +421,15 @@ const AttendanceMonthly = () => {
       setLoading(true);
       setError(null);
       try {
+        try {
+          const uploads = await fetchUploads({ year: filterYear, month: filterMonth });
+          const hasPortalSync = uploads && uploads.some(u => u.file_name === "Portal Sync");
+          if (isMounted) setIsPortalSync(hasPortalSync);
+        } catch (err) {
+          console.warn("Failed to check portal sync status:", err);
+          if (isMounted) setIsPortalSync(false);
+        }
+
         const res = await fetchAttendanceMonthlyPaginated({
           year: filterYear,
           month: filterMonth,
@@ -361,7 +449,9 @@ const AttendanceMonthly = () => {
       }
     };
     fetchAsync();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [filterYear, filterMonth, search, page]);
 
   const filteredData = tableData;
@@ -378,7 +468,7 @@ const AttendanceMonthly = () => {
       : 0,
     avgAbsent: filteredData.length
       ? (filteredData.reduce((s, r) => s + (r.total_absent || 0), 0) / filteredData.length).toFixed(1)
-      : 0,
+      : 0
   };
 
   return (
@@ -391,16 +481,39 @@ const AttendanceMonthly = () => {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { setTab('upload'); handleCancelPreview(); }}
+            onClick={handlePortalSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-medium text-sm transition-all shadow-md cursor-pointer"
+          >
+            {syncing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
+                Syncing...
+              </>
+            ) : (
+              <>
+                <RefreshCw size={16} /> Sync Attendance
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setTab("upload");
+              handleCancelPreview();
+            }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-              ${tab === 'upload' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+              ${tab === "upload" ? "bg-indigo-600 text-white shadow-md" : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}
           >
             <Upload size={16} /> Upload Excel
           </button>
           <button
-            onClick={() => { setTab('view'); loadData(); }}
+            onClick={() => {
+              setTab("view");
+              loadData();
+            }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-              ${tab === 'view' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+              ${tab === "view" ? "bg-indigo-600 text-white shadow-md" : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}
           >
             <Users size={16} /> View Records
           </button>
@@ -415,14 +528,15 @@ const AttendanceMonthly = () => {
             <p className="font-medium">Error</p>
             <p className="text-sm">{error}</p>
           </div>
-          <button onClick={() => setError(null)} className="ml-auto"><X size={16} /></button>
+          <button onClick={() => setError(null)} className="ml-auto">
+            <X size={16} />
+          </button>
         </div>
       )}
 
       {/* ── UPLOAD TAB ── */}
-      {tab === 'upload' && (
+      {tab === "upload" && (
         <div className="space-y-4">
-
           {/* Upload zone — hide when preview is showing */}
           {!previewData && (
             <>
@@ -451,8 +565,18 @@ const AttendanceMonthly = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-sm font-semibold text-blue-900 mb-2">Expected Attendance Calculation Format</p>
                 <div className="text-xs text-blue-800 space-y-1">
-                  <p>• Pay Days Logic: <code className="bg-blue-100 px-1.5 py-0.5 rounded font-bold text-blue-900">P + WO + H + HP + WOP + Total Leave</code></p>
-                  <p>• Summary columns: <code className="bg-blue-100 px-1.5 py-0.5 rounded">Emp. Code | EmployeeName | P | A | H | HP | WO | WOP | CL | PL | SL | Total Leave | Total Pay Days</code></p>
+                  <p>
+                    • Pay Days Logic:{" "}
+                    <code className="bg-blue-100 px-1.5 py-0.5 rounded font-bold text-blue-900">
+                      P + WO + H + HP + WOP + Total Leave
+                    </code>
+                  </p>
+                  <p>
+                    • Summary columns:{" "}
+                    <code className="bg-blue-100 px-1.5 py-0.5 rounded">
+                      Emp. Code | EmployeeName | P | A | H | HP | WO | WOP | CL | PL | SL | Total Leave | Total Pay Days
+                    </code>
+                  </p>
                 </div>
               </div>
             </>
@@ -472,9 +596,7 @@ const AttendanceMonthly = () => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1.5">
-                      {previewData.uploadMeta.company_name
-                        ? `Company: ${previewData.uploadMeta.company_name} · `
-                        : ''}
+                      {previewData.uploadMeta.company_name ? `Company: ${previewData.uploadMeta.company_name} · ` : ""}
                       {previewData.employees.length} employees parsed · Select target period above if needed
                     </p>
                   </div>
@@ -491,9 +613,16 @@ const AttendanceMonthly = () => {
                       disabled={submitting}
                       className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 shadow-sm"
                     >
-                      {submitting
-                        ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</>
-                        : <><CheckCircle size={15} /> Submit Attendance</>}
+                      {submitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
+                          Saving…
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={15} /> Submit Attendance
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -501,11 +630,18 @@ const AttendanceMonthly = () => {
                 {/* Summary chips */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   {[
-                    { label: 'Employees', value: previewData.employees.length, color: 'indigo' },
-                    { label: 'Period', value: `${previewData.uploadMeta.period_from} → ${previewData.uploadMeta.period_to}`, color: 'blue' },
-                    { label: 'File', value: previewData.fileName, color: 'gray' },
+                    { label: "Employees", value: previewData.employees.length, color: "indigo" },
+                    {
+                      label: "Period",
+                      value: `${previewData.uploadMeta.period_from} → ${previewData.uploadMeta.period_to}`,
+                      color: "blue"
+                    },
+                    { label: "File", value: previewData.fileName, color: "gray" }
                   ].map(chip => (
-                    <span key={chip.label} className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-${chip.color}-50 text-${chip.color}-700 border border-${chip.color}-100`}>
+                    <span
+                      key={chip.label}
+                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-${chip.color}-50 text-${chip.color}-700 border border-${chip.color}-100`}
+                    >
                       <span className="font-semibold">{chip.label}:</span> {chip.value}
                     </span>
                   ))}
@@ -517,11 +653,19 @@ const AttendanceMonthly = () => {
                     <thead>
                       <tr className="bg-indigo-50 border-b border-indigo-100">
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">#</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">Emp Code</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">
+                          Emp Code
+                        </th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-indigo-900 uppercase">Name</th>
-                        {previewData && Array.from({ length: new Date(previewData.year, previewData.month, 0).getDate() }, (_, i) => i + 1).map(d => (
-                          <th key={d} className="px-1 py-2.5 text-center text-xs font-semibold text-indigo-900">{d}</th>
-                        ))}
+                        {previewData &&
+                          Array.from(
+                            { length: new Date(previewData.year, previewData.month, 0).getDate() },
+                            (_, i) => i + 1
+                          ).map(d => (
+                            <th key={d} className="px-1 py-2.5 text-center text-xs font-semibold text-indigo-900">
+                              {d}
+                            </th>
+                          ))}
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-800">P</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-700">A</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-purple-700">H</th>
@@ -534,7 +678,9 @@ const AttendanceMonthly = () => {
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-700">Other Leave</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-800">Total Leave</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-900">Total Present</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-900">Total Pay Days</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-indigo-900">
+                          Total Pay Days
+                        </th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-amber-800">OT</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-800">Late</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-orange-800">Early</th>
@@ -548,11 +694,13 @@ const AttendanceMonthly = () => {
                         return (
                           <tr key={idx} className="hover:bg-gray-50 transition-colors">
                             <td className="px-3 py-2.5 text-gray-400 text-xs">{idx + 1}</td>
-                            <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{emp.emp_code || '—'}</td>
-                            <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">{emp.emp_name || '—'}</td>
+                            <td className="px-3 py-2.5 font-mono text-xs text-gray-500">{emp.emp_code || "—"}</td>
+                            <td className="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">
+                              {emp.emp_name || "—"}
+                            </td>
                             {Array.from({ length: daysInMonthForPreview }, (_, i) => i + 1).map(d => {
-                              const code = dailyStatusMap?.[d] || dailyStatusMap?.[String(d)] || '';
-                              const textColor = code ? (STATUS_COLORS[code] || '#475569') : '#d1d5db';
+                              const code = dailyStatusMap?.[d] || dailyStatusMap?.[String(d)] || "";
+                              const textColor = code ? STATUS_COLORS[code] || "#475569" : "#d1d5db";
                               return (
                                 <td key={d} className="px-1 py-2 text-center" style={{ minWidth: 26 }}>
                                   <span
@@ -565,20 +713,36 @@ const AttendanceMonthly = () => {
                                 </td>
                               );
                             })}
-                            <td className="px-3 py-2.5 text-center font-semibold text-green-700">{emp.total_present ?? 0}</td>
-                            <td className="px-3 py-2.5 text-center font-semibold text-red-600">{emp.total_absent ?? 0}</td>
-                            <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{emp.total_holiday ?? 0}</td>
-                            <td className="px-3 py-2.5 text-center text-indigo-600 font-semibold">{emp.total_half_present ?? 0}</td>
+                            <td className="px-3 py-2.5 text-center font-semibold text-green-700">
+                              {emp.total_present ?? 0}
+                            </td>
+                            <td className="px-3 py-2.5 text-center font-semibold text-red-600">
+                              {emp.total_absent ?? 0}
+                            </td>
+                            <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">
+                              {emp.total_holiday ?? 0}
+                            </td>
+                            <td className="px-3 py-2.5 text-center text-indigo-600 font-semibold">
+                              {emp.total_half_present ?? 0}
+                            </td>
                             <td className="px-3 py-2.5 text-center text-gray-500">{emp.total_wo ?? 0}</td>
                             <td className="px-3 py-2.5 text-center text-blue-600">{emp.total_wop ?? 0}</td>
                             <td className="px-3 py-2.5 text-center text-amber-600 font-medium">{leaveStats.cl}</td>
                             <td className="px-3 py-2.5 text-center text-amber-600 font-medium">{leaveStats.pl}</td>
                             <td className="px-3 py-2.5 text-center text-amber-600 font-medium">{leaveStats.sl}</td>
                             <td className="px-3 py-2.5 text-center text-amber-600">{emp.total_other_leave ?? 0}</td>
-                            <td className="px-3 py-2.5 text-center text-amber-700 font-semibold">{emp.total_leave ?? leaveStats.totalLeave}</td>
-                            <td className="px-3 py-2.5 text-center text-green-800 font-bold">{emp.total_present ?? 0}</td>
-                            <td className="px-3 py-2.5 text-center text-indigo-800 font-bold">{emp.payable_days ?? 0}</td>
-                            <td className="px-3 py-2.5 text-center text-amber-700 font-medium">{emp.total_ot || '00:00'}</td>
+                            <td className="px-3 py-2.5 text-center text-amber-700 font-semibold">
+                              {emp.total_leave ?? leaveStats.totalLeave}
+                            </td>
+                            <td className="px-3 py-2.5 text-center text-green-800 font-bold">
+                              {emp.total_present ?? 0}
+                            </td>
+                            <td className="px-3 py-2.5 text-center text-indigo-800 font-bold">
+                              {emp.payable_days ?? 0}
+                            </td>
+                            <td className="px-3 py-2.5 text-center text-amber-700 font-medium">
+                              {emp.total_ot || "00:00"}
+                            </td>
                             <td className="px-3 py-2.5 text-center text-red-600">{emp.total_late ?? 0}</td>
                             <td className="px-3 py-2.5 text-center text-orange-600">{emp.total_early ?? 0}</td>
                           </tr>
@@ -599,12 +763,9 @@ const AttendanceMonthly = () => {
                 <p className="font-semibold text-green-800">Attendance Saved!</p>
                 <p className="text-sm text-green-700">
                   {uploadResult.count} employees processed for {MONTHS[uploadResult.month - 1]} {uploadResult.year}
-                  {uploadResult.meta.company_name ? ` · ${uploadResult.meta.company_name}` : ''}
+                  {uploadResult.meta.company_name ? ` · ${uploadResult.meta.company_name}` : ""}
                 </p>
-                <button
-                  onClick={() => setTab('view')}
-                  className="mt-2 text-sm text-green-700 underline"
-                >
+                <button onClick={() => setTab("view")} className="mt-2 text-sm text-green-700 underline">
                   View Records →
                 </button>
               </div>
@@ -614,7 +775,7 @@ const AttendanceMonthly = () => {
       )}
 
       {/* ── VIEW TAB ── */}
-      {tab === 'view' && (
+      {tab === "view" && (
         <div className="space-y-4">
           {/* Filters */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -625,20 +786,36 @@ const AttendanceMonthly = () => {
                   type="text"
                   placeholder="Search employee name or code..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={e => setSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
-              <div className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700 font-medium">
-                {MONTHS[filterMonth - 1]} {filterYear}
+              <div className="flex gap-2">
+                <select
+                  value={`${filterMonth}-${filterYear}`}
+                  onChange={e => {
+                    const [m, y] = e.target.value.split('-').map(Number);
+                    setFilterMonth(m);
+                    setFilterYear(y);
+                    setPage(1);
+                  }}
+                  className="border rounded-lg px-3 py-2 text-sm font-medium bg-white text-gray-700 border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none"
+                >
+                  <option value={`${currentMonth}-${currentYear}`}>
+                    {MONTHS[currentMonth - 1]} {currentYear}
+                  </option>
+                  <option value={`${currentMonth === 1 ? 12 : currentMonth - 1}-${currentMonth === 1 ? currentYear - 1 : currentYear}`}>
+                    {MONTHS[currentMonth === 1 ? 11 : currentMonth - 2]} {currentMonth === 1 ? currentYear - 1 : currentYear}
+                  </option>
+                </select>
               </div>
               <button
                 onClick={() => loadData()}
                 disabled={loading}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
               >
-                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-                {loading ? 'Loading...' : 'Load'}
+                <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+                {loading ? "Loading..." : "Load"}
               </button>
             </div>
           </div>
@@ -647,9 +824,9 @@ const AttendanceMonthly = () => {
           {tableData.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Employees', value: stats.total, color: 'indigo' },
-                { label: 'Avg Present', value: `${stats.avgPresent}d`, color: 'green' },
-                { label: 'Avg Absent', value: `${stats.avgAbsent}d`, color: 'red' },
+                { label: "Employees", value: stats.total, color: "indigo" },
+                { label: "Avg Present", value: `${stats.avgPresent}d`, color: "green" },
+                { label: "Avg Absent", value: `${stats.avgAbsent}d`, color: "red" }
               ].map(card => (
                 <div key={card.label} className={`bg-${card.color}-50 rounded-xl p-4 border border-${card.color}-100`}>
                   <p className={`text-2xl font-bold text-${card.color}-700`}>{card.value}</p>
@@ -678,11 +855,16 @@ const AttendanceMonthly = () => {
                     <thead>
                       <tr className="bg-indigo-50 border-b border-indigo-100">
                         <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">#</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">Emp Code</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">
+                          Emp Code
+                        </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-indigo-900 uppercase">Name</th>
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
-                          <th key={d} className="px-1 py-3 text-center text-xs font-semibold text-indigo-900">{d}</th>
-                        ))}
+                        {isPortalSync &&
+                          Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
+                            <th key={d} className="px-1 py-3 text-center text-xs font-semibold text-indigo-900">
+                              {d}
+                            </th>
+                          ))}
                         <th className="px-3 py-3 text-center text-xs font-semibold text-green-800 bg-green-50">P</th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-red-800 bg-red-50">A</th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-purple-800 bg-purple-50">H</th>
@@ -692,20 +874,34 @@ const AttendanceMonthly = () => {
                         <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">CL</th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">PL</th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">SL</th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">Other Leave</th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-900 bg-amber-100">Total Leave</th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-green-900 bg-green-100">Total Present</th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900 bg-indigo-100">Total Pay Days</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">
+                          Other Leave
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-amber-900 bg-amber-100">
+                          Total Leave
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-green-900 bg-green-100">
+                          Total Present
+                        </th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900 bg-indigo-100">
+                          Total Pay Days
+                        </th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-amber-800 bg-amber-50">OT</th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-red-800 bg-red-50">Late</th>
-                        <th className="px-3 py-3 text-center text-xs font-semibold text-orange-800 bg-orange-50">Early</th>
+                        <th className="px-3 py-3 text-center text-xs font-semibold text-orange-800 bg-orange-50">
+                          Early
+                        </th>
                         <th className="px-3 py-3 text-center text-xs font-semibold text-indigo-900">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {filteredData.map((row, idx) => {
                         const leaveStats = calculateRowLeaveStats(row);
-                        const dailyStatusMap = fillDailyStatusFromSummary(row, row.year || filterYear, row.month || filterMonth);
+                        const dailyStatusMap = fillDailyStatusFromSummary(
+                          row,
+                          row.year || filterYear,
+                          row.month || filterMonth
+                        );
                         const meta = row.daily_status?._meta || {};
                         const effectiveDays = row.payable_days_override ?? row.payable_days ?? meta.payable_days ?? 0;
                         const hasOverride = row.payable_days_override != null;
@@ -717,45 +913,75 @@ const AttendanceMonthly = () => {
                         const earlyVal = row.total_early ?? meta.total_early ?? 0;
 
                         return (
-                          <tr key={row.id || row.emp_code || `row-${idx}`} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-sm text-gray-400">{row.sl_no || idx + 1}</td>
+                          <tr
+                            key={row.id || row.emp_code || `row-${idx}`}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-4 py-3 text-sm text-gray-400">{(page - 1) * pageSize + idx + 1}</td>
                             <td className="px-4 py-3 text-xs text-gray-500 font-mono">{row.emp_code}</td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.emp_name}</td>
-                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
-                              const code = dailyStatusMap?.[d] || dailyStatusMap?.[String(d)] || '';
-                              const textColor = code ? (STATUS_COLORS[code] || '#475569') : '#d1d5db';
-                              return (
-                                <td key={d} className="px-1 py-2 text-center" style={{ minWidth: 28 }}>
-                                  <span
-                                    className="text-xs font-bold rounded"
-                                    style={{ color: textColor, fontSize: 10 }}
-                                    title={STATUS_LABELS[code] || code}
-                                  >
-                                    {code}
-                                  </span>
-                                </td>
-                              );
-                            })}
-                            <td className="px-3 py-3 text-center text-sm font-semibold text-green-700">{row.total_present ?? 0}</td>
-                            <td className="px-3 py-3 text-center text-sm font-semibold text-red-600">{row.total_absent ?? 0}</td>
-                            <td className="px-3 py-3 text-center text-sm text-purple-700 font-semibold">{row.total_holiday ?? 0}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
+                              {row.emp_name}
+                            </td>
+                            {isPortalSync &&
+                              Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => {
+                                const code = dailyStatusMap?.[d] || dailyStatusMap?.[String(d)] || "";
+                                const textColor = code ? STATUS_COLORS[code] || "#475569" : "#d1d5db";
+                                return (
+                                  <td key={d} className="px-1 py-2 text-center" style={{ minWidth: 28 }}>
+                                    <span
+                                      className="text-xs font-bold rounded"
+                                      style={{ color: textColor, fontSize: 10 }}
+                                      title={STATUS_LABELS[code] || code}
+                                    >
+                                      {code}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+                            <td className="px-3 py-3 text-center text-sm font-semibold text-green-700">
+                              {row.total_present ?? 0}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm font-semibold text-red-600">
+                              {row.total_absent ?? 0}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-purple-700 font-semibold">
+                              {row.total_holiday ?? 0}
+                            </td>
                             <td className="px-3 py-3 text-center text-sm text-indigo-600 font-semibold">{hpCount}</td>
                             <td className="px-3 py-3 text-center text-sm text-gray-500">{row.total_wo ?? 0}</td>
                             <td className="px-3 py-3 text-center text-sm text-blue-600">{row.total_wop ?? 0}</td>
-                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">{leaveStats.cl}</td>
-                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">{leaveStats.pl}</td>
-                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">{leaveStats.sl}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">
+                              {leaveStats.cl}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">
+                              {leaveStats.pl}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-600 font-medium">
+                              {leaveStats.sl}
+                            </td>
                             <td className="px-3 py-3 text-center text-sm text-amber-600">{otherLeave}</td>
-                            <td className="px-3 py-3 text-center text-sm text-amber-700 font-semibold">{totalLeaveVal}</td>
-                            <td className="px-3 py-3 text-center text-sm text-green-800 font-bold">{totalPresentVal}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-700 font-semibold">
+                              {totalLeaveVal}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-green-800 font-bold">
+                              {totalPresentVal}
+                            </td>
                             <td className="px-3 py-3 text-center">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
-                              ${hasOverride ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold
+                              ${hasOverride ? "bg-amber-100 text-amber-800" : "bg-indigo-100 text-indigo-800"}`}
+                              >
                                 {effectiveDays}
-                                {hasOverride && <span className="ml-1 text-amber-500" title={`Override: ${row.override_reason}`}>⚠</span>}
+                                {hasOverride && (
+                                  <span className="ml-1 text-amber-500" title={`Override: ${row.override_reason}`}>
+                                    ⚠
+                                  </span>
+                                )}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-center text-sm text-amber-700 font-medium">{row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : '00:00')}</td>
+                            <td className="px-3 py-3 text-center text-sm text-amber-700 font-medium">
+                              {row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : "00:00")}
+                            </td>
                             <td className="px-3 py-3 text-center text-sm text-red-600">{lateVal}</td>
                             <td className="px-3 py-3 text-center text-sm text-orange-600">{earlyVal}</td>
                             <td className="px-3 py-3">
@@ -786,9 +1012,11 @@ const AttendanceMonthly = () => {
                 {/* Pagination Controls */}
                 <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-100 bg-white gap-3 rounded-b-2xl">
                   <div className="text-xs text-gray-500 font-medium">
-                    Showing <span className="font-bold text-gray-800">{totalRecords > 0 ? (page - 1) * pageSize + 1 : 0}</span> to{' '}
-                    <span className="font-bold text-gray-800">{Math.min(page * pageSize, totalRecords)}</span> of{' '}
-                    <span className="font-bold text-gray-800">{totalRecords}</span> records (Page {page} of {totalPages || 1})
+                    Showing{" "}
+                    <span className="font-bold text-gray-800">{totalRecords > 0 ? (page - 1) * pageSize + 1 : 0}</span>{" "}
+                    to <span className="font-bold text-gray-800">{Math.min(page * pageSize, totalRecords)}</span> of{" "}
+                    <span className="font-bold text-gray-800">{totalRecords}</span> records (Page {page} of{" "}
+                    {totalPages || 1})
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -818,19 +1046,9 @@ const AttendanceMonthly = () => {
 
       {/* Modals */}
       {overrideRow && (
-        <OverrideModal
-          row={overrideRow}
-          onSave={handleOverrideSave}
-          onClose={() => setOverrideRow(null)}
-        />
+        <OverrideModal row={overrideRow} onSave={handleOverrideSave} onClose={() => setOverrideRow(null)} />
       )}
-      {gridRow && (
-        <DailyGridModal
-          row={gridRow}
-          daysInMonth={daysInMonth}
-          onClose={() => setGridRow(null)}
-        />
-      )}
+      {gridRow && <DailyGridModal row={gridRow} daysInMonth={daysInMonth} onClose={() => setGridRow(null)} />}
     </div>
   );
 };

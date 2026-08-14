@@ -23,7 +23,7 @@ export async function fetchAttendanceLog(client, { day, month, year, status = 'A
   const allRows = [...initialResult.rows];
 
   const $ = cheerio.load(response.data);
-  
+
   // Extract all inputs and selects
   const baseFormData = {};
   $('input').each((_, el) => {
@@ -72,7 +72,7 @@ export async function fetchAttendanceLog(client, { day, month, year, status = 'A
 
       const pageResult = parseAttendanceTable(postResponse.data);
       allRows.push(...pageResult.rows);
-      
+
       const $postPage = cheerio.load(postResponse.data);
       baseFormData['__VIEWSTATE'] = $postPage('#__VIEWSTATE').attr('value') || baseFormData['__VIEWSTATE'];
       baseFormData['__VIEWSTATEGENERATOR'] = $postPage('#__VIEWSTATEGENERATOR').attr('value') || baseFormData['__VIEWSTATEGENERATOR'];
@@ -116,13 +116,43 @@ export async function fetchAttendanceRange(client, { from, to, status = 'All' })
     throw new Error('"from" date must not be after "to" date.');
   }
 
+  const today = new Date();
+  const todayUtc = toUtcDate({
+    year: today.getFullYear(),
+    month: today.getMonth() + 1,
+    day: today.getDate()
+  });
+  const finalEnd = end > todayUtc ? todayUtc : end;
+
+  const dates = [];
+  for (let cursor = start; cursor <= finalEnd; cursor = new Date(cursor.getTime() + ONE_DAY_MS)) {
+    dates.push(fromUtcDate(cursor));
+  }
+
   const rows = [];
   let headers = [];
-  for (let cursor = start; cursor <= end; cursor = new Date(cursor.getTime() + ONE_DAY_MS)) {
-    const { year, month, day } = fromUtcDate(cursor);
-    const result = await fetchAttendanceLog(client, { day, month, year, status });
-    if (result.headers.length > headers.length) headers = result.headers;
-    rows.push(...result.rows);
+  const limit = 6;
+
+  for (let i = 0; i < dates.length; i += limit) {
+    const batch = dates.slice(i, i + limit);
+    const results = await Promise.all(
+      batch.map(({ year, month, day }) =>
+        fetchAttendanceLog(client, { day, month, year, status }).catch(err => {
+          console.warn(`Failed to fetch logs for date ${year}-${month}-${day}:`, err.message);
+          return { headers: [], rows: [] };
+        })
+      )
+    );
+
+    for (const result of results) {
+      if (result.headers.length > headers.length) headers = result.headers;
+      rows.push(...result.rows);
+    }
   }
+
   return { headers, rows };
+}
+
+export async function fetchAttendanceWithoutFilter(client, { day, month, year }) {
+  return fetchAttendanceLog(client, { day, month, year, status: 'All' });
 }

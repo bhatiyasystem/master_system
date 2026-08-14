@@ -152,25 +152,28 @@ const sendWhatsAppMessage = async (phoneNumber, message, logMeta = {}) => {
         }
 
         const url = `${WHATSAPP_API_URL}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+        const body = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: formattedPhone,
+            type: "text",
+            text: {
+                body: message
+            }
+        };
 
+        console.log(`[Service] Meta Plain Text Request: URL: ${url}, Body:`, JSON.stringify(body, null, 2));
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to: formattedPhone,
-                type: "text",
-                text: {
-                    body: message
-                }
-            })
+            body: JSON.stringify(body)
         });
 
         const result = await response.json();
+        console.log(`[Service] Meta Plain Text Response: Status: ${response.status}, Result:`, JSON.stringify(result, null, 2));
 
         if (!response.ok) {
             console.error('Meta WhatsApp API Error:', response.status, response.statusText);
@@ -235,6 +238,59 @@ const sendWhatsAppTemplate = async (phoneNumber, templateName, parameters = [], 
         }
 
         const url = `${WHATSAPP_API_URL}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+        const { data: templateData } = await supabase
+            .from('whatsapp_templates')
+            .select('header_format, example_header_handle')
+            .eq('name', templateName)
+            .maybeSingle();
+
+        const headerFormat = templateData?.header_format;
+        const fallbackHeaderUrl = templateData?.example_header_handle;
+
+        const components = [
+            {
+                type: "body",
+                parameters: parameters.map(val => ({
+                    type: "text",
+                    text: String(val || 'N/A')
+                }))
+            }
+        ];
+
+        if (headerFormat === 'IMAGE') {
+            let imageUrl = logMeta.mediaUrl || logMeta.media_url || fallbackHeaderUrl;
+            if (!imageUrl || imageUrl.includes('scontent.whatsapp.net') || imageUrl.includes('fbcdn.net')) {
+                imageUrl = "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800";
+            }
+            components.push({
+                type: "header",
+                parameters: [
+                    {
+                        type: "image",
+                        image: {
+                            link: imageUrl
+                        }
+                    }
+                ]
+            });
+        } else if (headerFormat === 'DOCUMENT') {
+            let docUrl = logMeta.mediaUrl || logMeta.media_url || fallbackHeaderUrl;
+            if (!docUrl || docUrl.includes('scontent.whatsapp.net') || docUrl.includes('fbcdn.net')) {
+                docUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+            }
+            components.push({
+                type: "header",
+                parameters: [
+                    {
+                        type: "document",
+                        document: {
+                            link: docUrl,
+                            filename: logMeta.fileName || logMeta.file_name || "Document.pdf"
+                        }
+                    }
+                ]
+            });
+        }
 
         const body = {
             messaging_product: "whatsapp",
@@ -246,18 +302,11 @@ const sendWhatsAppTemplate = async (phoneNumber, templateName, parameters = [], 
                 language: {
                     code: languageCode
                 },
-                components: [
-                    {
-                        type: "body",
-                        parameters: parameters.map(val => ({
-                            type: "text",
-                            text: String(val || 'N/A')
-                        }))
-                    }
-                ]
+                components: components
             }
         };
 
+        console.log(`[Service] Meta Template Request: URL: ${url}, Body:`, JSON.stringify(body, null, 2));
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -268,6 +317,7 @@ const sendWhatsAppTemplate = async (phoneNumber, templateName, parameters = [], 
         });
 
         const result = await response.json();
+        console.log(`[Service] Meta Template Response: Status: ${response.status}, Result:`, JSON.stringify(result, null, 2));
 
         if (!response.ok) {
             console.error(`Meta Template API Error (${templateName}):`, response.status, response.statusText);
@@ -374,6 +424,10 @@ const sendWhatsAppVoiceMessage = async (phoneNumber, audioUrl, logMeta = {}) => 
  */
 export const sendWhatsAppTextMessage = async (phoneNumber, text, logMeta = {}) => {
     return sendWhatsAppMessage(phoneNumber, text, logMeta);
+};
+
+export const sendWhatsAppTemplateMessage = async (phoneNumber, templateName, parameters = [], languageCode = 'en', logMeta = {}) => {
+    return sendWhatsAppTemplate(phoneNumber, templateName, parameters, languageCode, logMeta);
 };
 
 export const whatsappLogService = {
@@ -1071,5 +1125,6 @@ export default {
     sendDailyTaskSummaryNotification,
     sendPurchaseDeliveredNotification,
     sendWhatsAppTextMessage,
+    sendWhatsAppTemplateMessage,
     whatsappLogService
 };

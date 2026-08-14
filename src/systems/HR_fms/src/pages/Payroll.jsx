@@ -706,6 +706,9 @@ const Payroll = () => {
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
 
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
   const prevPeriod = getPreviousProcessingPeriod();
   const [filterYear, setFilterYear] = useState(prevPeriod.year);
   const [filterMonth, setFilterMonth] = useState(prevPeriod.month);
@@ -1035,9 +1038,23 @@ const Payroll = () => {
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <div className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700 font-medium">
-                {MONTHS[filterMonth - 1]} {filterYear}
-              </div>
+              <select
+                value={`${filterMonth}-${filterYear}`}
+                onChange={e => {
+                  const [m, y] = e.target.value.split('-').map(Number);
+                  setFilterMonth(m);
+                  setFilterYear(y);
+                  setPage(1);
+                }}
+                className="border rounded-lg px-3 py-2 text-sm font-medium bg-white text-gray-700 border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none"
+              >
+                <option value={`${currentMonth}-${currentYear}`}>
+                  {MONTHS[currentMonth - 1]} {currentYear}
+                </option>
+                <option value={`${currentMonth === 1 ? 12 : currentMonth - 1}-${currentMonth === 1 ? currentYear - 1 : currentYear}`}>
+                  {MONTHS[currentMonth === 1 ? 11 : currentMonth - 2]} {currentMonth === 1 ? currentYear - 1 : currentYear}
+                </option>
+              </select>
               <button
                 onClick={loadPayroll}
                 disabled={loading}

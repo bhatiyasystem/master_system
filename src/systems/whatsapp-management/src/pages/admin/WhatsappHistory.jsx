@@ -3,7 +3,7 @@ import React from 'react';
 import { useMagicToast } from '@/context/MagicToastContext';
 import { whatsappLogService } from '@/services/whatsappService';
 import supabase from '@/SupabaseClient';
-import { Image as _ImageIcon, Check, User, Download, RefreshCw, MoreVertical, Search, Clock, Phone, ChevronLeft, Smile, X, FileText, CornerUpRight, ImageIcon, Plus, Send, CheckCheck, XCircle } from 'lucide-react';
+import { Image as _ImageIcon, Check, User, Download, RefreshCw, MoreVertical, Search, Clock, Phone, ChevronLeft, Smile, X, FileText, CornerUpRight, ImageIcon, Plus, Send, CheckCheck, XCircle, BookOpen, MessageSquare, UserPlus } from 'lucide-react';
 
 const getDisplayableImageUrl = (url) => {
     if (!url) return null;
@@ -82,6 +82,17 @@ const WhatsappHistory = () => {
     const [showReactionDetailsMsgId, setShowReactionDetailsMsgId] = useState(null);
     const [forwardingMsg, setForwardingMsg] = useState(null);
     const [forwardSearch, setForwardSearch] = useState('');
+
+    // Manual/New chat & templates sending state
+    const [manualContacts, setManualContacts] = useState([]);
+    const [showNewChatModal, setShowNewChatModal] = useState(false);
+    const [newChatForm, setNewChatForm] = useState({ phone: '', name: '' });
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [selectedTemplateName, setSelectedTemplateName] = useState('');
+    const [templateParams, setTemplateParams] = useState([]);
+    const [sendingTemplate, setSendingTemplate] = useState(false);
+    const [templateMediaUrl, setTemplateMediaUrl] = useState('');
+    const [templateFileName, setTemplateFileName] = useState('');
 
     const mediaInputRef = useRef(null);
     const docInputRef = useRef(null);
@@ -507,20 +518,100 @@ const WhatsappHistory = () => {
         if (!newMessage.trim() || !selectedContactId || sending) return;
 
         setSending(true);
+        console.log(`[Manual Send] Attempting to send plain text message to ${selectedContact.name} (+${selectedContact.phone}). Content: "${newMessage}"`);
         try {
             const { sendWhatsAppTextMessage } = await import('@/services/whatsappService');
-            await sendWhatsAppTextMessage(selectedContact.phone, newMessage, {
+            const success = await sendWhatsAppTextMessage(selectedContact.phone, newMessage, {
                 recipientName: selectedContact.name,
                 referenceId: 'Manual'
             });
 
+            console.log(`[Manual Send] Plain text message delivery response status: ${success ? 'SUCCESS' : 'FAILED'}`);
             setNewMessage('');
-            // No need for fetchLogs() here, the realtime listener will pick it up
             toast.success('Message sent');
         } catch (error) {
+            console.error('[Manual Send] Exception in handleSendMessage:', error);
             toast.error(error.message);
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleCreateNewChat = (e) => {
+        e.preventDefault();
+        const { phone, name } = newChatForm;
+        if (!phone.trim() || !name.trim()) {
+            toast.error("Please fill in all fields");
+            return;
+        }
+
+        let cleanedPhone = phone.replace(/\D/g, '');
+        if (!cleanedPhone.startsWith('91') && cleanedPhone.length === 10) {
+            cleanedPhone = '91' + cleanedPhone;
+        }
+
+        const newContactId = cleanedPhone;
+        const exists = contacts.find(c => c.id === newContactId);
+        if (exists) {
+            setSelectedContactId(newContactId);
+            setShowNewChatModal(false);
+            setNewChatForm({ phone: '', name: '' });
+            toast.info("Conversation already exists");
+            return;
+        }
+
+        const newMC = {
+            id: newContactId,
+            phone: cleanedPhone,
+            name: name.trim()
+        };
+
+        setManualContacts(prev => [newMC, ...prev]);
+        setSelectedContactId(newContactId);
+        setShowNewChatModal(false);
+        setNewChatForm({ phone: '', name: '' });
+        toast.success("New contact added to chat list");
+    };
+
+    const handleSendTemplateSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedTemplateName || !selectedContact || sendingTemplate) return;
+
+        setSendingTemplate(true);
+        console.log(`[Template Send] Attempting to send template "${selectedTemplateName}" to ${selectedContact.name} (+${selectedContact.phone}) with params:`, templateParams);
+        try {
+            const { sendWhatsAppTemplateMessage } = await import('@/services/whatsappService');
+            
+            const success = await sendWhatsAppTemplateMessage(
+                selectedContact.phone,
+                selectedTemplateName,
+                templateParams,
+                'en',
+                {
+                    recipientName: selectedContact.name,
+                    referenceId: 'Manual',
+                    mediaUrl: templateMediaUrl,
+                    fileName: templateFileName
+                }
+            );
+
+            console.log(`[Template Send] Template message delivery response status: ${success ? 'SUCCESS' : 'FAILED'}`);
+            if (success) {
+                toast.success('Template sent successfully');
+                setShowTemplateModal(false);
+                setSelectedTemplateName('');
+                setTemplateParams([]);
+                setTemplateMediaUrl('');
+                setTemplateFileName('');
+                fetchLogs();
+            } else {
+                toast.error('Failed to send template message');
+            }
+        } catch (error) {
+            console.error('[Template Send] Exception in handleSendTemplateSubmit:', error);
+            toast.error(error.message || 'Failed to send template message');
+        } finally {
+            setSendingTemplate(false);
         }
     };
 
@@ -548,6 +639,20 @@ const WhatsappHistory = () => {
     // Group logs by contact
     const contacts = useMemo(() => {
         const map = new Map();
+
+        // Add manual contacts first
+        manualContacts.forEach(mc => {
+            map.set(mc.id, {
+                id: mc.id,
+                phone: mc.phone,
+                name: mc.name,
+                lastMessage: '',
+                lastDate: new Date().toISOString(),
+                unreadCount: 0,
+                logs: []
+            });
+        });
+
         logs.forEach(log => {
             const key = log.phone_number || log.recipient_name;
             if (!map.has(key)) {
@@ -562,6 +667,12 @@ const WhatsappHistory = () => {
             }
             const contact = map.get(key);
             contact.logs.push(log);
+            if (log.message_content) {
+                contact.lastMessage = log.message_content;
+            }
+            if (new Date(log.created_at) > new Date(contact.lastDate || 0)) {
+                contact.lastDate = log.created_at;
+            }
             if (log.is_read === false && log.status === 'Received') {
                 contact.unreadCount += 1;
             }
@@ -595,10 +706,10 @@ const WhatsappHistory = () => {
                 contact.name = matchUser.user_name;
             } else if (namedLog) {
                 contact.name = namedLog.recipient_name;
-            } else if (contact.phone) {
+            } else if (!contact.name && contact.phone) {
                 const rawP = String(contact.phone).trim();
                 contact.name = rawP.startsWith('+') ? rawP : `+${rawP}`;
-            } else {
+            } else if (!contact.name) {
                 const fallbackLog = contact.logs.find(l => l.recipient_name && l.recipient_name.trim().toLowerCase() !== 'unknown');
                 contact.name = fallbackLog?.recipient_name || 'WhatsApp Contact';
             }
@@ -624,7 +735,7 @@ const WhatsappHistory = () => {
         }
 
         return contactList.sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate));
-    }, [logs, searchTerm, filterType, usersList]);
+    }, [logs, searchTerm, filterType, usersList, manualContacts]);
 
     const selectedContact = useMemo(() =>
         contacts.find(c => c.id === selectedContactId),
@@ -753,8 +864,16 @@ const WhatsappHistory = () => {
         return groups;
     }, [chatMessages]);
 
+    const isChatOpenOnMobile = selectedContactId !== null && !sidebarVisible;
+    const containerHeightClass = isChatOpenOnMobile
+        ? "h-[calc(100vh-84px)]"
+        : "h-[calc(100vh-120px)] md:h-[calc(100vh-84px)]";
+    const containerMarginClass = isChatOpenOnMobile
+        ? "mb-[-24px]"
+        : "mb-[72px] md:mb-[-24px]";
+
     return (
-        <div className="flex h-[calc(100vh-84px)] w-[calc(100%+32px)] md:w-[calc(100%+48px)] mx-[-16px] md:mx-[-24px] mb-[-96px] md:mb-[-24px] overflow-hidden bg-white font-sans antialiased">
+        <div className={`flex ${containerHeightClass} w-[calc(100%+32px)] md:w-[calc(100%+48px)] mx-[-16px] md:mx-[-24px] ${containerMarginClass} overflow-hidden bg-white font-sans antialiased`}>
             {/* Styles for WhatsApp pattern and animations */}
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -786,15 +905,24 @@ const WhatsappHistory = () => {
                     border-top-color: #ffffff;
                 }
                 .custom-scrollbar::-webkit-scrollbar {
-                    width: 6px;
+                    width: 8px;
+                    height: 8px;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(0, 0, 0, 0.15);
-                    border-radius: 10px;
+                    background: #c1c9cf;
+                    border-radius: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #a9b2b9;
                 }
                 .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
+                    background: rgba(0, 0, 0, 0.03);
                 }
+                main {
+                    overflow: hidden !important;
+                    padding-bottom: 0 !important;
+                }
+                ${isChatOpenOnMobile ? '.mobile-bottom-nav { display: none !important; }' : ''}
             `}} />
 
             {/* Sidebar: Conversations List */}
@@ -811,6 +939,9 @@ const WhatsappHistory = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-4 text-[#0b6656]">
+                        <button onClick={() => setShowNewChatModal(true)} className="hover:text-[#111b21] transition-colors" title="Start New Chat">
+                            <UserPlus size={18} />
+                        </button>
                         <button onClick={handleSyncTemplates} className="hover:text-[#111b21] transition-colors" disabled={syncingTemplates} title="Sync Templates from Meta">
                             <Download size={18} className={syncingTemplates ? 'animate-bounce text-[#00a884]' : ''} />
                         </button>
@@ -1496,6 +1627,20 @@ const WhatsappHistory = () => {
                                 <Smile size={22} />
                             </button>
 
+                            {/* Templates Button */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowTemplateModal(true);
+                                    setShowEmojiPanel(false);
+                                    setShowAttachPanel(false);
+                                }}
+                                className="p-1.5 hover:bg-[#d2e0d7] rounded-full text-[#0b6656] transition-colors shrink-0"
+                                title="Send Template Message"
+                            >
+                                <BookOpen size={22} />
+                            </button>
+
                             <div className="flex-1">
                                 <input
                                     type="text"
@@ -1660,6 +1805,249 @@ const WhatsappHistory = () => {
                                                     </button>
                                                 </div>
                                             ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* New Chat Modal */}
+                        {showNewChatModal && (
+                            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                                <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden flex flex-col p-5 space-y-4 animate-in zoom-in-95 duration-200">
+                                    <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                                        <h3 className="text-[16px] font-bold text-[#111b21]">
+                                            Start New Chat
+                                        </h3>
+                                        <button type="button" onClick={() => setShowNewChatModal(false)} className="text-[#667781] hover:text-[#111b21] cursor-pointer">
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <form onSubmit={handleCreateNewChat} className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Contact Name</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder="e.g. John Doe"
+                                                value={newChatForm.name}
+                                                onChange={(e) => setNewChatForm(prev => ({ ...prev, name: e.target.value }))}
+                                                className="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:border-[#00a884]"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Phone Number</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder="e.g. 918085705807"
+                                                value={newChatForm.phone}
+                                                onChange={(e) => setNewChatForm(prev => ({ ...prev, phone: e.target.value }))}
+                                                className="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:border-[#00a884]"
+                                            />
+                                            <span className="text-[10px] text-[#667781]">Include country code (e.g. 91 for India) without '+'</span>
+                                        </div>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewChatModal(false)}
+                                                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm text-[#54656f] font-semibold transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-5 py-2 bg-[#00a884] hover:bg-[#008f70] text-white rounded-lg text-sm font-semibold transition-all shadow-md"
+                                            >
+                                                Create Chat
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Send Template Modal */}
+                        {showTemplateModal && (
+                            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                                <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col p-5 animate-in zoom-in-95 duration-200">
+                                    <div className="flex justify-between items-center pb-2 border-b border-slate-100 shrink-0">
+                                        <h3 className="text-[16px] font-bold text-[#111b21]">
+                                            Send WhatsApp Template
+                                        </h3>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowTemplateModal(false);
+                                                setSelectedTemplateName('');
+                                                setTemplateParams([]);
+                                                setTemplateMediaUrl('');
+                                                setTemplateFileName('');
+                                            }}
+                                            className="text-[#667781] hover:text-[#111b21] cursor-pointer"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto py-4 space-y-4 custom-scrollbar pr-1">
+                                        {/* Template Selector */}
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Select Template</label>
+                                            <select
+                                                value={selectedTemplateName}
+                                                onChange={(e) => {
+                                                    const name = e.target.value;
+                                                    setSelectedTemplateName(name);
+                                                    const tmpl = templates[name];
+                                                    if (tmpl) {
+                                                        const varCount = tmpl.body_variable_count || 0;
+                                                        const defaultParams = Array(varCount).fill('').map((_, idx) => {
+                                                            return tmpl.example_body_params?.[idx] || '';
+                                                        });
+                                                        setTemplateParams(defaultParams);
+                                                    } else {
+                                                        setTemplateParams([]);
+                                                    }
+                                                }}
+                                                className="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:border-[#00a884]"
+                                            >
+                                                <option value="">-- Choose Template --</option>
+                                                {Object.keys(templates).map(name => (
+                                                    <option key={name} value={name}>{name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Template Preview and Inputs */}
+                                        {selectedTemplateName && templates[selectedTemplateName] && (() => {
+                                            const tmpl = templates[selectedTemplateName];
+                                            const hasMediaHeader = tmpl && (tmpl.header_format === 'IMAGE' || tmpl.header_format === 'DOCUMENT');
+                                            return (
+                                                <div className="space-y-4">
+                                                    {/* Media Header File Upload */}
+                                                    {hasMediaHeader && (
+                                                        <div className="space-y-1 bg-[#00a884]/5 p-3 rounded-xl border border-[#00a884]/15">
+                                                            <label className="text-xs font-bold text-[#008069] uppercase flex items-center gap-1">
+                                                                <FileText size={14} /> Upload Header {tmpl.header_format === 'IMAGE' ? 'Image' : 'Document'}
+                                                            </label>
+                                                            <input
+                                                                type="file"
+                                                                accept={tmpl.header_format === 'IMAGE' ? 'image/*' : '.pdf'}
+                                                                onChange={async (e) => {
+                                                                    const file = e.target.files[0];
+                                                                    if (!file) return;
+                                                                    
+                                                                    setSendingTemplate(true);
+                                                                    try {
+                                                                        const fileExt = file.name.split('.').pop();
+                                                                        const fileName = `wa_template_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                                                        const bucketName = 'task-instructions';
+                                                                        
+                                                                        const { error: uploadError } = await supabase.storage
+                                                                            .from(bucketName)
+                                                                            .upload(fileName, file);
+                                                                        
+                                                                        if (uploadError) throw uploadError;
+                                                                        
+                                                                        const { data: { publicUrl } } = supabase.storage
+                                                                            .from(bucketName)
+                                                                            .getPublicUrl(fileName);
+                                                                        
+                                                                        setTemplateMediaUrl(publicUrl);
+                                                                        setTemplateFileName(file.name);
+                                                                        toast.success("Header file uploaded successfully");
+                                                                    } catch (err) {
+                                                                        console.error("Error uploading template header file:", err);
+                                                                        toast.error("Failed to upload header file: " + err.message);
+                                                                    } finally {
+                                                                        setSendingTemplate(false);
+                                                                    }
+                                                                }}
+                                                                className="w-full text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#00a884]/10 file:text-[#008069] hover:file:bg-[#00a884]/20 cursor-pointer"
+                                                            />
+                                                            {templateMediaUrl && (
+                                                                <span className="text-[10px] text-green-600 block mt-1 font-semibold">✓ File uploaded: {templateFileName}</span>
+                                                            )}
+                                                            {!templateMediaUrl && (
+                                                                <span className="text-[10px] text-slate-400 block mt-1">If no file is selected, a fallback preview file will be used.</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Preview Box */}
+                                                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                                                        <span className="text-[10px] font-bold text-[#008069] uppercase tracking-wider">Preview</span>
+                                                        {tmpl.header_text && <div className="font-bold text-sm text-[#111b21]">{tmpl.header_text}</div>}
+                                                        <div className="text-sm text-gray-700 whitespace-pre-wrap">{tmpl.body_text}</div>
+                                                        {tmpl.footer_text && <div className="text-xs text-gray-400">{tmpl.footer_text}</div>}
+                                                    </div>
+
+                                                    {/* Variable Inputs */}
+                                                    {tmpl.body_variable_count > 0 && (
+                                                        <div className="space-y-3">
+                                                            <h4 className="text-xs font-bold text-gray-500 uppercase">Template Variables</h4>
+                                                            {Array.from({ length: tmpl.body_variable_count }).map((_, idx) => (
+                                                                <div key={idx} className="space-y-1">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <label className="text-xs font-medium text-gray-700">Variable {`{{${idx + 1}}}`}</label>
+                                                                        {tmpl.example_body_params?.[idx] && (
+                                                                            <span className="text-[10px] text-gray-400">Example: {tmpl.example_body_params[idx]}</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <input
+                                                                        type="text"
+                                                                        required
+                                                                        placeholder={`Value for {{${idx + 1}}}`}
+                                                                        value={templateParams[idx] || ''}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value;
+                                                                            setTemplateParams(prev => {
+                                                                                const updated = [...prev];
+                                                                                updated[idx] = val;
+                                                                                return updated;
+                                                                            });
+                                                                        }}
+                                                                        className="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm focus:outline-none focus:border-[#00a884]"
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-2 border-t border-slate-100 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowTemplateModal(false);
+                                                setSelectedTemplateName('');
+                                                setTemplateParams([]);
+                                                setTemplateMediaUrl('');
+                                                setTemplateFileName('');
+                                            }}
+                                            className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg text-sm text-[#54656f] font-semibold transition-colors"
+                                            disabled={sendingTemplate}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleSendTemplateSubmit}
+                                            className="px-5 py-2 bg-[#00a884] hover:bg-[#008f70] text-white rounded-lg text-sm font-semibold transition-all shadow-md flex items-center gap-2"
+                                            disabled={!selectedTemplateName || sendingTemplate}
+                                        >
+                                            {sendingTemplate ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    Sending...
+                                                </>
+                                            ) : (
+                                                'Send Template'
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             </div>

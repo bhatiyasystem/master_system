@@ -718,7 +718,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
         </div>
 
         {/* Premium Bottom Navigation for Mobile */}
-        <div className="md:hidden fixed bottom-6 left-4 right-4 h-16 bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 flex items-center justify-around px-2">
+        <div className="mobile-bottom-nav md:hidden fixed bottom-6 left-4 right-4 h-16 bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 flex items-center justify-around px-2">
           <Link
             to="/dashboard"
             className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 ${location.pathname === "/dashboard" ? "text-purple-600 bg-purple-50" : "text-gray-400"

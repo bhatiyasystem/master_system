@@ -9,6 +9,7 @@
 
 import supabase, { hrSupabaseProjectUrl } from './supabaseHRClient.js';
 import masterSupabase from '../../../../SupabaseClient.js';
+import populatedDays from '../pages/Attendance.jsx'
 import { getPreviousProcessingPeriod } from '../utils/dateUtils.js';
 
 // Fetch puttha_status from the MASTER project's users table, keyed by name
@@ -119,13 +120,25 @@ export function calculateRowLeaveStats(row) {
 export function fillDailyStatusFromSummary(emp, year, month) {
   if (!year || !month || !emp) return emp?.daily_status || {};
 
+  const today = new Date();
+  const isCurrentMonth = (year === today.getFullYear() && month === (today.getMonth() + 1));
   const daysInMonth = new Date(year, month, 0).getDate();
+  const limitDay = isCurrentMonth ? today.getDate() : daysInMonth;
+
   const existingDaily = emp.daily_status || {};
 
-  // Check how many days are already populated (excluding _meta)
-  const populatedDays = Object.keys(existingDaily).filter(k => k !== '_meta').length;
-  if (populatedDays >= daysInMonth) {
-    return existingDaily;
+  // For the current month/year: Do NOT generate proxy/default attendance data.
+  // Fetch attendance only through today. Keep all subsequent days blank.
+  // Never convert missing data into P, A, WO, or any other status.
+  if (isCurrentMonth) {
+    const result = { ...existingDaily };
+    for (let d = limitDay + 1; d <= daysInMonth; d++) {
+      delete result[d];
+      if (result._meta && result._meta[d]) {
+        delete result._meta[d];
+      }
+    }
+    return result;
   }
 
   const totalPresent = parseFloat(emp.total_present ?? emp.total_p) || 0;
@@ -139,10 +152,30 @@ export function fillDailyStatusFromSummary(emp, year, month) {
   const hasSummaryMetrics = (totalPresent > 0 || totalAbsent > 0 || totalHoliday > 0 || totalWO > 0 || totalWOP > 0 || leaveObj.totalLeave > 0 || populatedDays > 0);
 
   if (!hasSummaryMetrics) {
+    if (isCurrentMonth) {
+      const result = { ...existingDaily };
+      for (let d = limitDay + 1; d <= daysInMonth; d++) {
+        delete result[d];
+        if (result._meta && result._meta[d]) {
+          delete result._meta[d];
+        }
+      }
+      return result;
+    }
     return { ...existingDaily };
   }
 
   const result = { ...existingDaily };
+
+  // Clear future days
+  if (isCurrentMonth) {
+    for (let d = limitDay + 1; d <= daysInMonth; d++) {
+      delete result[d];
+      if (result._meta && result._meta[d]) {
+        delete result._meta[d];
+      }
+    }
+  }
 
   let remCL = leaveObj.cl;
   let remPL = leaveObj.pl;
@@ -158,7 +191,7 @@ export function fillDailyStatusFromSummary(emp, year, month) {
   // Step 1: Identify Sundays in this month for WO assignment
   const sundays = [];
   const nonSundays = [];
-  for (let d = 1; d <= daysInMonth; d++) {
+  for (let d = 1; d <= limitDay; d++) {
     if (result[d]) continue;
     const dateObj = new Date(year, month - 1, d);
     if (dateObj.getDay() === 0) { // Sunday
@@ -212,7 +245,7 @@ export function fillDailyStatusFromSummary(emp, year, month) {
   if (remA > 0) assignCode('A', remA);
 
   // Fallback for any remaining unassigned days
-  for (let d = 1; d <= daysInMonth; d++) {
+  for (let d = 1; d <= limitDay; d++) {
     if (!result[d]) {
       result[d] = remP > 0 ? 'P' : (remA > 0 ? 'A' : '');
     }
@@ -585,15 +618,19 @@ export async function fetchUploads({ year, month } = {}) {
 
 export async function saveAttendanceRows(uploadId, employees, year, month, companyName, department) {
   const period = getPreviousProcessingPeriod();
+  const today = new Date();
+  const isCurrentMonth = (year === today.getFullYear() && month === (today.getMonth() + 1));
   if (year !== period.year || month !== period.month) {
-    throw new Error(`Enforcement Error: Attendance can only be uploaded and saved for the previous processing month (${period.month}/${period.year})`);
+    if (!isCurrentMonth) {
+      throw new Error(`Enforcement Error: Attendance can only be uploaded and saved for the previous processing month (${period.month}/${period.year}) or the current month (${today.getMonth() + 1}/${today.getFullYear()})`);
+    }
   }
   const rows = employees.map(emp => ({
     upload_id: uploadId,
     year,
     month,
-    company_name: companyName || 'Default',
-    department: department || 'Default',
+    company_name: 'Default',
+    department: 'Default',
     sl_no: emp.sl_no,
     emp_code: emp.emp_code,
     emp_name: emp.emp_name,
@@ -1367,6 +1404,16 @@ export async function fetchAttendanceMonthlyPaginated({ year, month, page = 1, p
 
   const { data: attData, error } = await query;
   if (error) throw error;
+
+  if (!attData || attData.length === 0) {
+    return {
+      data: [],
+      totalRecords: 0,
+      currentPage: page,
+      pageSize,
+      totalPages: 1,
+    };
+  }
 
   const existingCodes = new Set((attData || []).map(a => String(a.emp_code || '').trim().toLowerCase()));
 
@@ -2520,5 +2567,163 @@ export async function deletePuttha(id) {
     .delete()
     .eq('id', id);
   if (error) throw error;
+}
+
+export async function syncAttendanceFromPortal(year, month) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const today = new Date();
+  const isCurrentMonth = (year === today.getFullYear() && month === (today.getMonth() + 1));
+  const lastDay = isCurrentMonth ? today.getDate() : new Date(year, month, 0).getDate();
+  const from = `${year}-${pad(month)}-01`;
+  const to = `${year}-${pad(month)}-${pad(lastDay)}`;
+
+  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+  const response = await fetch(`${apiBase}/api/attendance/range?from=${from}&to=${to}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch portal attendance range: ${response.statusText}`);
+  }
+  const result = await response.json();
+  const esslRows = result.rows || [];
+
+  if (esslRows.length === 0) {
+    throw new Error('No attendance logs found in the portal for the selected month.');
+  }
+
+  const employeesMap = {};
+
+  esslRows.forEach(row => {
+    const empCode = String(row['Emp Code']).trim();
+    const empName = String(row['Emp Name']).trim();
+    if (!empCode || !empName) return;
+
+    if (!employeesMap[empCode]) {
+      employeesMap[empCode] = {
+        emp_code: empCode,
+        emp_name: empName,
+        daily_status: { _meta: {} }
+      };
+    }
+
+    const dateStr = row['Attendance Date'];
+    const dayMatch = /^(\d+)/.exec(dateStr);
+    if (dayMatch) {
+      const dayNum = parseInt(dayMatch[1], 10);
+      employeesMap[empCode].daily_status[dayNum] = String(row.Status).trim();
+      employeesMap[empCode].daily_status._meta[dayNum] = {
+        ot: row['Over Time'] || '00:00',
+        in_time: row.InTime || null,
+        late_by: parseInt(row.LateBy || '0', 10),
+        early_by: parseInt(row.EarlyBy || '0', 10),
+        out_time: row.OutTime || null,
+        punch_records: row.PunchRecords || null,
+      };
+    }
+  });
+
+  const employees = Object.values(employeesMap).map((emp, index) => {
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalLeave = 0;
+    let totalHoliday = 0;
+    let totalHalfPresent = 0;
+    let totalWO = 0;
+    let totalWOP = 0;
+    let payableDays = 0;
+    let totalOTMinutes = 0;
+    let totalLate = 0;
+    let totalEarly = 0;
+
+    Object.entries(emp.daily_status).forEach(([key, val]) => {
+      if (key === '_meta' || !val) return;
+      const code = String(val).trim();
+
+      const payVal = STATUS_PAY_VALUE[code] !== undefined ? STATUS_PAY_VALUE[code] : 0;
+      payableDays += payVal;
+
+      if (code === 'P' || code === 'p' || code === 'P(OD)') totalPresent++;
+      else if (code === 'A') totalAbsent++;
+      else if (code === 'L' || code === 'CL' || code === 'PL' || code === 'SL') totalLeave++;
+      else if (code === 'H' || code === 'HP') totalHoliday++;
+      else if (code === 'HP') totalHalfPresent++;
+      else if (code === 'WO') totalWO++;
+      else if (code === 'WOP') totalWOP++;
+    });
+
+    Object.entries(emp.daily_status._meta).forEach(([_, mVal]) => {
+      if (mVal) {
+        totalLate += mVal.late_by || 0;
+        totalEarly += mVal.early_by || 0;
+        if (mVal.ot && mVal.ot !== '00:00') {
+          const parts = mVal.ot.split(':');
+          const h = parseInt(parts[0] || '0', 10);
+          const m = parseInt(parts[1] || '0', 10);
+          totalOTMinutes += (h * 60 + m);
+        }
+      }
+    });
+
+    const otHours = Math.floor(totalOTMinutes / 60);
+    const otMins = totalOTMinutes % 60;
+    const totalOT = `${String(otHours).padStart(2, '0')}:${String(otMins).padStart(2, '0')}`;
+
+    emp.daily_status._meta.total_cl = 0;
+    emp.daily_status._meta.total_pl = 0;
+    emp.daily_status._meta.total_sl = 0;
+    emp.daily_status._meta.total_hp = totalHalfPresent;
+    emp.daily_status._meta.total_other_leave = 0;
+    emp.daily_status._meta.total_leave = totalLeave;
+    emp.daily_status._meta.total_present = totalPresent;
+    emp.daily_status._meta.payable_days = payableDays;
+    emp.daily_status._meta.total_late = totalLate;
+    emp.daily_status._meta.total_early = totalEarly;
+
+    return {
+      sl_no: index + 1,
+      emp_code: emp.emp_code,
+      emp_name: emp.emp_name,
+      daily_status: emp.daily_status,
+      total_present: totalPresent,
+      total_absent: totalAbsent,
+      total_leave: totalLeave,
+      total_holiday: totalHoliday,
+      total_half_present: totalHalfPresent,
+      total_wo: totalWO,
+      total_wop: totalWOP,
+      payable_days: payableDays,
+      total_ot: totalOT,
+      total_late: totalLate,
+      total_early: totalEarly,
+    };
+  });
+
+  const dummyUpload = {
+    periodFrom: from,
+    periodTo: to,
+    companyName: 'Default',
+    department: 'Default',
+    fileName: 'Portal Sync',
+    uploadedBy: null,
+    year: year,
+    month: month,
+  };
+
+  const uploadRecord = await createUploadRecord(dummyUpload);
+
+  await saveAttendanceRows(
+    uploadRecord.id,
+    employees,
+    year,
+    month,
+    'Default',
+    'Default'
+  );
+
+  await updateUploadRecord(uploadRecord.id, {
+    status: 'processed',
+    total_rows: employees.length,
+    processed_rows: employees.length,
+  });
+
+  return { count: employees.length };
 }
 

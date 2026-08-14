@@ -3,7 +3,7 @@ import { login } from './auth.js';
 import { fetchAttendanceLog, fetchAttendanceRange } from './fetchAttendance.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 app.get('/api/attendance', async (req, res) => {
   const today = new Date();
