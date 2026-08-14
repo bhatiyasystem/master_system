@@ -2577,8 +2577,11 @@ export async function syncAttendanceFromPortal(year, month) {
   const from = `${year}-${pad(month)}-01`;
   const to = `${year}-${pad(month)}-${pad(lastDay)}`;
 
-  const apiBase = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
-  const response = await fetch(`${apiBase}/api/attendance/range?from=${from}&to=${to}`);
+  let backendUrl = import.meta.env.VITE_ESSL_BACKEND_URL || 'http://localhost:5000/api/';
+  if (!backendUrl.endsWith('/')) {
+    backendUrl += '/';
+  }
+  const response = await fetch(`${backendUrl}attendance/range?from=${from}&to=${to}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch portal attendance range: ${response.statusText}`);
   }
