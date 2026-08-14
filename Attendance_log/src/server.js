@@ -42,6 +42,6 @@ app.get('/api/attendance/range', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Attendance API running at http://localhost:${PORT}/api/attendance`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Attendance API running on port ${PORT}`);
 });

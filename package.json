@@ -8,7 +8,8 @@
     "build": "npm run lint && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server.js",
+    "server": "node Attendance_log/src/server.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
@@ -51,7 +52,12 @@
     "tailwind-variants": "^0.3.1",
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "axios-cookiejar-support": "^7.0.0",
+    "cheerio": "^1.2.0",
+    "commander": "^15.0.0",
+    "dotenv": "^17.4.2",
+    "tough-cookie": "^6.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
