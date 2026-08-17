@@ -1,8 +1,8 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import { login as getAuthenticatedClient } from "./Attendance_log/src/auth.js";
-import { fetchAttendanceLog, fetchAttendanceRange, fetchAttendanceWithoutFilter } from "./Attendance_log/src/fetchAttendance.js";
+import { login as getAuthenticatedClient } from "./attendance/auth.js";
+import { fetchAttendanceLog, fetchAttendanceRange, fetchAttendanceWithoutFilter } from "./attendance/fetchAttendance.js";
 
 const app = express();
 app.use(cors());
@@ -48,6 +48,16 @@ app.get('/api/attendance', async (req, res) => {
   const year = Number(req.query.year ?? today.getFullYear());
   const status = req.query.status ?? 'All';
 
+  if (isNaN(day) || day < 1 || day > 31) {
+    return res.status(400).json({ error: "Invalid day. Must be between 1 and 31." });
+  }
+  if (isNaN(month) || month < 1 || month > 12) {
+    return res.status(400).json({ error: "Invalid month. Must be between 1 and 12." });
+  }
+  if (isNaN(year) || year < 2000 || year > 2100) {
+    return res.status(400).json({ error: "Invalid year." });
+  }
+
   try {
     const { rows } = await runWithAuth((client) =>
       fetchAttendanceLog(client, { day, month, year, status })
@@ -63,6 +73,16 @@ app.get('/api/attendance/without-filter', async (req, res) => {
   const day = Number(req.query.day ?? today.getDate());
   const month = Number(req.query.month ?? today.getMonth() + 1);
   const year = Number(req.query.year ?? today.getFullYear());
+
+  if (isNaN(day) || day < 1 || day > 31) {
+    return res.status(400).json({ error: "Invalid day. Must be between 1 and 31." });
+  }
+  if (isNaN(month) || month < 1 || month > 12) {
+    return res.status(400).json({ error: "Invalid month. Must be between 1 and 12." });
+  }
+  if (isNaN(year) || year < 2000 || year > 2100) {
+    return res.status(400).json({ error: "Invalid year." });
+  }
 
   try {
     const { rows } = await runWithAuth((client) =>
@@ -85,6 +105,11 @@ app.get('/api/attendance/range', async (req, res) => {
   const to = req.query.to || defaultTo;
   const status = req.query.status ?? 'All';
 
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(from) || !dateRegex.test(to)) {
+    return res.status(400).json({ error: "Invalid date format. Must be YYYY-MM-DD." });
+  }
+
   try {
     const { rows } = await runWithAuth((client) =>
       fetchAttendanceRange(client, { from, to, status })
@@ -95,8 +120,14 @@ app.get('/api/attendance/range', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Attendance API running on port ${PORT}`);
-});
+export default app;
+
+const isMain = process.argv[1] && (process.argv[1].includes('server.js') || process.argv[1].includes('server'));
+if (isMain || process.env.NODE_ENV === 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Attendance API running on port ${PORT}`);
+  });
+}
+
 

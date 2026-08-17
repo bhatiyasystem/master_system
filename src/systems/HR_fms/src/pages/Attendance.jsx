@@ -502,8 +502,10 @@ const AttendanceMonthly = () => {
               setTab("upload");
               handleCancelPreview();
             }}
+            disabled={syncing}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-              ${tab === "upload" ? "bg-indigo-600 text-white shadow-md" : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+              ${syncing ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400" :
+                tab === "upload" ? "bg-indigo-600 text-white shadow-md" : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}
           >
             <Upload size={16} /> Upload Excel
           </button>
@@ -512,8 +514,10 @@ const AttendanceMonthly = () => {
               setTab("view");
               loadData();
             }}
+            disabled={syncing}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-              ${tab === "view" ? "bg-indigo-600 text-white shadow-md" : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+              ${syncing ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400" :
+                tab === "view" ? "bg-indigo-600 text-white shadow-md" : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"}`}
           >
             <Users size={16} /> View Records
           </button>
@@ -799,7 +803,8 @@ const AttendanceMonthly = () => {
                     setFilterYear(y);
                     setPage(1);
                   }}
-                  className="border rounded-lg px-3 py-2 text-sm font-medium bg-white text-gray-700 border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none"
+                  disabled={syncing}
+                  className="border rounded-lg px-3 py-2 text-sm font-medium bg-white text-gray-700 border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value={`${currentMonth}-${currentYear}`}>
                     {MONTHS[currentMonth - 1]} {currentYear}
@@ -811,8 +816,8 @@ const AttendanceMonthly = () => {
               </div>
               <button
                 onClick={() => loadData()}
-                disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                disabled={loading || syncing}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
                 {loading ? "Loading..." : "Load"}

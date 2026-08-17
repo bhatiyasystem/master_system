@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server.js",
-    "server": "node Attendance_log/src/server.js"
+    "server": "node server.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",

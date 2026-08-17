@@ -2584,7 +2584,7 @@ export async function syncAttendanceFromPortal(year, month) {
   const from = `${year}-${pad(month)}-01`;
   const to = `${year}-${pad(month)}-${pad(lastDay)}`;
 
-  let backendUrl = import.meta.env.VITE_ESSL_BACKEND_URL || import.meta.env.VITE_ESSL_BASE || 'http://localhost:5000/api/';
+  let backendUrl = import.meta.env.VITE_ESSL_BACKEND_URL || import.meta.env.VITE_ESSL_BASE || '/api/';
   if (!backendUrl.endsWith('/')) {
     backendUrl += '/';
   }
