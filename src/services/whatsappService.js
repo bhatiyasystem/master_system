@@ -1128,8 +1128,3 @@ export default {
     sendWhatsAppTemplateMessage,
     whatsappLogService
 };
-sendPurchaseDeliveredNotification,
-    sendWhatsAppTextMessage,
-    sendWhatsAppTemplateMessage,
-    whatsappLogService
-};
