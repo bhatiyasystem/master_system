@@ -123,7 +123,7 @@ app.get('/api/attendance/range', async (req, res) => {
 export default app;
 
 const isMain = process.argv[1] && (process.argv[1].includes('server.js') || process.argv[1].includes('server'));
-if (isMain || process.env.NODE_ENV === 'production') {
+if (isMain) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Attendance API running on port ${PORT}`);
