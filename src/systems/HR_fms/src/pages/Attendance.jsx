@@ -56,7 +56,7 @@ const UploadZone = ({ onFile, uploading }) => {
       onDrop={handleDrop}
       onClick={() => !uploading && inputRef.current?.click()}
       className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all
-        ${dragOver ? "border-indigo-500 bg-indigo-50" : "border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50"}`}
+        ${dragOver ? "border-indigo-600 bg-indigo-50" : "border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50"}`}
     >
       <input
         ref={inputRef}
