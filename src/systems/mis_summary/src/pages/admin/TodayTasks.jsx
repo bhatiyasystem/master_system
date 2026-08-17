@@ -47,15 +47,77 @@ const AdminTodayTasks = () => {
           return;
         }
 
-        const [masterResponse, dataResponse, recordsResponse] = await Promise.all([
+        const [masterResponse, dataResponse] = await Promise.all([
           supabaseFetchSheet('Master'),
-          supabaseFetchSheet('Report Daily'),
-          supabaseFetchSheet('For Whatsapp')
+          supabaseFetchSheet('Report Daily')
         ]);
 
         const masterResult = await masterResponse.json();
         const dataResult = await dataResponse.json();
-        const recordsResult = await recordsResponse.json();
+
+        // Extract dates
+        let globalFromDate = "";
+        let globalToDate = "";
+        if (dataResult.success && Array.isArray(dataResult.data)) {
+          setDataSheetRows(dataResult.data.slice(1));
+          const headerRow = dataResult.data[0] || [];
+          globalFromDate = headerRow[21] ? String(headerRow[21]).trim() : "";
+          globalToDate = headerRow[22] ? String(headerRow[22]).trim() : "";
+        }
+
+        // Fetch dynamic For Records sheet from Apps Script using extracted dates
+        let recordsResult = { success: false, data: [] };
+        if (globalFromDate && globalToDate) {
+          const dynamicSheetName = `For Records : Report From ${globalFromDate} To ${globalToDate}`;
+          console.log(`[TodayTasks] Fetching dynamic sheet "${dynamicSheetName}" from Apps Script...`);
+          try {
+            const separator = scriptUrl.includes('?') ? '&' : '?';
+            const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=${encodeURIComponent(dynamicSheetName)}`;
+            const response = await fetch(fetchUrl);
+            const appScriptJson = await response.json();
+            
+            if (appScriptJson.status === "success" && Array.isArray(appScriptJson.users)) {
+              // Convert array of objects to 2D array matrix matching the expected format
+              const headers = [
+                "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
+                "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
+                "Week Pending", "All Pending Till Date", "Start Date", "End Date"
+              ];
+              const data2D = [
+                [], // Row 0 (empty dummy row to align with index slice(2))
+                headers, // Row 1 (header row)
+                ...appScriptJson.users.map(u => [
+                  u["Date Start"],
+                  u["Date End"],
+                  u["Name"],
+                  u["Target"],
+                  u["Actual  Work Done"] || u["Actual Work Done"],
+                  u["% Work Not Done"],
+                  u["% Work Not Done On Time"],
+                  u["Total Work Done"],
+                  u["Week Pending"],
+                  u["All Pending Till Date"],
+                  u["Start Date"],
+                  u["End Date"]
+                ])
+              ];
+              recordsResult = { success: true, data: data2D };
+              console.log(`[TodayTasks] Successfully loaded ${appScriptJson.users.length} records from Apps Script.`);
+            }
+          } catch (e) {
+            console.error("[TodayTasks] Failed to fetch dynamic sheet from Apps Script:", e);
+          }
+        }
+
+        // Fallback to supabaseFetchSheet('For Whatsapp') if Apps Script fetch failed or was empty
+        if (!recordsResult.success || !recordsResult.data || recordsResult.data.length <= 2) {
+          console.log("[TodayTasks] Falling back to Supabase 'For Whatsapp' sheet.");
+          const fallbackRes = await supabaseFetchSheet('For Whatsapp');
+          const fallbackJson = await fallbackRes.json();
+          if (fallbackJson.success) {
+            recordsResult = fallbackJson;
+          }
+        }
 
         const imageMap = {};
         if (masterResult.success && Array.isArray(masterResult.data)) {
