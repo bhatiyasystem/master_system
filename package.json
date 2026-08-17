@@ -80,5 +80,8 @@
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "overrides": {
+    "agent-base": "^6.0.2"
+  }
 }
