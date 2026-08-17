@@ -479,7 +479,7 @@ export const whatsappLogService = {
         const WHATSAPP_ACCESS_TOKEN = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN;
         const WHATSAPP_WABA_ID = import.meta.env.VITE_WHATSAPP_WABA_ID;
         const WHATSAPP_API_URL = import.meta.env.VITE_WHATSAPP_API_URL || 'https://graph.facebook.com/v21.0';
-        
+
         if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_WABA_ID) {
             throw new Error("WhatsApp API credentials are not configured in environment variables.");
         }
@@ -1124,6 +1124,11 @@ export default {
     sendAdminExtensionRemarkNotification,
     sendDailyTaskSummaryNotification,
     sendPurchaseDeliveredNotification,
+    sendWhatsAppTextMessage,
+    sendWhatsAppTemplateMessage,
+    whatsappLogService
+};
+sendPurchaseDeliveredNotification,
     sendWhatsAppTextMessage,
     sendWhatsAppTemplateMessage,
     whatsappLogService

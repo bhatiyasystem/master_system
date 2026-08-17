@@ -1,8 +1,9 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-;
 import { fetchPO } from '../services/purchaseService';
+import PurchaseHeader from '../components/PurchaseHeader';
+import PoCreateView from '../components/PoCreateView';
 
 export default function PoCreatePage() {
   const location = useLocation();
@@ -30,7 +31,7 @@ export default function PoCreatePage() {
     return () => {
       cancelled = true;
     };
-     
+
   }, [navState.poId]);
 
   return (

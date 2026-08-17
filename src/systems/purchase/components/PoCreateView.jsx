@@ -3,7 +3,8 @@ import { submitNewPO, revisePO } from '../services/purchaseService';
 import { sendPOCreatedNotification } from '../services/purchaseWhatsappService';
 import { generatePOPdfBlob } from '../utils/generatePOPdf';
 import { uploadPOPdf } from '../utils/uploadPOPdf';
-;
+import EntitySelectInput from './EntitySelectInput';
+import PreviewModal from './PreviewModal'
 import supabase from '../../../SupabaseClient';
 
 const DEFAULT_TERMS = `1. We deserve the right to cancel the purchase order anytime before product shipment.
@@ -50,7 +51,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
     if (!form.vendorName || vendors.length === 0) return;
     const match = vendors.find((v) => (v.name || '').trim().toLowerCase() === form.vendorName.trim().toLowerCase());
     if (!match) return;
-   setForm((prev) => {
+    setForm((prev) => {
       if (prev.vendorAddr || prev.vendorGstin || prev.vendorContact || prev.vendorEmail) return prev;
       return {
         ...prev,
@@ -63,7 +64,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
         vendorPaymentTerms: match.payment_terms || '',
       };
     });
-     
+
   }, [form.vendorName, vendors]);
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
   const handleSubmit = async () => {
     if (items.length === 0) return;
     if (!form.vendorName) return;
-if (!form.vendorContact) { setSubmitError('Contact number is required.'); return; }
+    if (!form.vendorContact) { setSubmitError('Contact number is required.'); return; }
     const payload = buildPayload();
     setSaving(true);
     setSubmitError('');
@@ -136,24 +137,24 @@ if (!form.vendorContact) { setSubmitError('Contact number is required.'); return
         (async () => {
           try {
             const poForPdf = {
-              poNo      : newPO.poNo,
-              poDate    : form.poDate,
+              poNo: newPO.poNo,
+              poDate: form.poDate,
               requisitioner: form.requisitioner,
-              shipVia   : form.fixTransporter,
-              fob       : form.fob,
-              shipTerms : form.shipTerms,
-              vendor    : { name: form.vendorName, addr: form.vendorAddr, gstin: form.vendorGstin, contact: form.vendorContact, email: form.vendorEmail },
-              shipTo    : { gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
-              terms     : form.terms,
+              shipVia: form.fixTransporter,
+              fob: form.fob,
+              shipTerms: form.shipTerms,
+              vendor: { name: form.vendorName, addr: form.vendorAddr, gstin: form.vendorGstin, contact: form.vendorContact, email: form.vendorEmail },
+              shipTo: { gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
+              terms: form.terms,
               items,
             };
-            const blob        = await generatePOPdfBlob(poForPdf);
+            const blob = await generatePOPdfBlob(poForPdf);
             const documentUrl = await uploadPOPdf(blob, newPO.poNo);
             await sendPOCreatedNotification({
-              vendorName    : form.vendorName,
-              vendorContact : form.vendorContact,
-              poNo          : newPO.poNo,
-              poDate        : form.poDate,
+              vendorName: form.vendorName,
+              vendorContact: form.vendorContact,
+              poNo: newPO.poNo,
+              poDate: form.poDate,
               documentUrl,
             });
           } catch (err) {
@@ -188,7 +189,7 @@ if (!form.vendorContact) { setSubmitError('Contact number is required.'); return
         <Field label="PO Date">
           <input type="date" className="form-input" value={form.poDate} onChange={(e) => updateField('poDate', e.target.value)} />
         </Field>
-        
+
       </div>
 
       <hr className="my-4 border-gray-200" />
@@ -207,21 +208,21 @@ if (!form.vendorContact) { setSubmitError('Contact number is required.'); return
                 vendorName: v.name || '',
                 vendorAddr: v.address || '',
                 vendorGstin: v.gstin || '',
-               vendorContact: v.contact || '',
+                vendorContact: v.contact || '',
                 vendorEmail: v.email || '',
                 vendorCity: v.city || '',
-               fixTransporter: v.fix_transporter || '',
+                fixTransporter: v.fix_transporter || '',
                 vendorPaymentTerms: v.payment_terms || '',
               }))
             }
           />
           <input className="form-input mb-2" placeholder="Supplier address" value={form.vendorAddr} onChange={(e) => updateField('vendorAddr', e.target.value)} />
-         <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <input className="form-input" placeholder="GSTIN" value={form.vendorGstin} onChange={(e) => updateField('vendorGstin', e.target.value)} />
             <input className="form-input" placeholder="Contact no. *" value={form.vendorContact} onChange={(e) => updateField('vendorContact', e.target.value)} required />
           </div>
           <input className="form-input mt-2" placeholder="City" value={form.vendorCity} onChange={(e) => updateField('vendorCity', e.target.value)} />
-         <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <input className="form-input" placeholder="Email" value={form.vendorEmail} onChange={(e) => updateField('vendorEmail', e.target.value)} />
             <input className="form-input" placeholder="Ship Via" value={form.fixTransporter} onChange={(e) => updateField('fixTransporter', e.target.value)} />
           </div>
