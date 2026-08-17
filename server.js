@@ -120,6 +120,20 @@ app.get('/api/attendance/range', async (req, res) => {
   }
 });
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from Vite build directory
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Fallback all non-matched routes to React SPA index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 export default app;
 
 const isMain = process.argv[1] && (process.argv[1].includes('server.js') || process.argv[1].includes('server'));
