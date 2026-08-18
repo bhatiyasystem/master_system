@@ -482,9 +482,10 @@ export default function MaintenanceView({ stats: _originalStats, _chartData, tas
                                                             className="w-full px-2 py-1 border rounded text-xs"
                                                         >
                                                             <option value="">Select Name</option>
-                                                            {doersList.map(name => (
-                                                                <option key={name} value={name}>{name}</option>
-                                                            ))}
+                                                            {doersList.map(u => {
+                                                                const val = u?.user_name || u;
+                                                                return <option key={val} value={val}>{val}</option>;
+                                                            })}
                                                         </select>
                                                     ) : task.assignedTo}
                                                 </td>

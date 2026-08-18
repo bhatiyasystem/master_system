@@ -1,4 +1,4 @@
-import { Trash2, Clock, Plus, X, Loader2, Square } from 'lucide-react';
+import { Trash2,Save, Mic, Clock, Plus, X, Loader2, Square } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
