@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
+import Modal from './Modal';
 
 export default function PaymentView() {
     const [tab, setTab] = useState('pending');

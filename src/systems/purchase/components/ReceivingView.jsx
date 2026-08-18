@@ -2,6 +2,7 @@ import { Loader2, PackageCheck, ImageIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving } from '../services/purchaseService';
+import Modal from './Modal';
 
 export default function ReceivingView() {
     const [tab, setTab] = useState('pending');

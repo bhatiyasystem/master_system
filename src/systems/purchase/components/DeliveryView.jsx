@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
 import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters } from '../services/purchaseService';
+import Modal from './Modal';
 
 const emptyForm = {
     transportName: '',
