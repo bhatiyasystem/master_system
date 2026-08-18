@@ -120,6 +120,25 @@ app.get('/api/attendance/range', async (req, res) => {
   }
 });
 
+app.post("/api/festival-scheduler-run", async (req, res) => {
+  try {
+    const response = await axios.post(
+      "https://sffvmdjtaxkfusgvgjbf.supabase.co/functions/v1/festival-scheduler-run",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmZnZtZGp0YXhrZnVzZ3ZnamJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTQ4NjcsImV4cCI6MjA5Mzc5MDg2N30.FwEd4vxkIhQYowlsRb1MRVsvuvZ6RS5Bb6XaN6XjaEM'}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error triggering edge function:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 

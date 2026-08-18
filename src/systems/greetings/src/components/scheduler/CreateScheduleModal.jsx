@@ -1,6 +1,8 @@
 import { X, CalendarClock, Users2, MessageSquareText } from 'lucide-react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import VariableMapper from './VariableMapper';
+import MediaUploader from './MediaUploader'
 import TemplatePicker from './TemplatePicker';
 import AudienceSelector from './AudienceSelector';
 import ScheduleSummary from './ScheduleSummary';
@@ -102,6 +104,11 @@ export default function CreateScheduleModal({ schedule, onClose, onSaved }) {
   // every {{n}} the template expects actually has a value before scheduling.
   const validateVariableMapping = () => {
     if (!selectedTemplate) return null;
+
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(selectedTemplate.header_format) && !form.variableMapping.header_media) {
+      return `Please upload a header ${selectedTemplate.header_format.toLowerCase()} before scheduling.`;
+    }
+
     const requiredKeys = [
       ...(selectedTemplate.header_variable_present ? ['header'] : []),
       ...Array.from({ length: selectedTemplate.body_variable_count || 0 }, (_, i) => String(i + 1)),

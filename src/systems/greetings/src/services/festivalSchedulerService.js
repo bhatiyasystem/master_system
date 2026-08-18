@@ -70,11 +70,15 @@ export const fetchSystemUsers = async ({ search } = {}) => {
 // they can be referenced as recipients, and returns their contact rows.
 export const upsertUsersAsContacts = async (users) => {
   if (!users?.length) return [];
-  const rows = users.map((u) => ({
-    name: u.user_name || 'Unknown',
-    phone_number: String(u.number).replace(/\D/g, ''),
-    extra_fields: { source: 'default_user', user_id: u.id },
-  }));
+  const rows = users.map((u) => {
+    let phone = String(u.number).replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    return {
+      name: u.user_name || 'Unknown',
+      phone_number: phone,
+      extra_fields: { source: 'default_user', user_id: u.id },
+    };
+  });
   const { data, error } = await supabase
     .from('festival_contacts')
     .upsert(rows, { onConflict: 'phone_number' })
@@ -86,9 +90,17 @@ export const upsertUsersAsContacts = async (users) => {
 export const upsertContacts = async (rows) => {
   // rows: [{ name, phone_number, email, extra_fields }]
   if (!rows?.length) return [];
+  const formattedRows = rows.map(r => {
+    let phone = String(r.phone_number).replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    return {
+      ...r,
+      phone_number: phone
+    };
+  });
   const { data, error } = await supabase
     .from('festival_contacts')
-    .upsert(rows, { onConflict: 'phone_number' })
+    .upsert(formattedRows, { onConflict: 'phone_number' })
     .select();
   if (error) throw error;
   return data || [];
@@ -281,9 +293,17 @@ export const fetchLogs = async (scheduleId) => {
 // ── Manual trigger (for testing before the cron tick fires) ──────────────────
 
 export const triggerSchedulerEdgeFunction = async () => {
-  const { data, error } = await supabase.functions.invoke('festival-scheduler-run');
-  if (error) throw error;
-  return data;
+  const res = await fetch('/api/festival-scheduler-run', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Failed to trigger Edge Function via proxy');
+  }
+  return res.json();
 };
 
 export default {

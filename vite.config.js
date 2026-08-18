@@ -16,7 +16,13 @@ export default defineConfig({
     {
       name: 'express-plugin',
       configureServer(server) {
-        server.middlewares.use(apiApp);
+        server.middlewares.use((req, res, next) => {
+          if (req.url.startsWith('/api')) {
+            apiApp(req, res, next);
+          } else {
+            next();
+          }
+        });
       }
     }
   ],
@@ -34,7 +40,8 @@ export default defineConfig({
     hmr: true,
     watch: {
       usePolling: true,
-      interval: 300,
+      interval: 100,
+      ignored: ['**/node_modules/**', '**/dist/**']
     },
   },
 })

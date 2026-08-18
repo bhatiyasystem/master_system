@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import ScheduleProgressPanel from '../components/scheduler/ScheduleProgressPanel';
 import CreateScheduleModal from '../components/scheduler/CreateScheduleModal';
 import { Clock, Loader, PauseCircle, CheckCircle2, Ban, XCircle, FileEdit, CalendarClock, RefreshCw, Plus, Search, Eye, PlayCircle, Trash2, Pencil, Copy } from 'lucide-react';
-import { fetchSchedules, pauseSchedule, resumeSchedule, cancelSchedule, deleteSchedule, duplicateSchedule, } from '../services/festivalSchedulerService';
+import { fetchSchedules, pauseSchedule, resumeSchedule, cancelSchedule, deleteSchedule, duplicateSchedule, triggerSchedulerEdgeFunction } from '../services/festivalSchedulerService';
 import { useMagicToast } from '../../../../context/MagicToastContext';
 
 const STATUS_STYLES = {
@@ -33,6 +33,7 @@ export default function FestivalSchedulerAdmin() {
   const { showToast } = useMagicToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [triggering, setTriggering] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [modalSchedule, setModalSchedule] = useState(undefined); // undefined = closed, null = new, object = edit
@@ -42,7 +43,7 @@ export default function FestivalSchedulerAdmin() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchSchedules({ status: statusFilter, search });
+      const data = await fetchSchedules({ search });
       setRows(data);
     } catch (err) {
       showToast(err.message || 'Failed to load schedules.', 'error');
@@ -50,7 +51,20 @@ export default function FestivalSchedulerAdmin() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, search]);
+  }, [search]);
+
+  const handleTrigger = async () => {
+    setTriggering(true);
+    try {
+      const res = await triggerSchedulerEdgeFunction();
+      showToast(res?.message || 'Scheduler Edge Function triggered successfully!');
+      load();
+    } catch (err) {
+      showToast(err.message || 'Failed to trigger scheduler.', 'error');
+    } finally {
+      setTriggering(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -58,10 +72,17 @@ export default function FestivalSchedulerAdmin() {
     return () => clearInterval(refreshTimer.current);
   }, [load]);
 
-  const counts = STATUS_FILTERS.slice(1).reduce((acc, s) => {
-    acc[s] = rows.filter((r) => r.status === s).length;
-    return acc;
-  }, {});
+  const filteredRows = useMemo(() => {
+    if (statusFilter === 'All') return rows;
+    return rows.filter((r) => r.status === statusFilter);
+  }, [rows, statusFilter]);
+
+  const counts = useMemo(() => {
+    return STATUS_FILTERS.slice(1).reduce((acc, s) => {
+      acc[s] = rows.filter((r) => r.status === s).length;
+      return acc;
+    }, {});
+  }, [rows]);
 
   const runAction = async (fn, successMsg) => {
     try {
@@ -86,9 +107,19 @@ export default function FestivalSchedulerAdmin() {
             <CalendarClock className="w-6 h-6 text-pink-500" />
             Festival Scheduler
           </h1>
-          <p className="text-xs text-gray-400 mt-1">Auto-refreshes every 60s · sends run automatically via the scheduled cron job.</p>
+          <p className="text-xs text-gray-400 mt-1 flex flex-col gap-1">
+            <span>Auto-refreshes every 60s · sends run automatically via the scheduled cron job.</span>
+            <span className="text-[10px] text-pink-500 font-medium">Use the "Run Scheduler Now" button to execute due campaigns instantly.</span>
+          </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={handleTrigger}
+            disabled={triggering || loading}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-pink-200 text-pink-600 hover:bg-pink-50 disabled:opacity-60 font-medium"
+          >
+            <PlayCircle className={`w-4 h-4 ${triggering ? 'animate-spin' : ''}`} /> Run Scheduler Now
+          </button>
           <button
             onClick={load}
             disabled={loading}
@@ -166,7 +197,7 @@ export default function FestivalSchedulerAdmin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {rows.map((row) => {
+                {filteredRows.map((row) => {
                   const StatusIcon = STATUS_ICONS[row.status] || Clock;
                   const canEdit = ['Draft', 'Scheduled'].includes(row.status);
                   const canPause = ['Scheduled', 'Running'].includes(row.status);
