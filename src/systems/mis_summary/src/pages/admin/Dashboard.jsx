@@ -192,30 +192,84 @@ const AdminDashboard = () => {
           return;
         }
 
-        // Fetch sheets
-        const [recordsResponse, archivedResponse, masterResponse, dataResponse, deptScoreResponse] = await Promise.all([
-          supabaseFetchSheet('For Whatsapp'),
+        // Fetch base sheets first
+        const [archivedResponse, masterResponse, dataResponse, deptScoreResponse] = await Promise.all([
           supabaseFetchSheet('Archived'),
           supabaseFetchSheet('Master'),
           supabaseFetchSheet('Report Daily'),
           supabaseFetchSheet('Department Score Graph')
         ]);
 
-        const result = await recordsResponse.json();
         const archivedResult = await archivedResponse.json();
         const masterResult = await masterResponse.json();
         const dataResult = await dataResponse.json();
         const deptScoreResult = await deptScoreResponse.json();
 
-        // Store Data sheet rows (skip header row)
+        // Extract dates
+        let globalFromDate = "";
+        let globalToDate = "";
         if (dataResult.success && Array.isArray(dataResult.data)) {
           setDataSheetRows(dataResult.data.slice(1));
           // Column V (index 21) and W (index 22) in header row contain global date range
           const headerRow = dataResult.data[0] || [];
-          const globalFromDate = headerRow[21] ? String(headerRow[21]).trim() : "";
-          const globalToDate = headerRow[22] ? String(headerRow[22]).trim() : "";
+          globalFromDate = headerRow[21] ? String(headerRow[21]).trim() : "";
+          globalToDate = headerRow[22] ? String(headerRow[22]).trim() : "";
           setDataSheetDateRange({ fromDate: globalFromDate, toDate: globalToDate });
           console.log("[Data Sheet] Global Date Range from header → V:", globalFromDate, "W:", globalToDate);
+        }
+
+        // Fetch dynamic For Records sheet from Apps Script using extracted dates
+        let result = { success: false, data: [] };
+        if (globalFromDate && globalToDate) {
+          const dynamicSheetName = `For Records : Report From ${globalFromDate} To ${globalToDate}`;
+          console.log(`[Dashboard] Fetching dynamic sheet "${dynamicSheetName}" from Apps Script...`);
+          try {
+            const separator = scriptUrl.includes('?') ? '&' : '?';
+            const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=${encodeURIComponent(dynamicSheetName)}`;
+            const response = await fetch(fetchUrl);
+            const appScriptJson = await response.json();
+            
+            if (appScriptJson.status === "success" && Array.isArray(appScriptJson.users)) {
+              // Convert array of objects to 2D array matrix matching the expected dashboard format
+              const headers = [
+                "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
+                "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
+                "Week Pending", "All Pending Till Date", "Start Date", "End Date"
+              ];
+              const data2D = [
+                [], // Row 0 (empty dummy row to align with index slice(2))
+                headers, // Row 1 (header row)
+                ...appScriptJson.users.map(u => [
+                  u["Date Start"],
+                  u["Date End"],
+                  u["Name"],
+                  u["Target"],
+                  u["Actual  Work Done"] || u["Actual Work Done"],
+                  u["% Work Not Done"],
+                  u["% Work Not Done On Time"],
+                  u["Total Work Done"],
+                  u["Week Pending"],
+                  u["All Pending Till Date"],
+                  u["Start Date"],
+                  u["End Date"]
+                ])
+              ];
+              result = { success: true, data: data2D };
+              console.log(`[Dashboard] Successfully loaded ${appScriptJson.users.length} records from Apps Script.`);
+            }
+          } catch (e) {
+            console.error("[Dashboard] Failed to fetch dynamic sheet from Apps Script:", e);
+          }
+        }
+
+        // Fallback to supabaseFetchSheet('For Whatsapp') if Apps Script fetch failed or was empty
+        if (!result.success || !result.data || result.data.length <= 2) {
+          console.log("[Dashboard] Falling back to Supabase 'For Whatsapp' sheet.");
+          const fallbackRes = await supabaseFetchSheet('For Whatsapp');
+          const fallbackJson = await fallbackRes.json();
+          if (fallbackJson.success) {
+            result = fallbackJson;
+          }
         }
 
         // Store Department Scores

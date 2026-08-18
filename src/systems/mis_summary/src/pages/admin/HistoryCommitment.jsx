@@ -16,12 +16,60 @@ const AdminHistoryCommitment = () => {
             try {
                 setLoading(true);
 
-                const [recordsResponse, masterResponse] = await Promise.all([
-                    supabaseFetchSheet('For Whatsapp'),
-                    supabaseFetchSheet('Master')
-                ]);
-                const result = await recordsResponse.json();
+                const masterResponse = await supabaseFetchSheet('Master');
                 const masterResult = await masterResponse.json();
+
+                const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
+                let result = { success: false, data: [] };
+
+                if (scriptUrl) {
+                    console.log("[History] Fetching 'Records' sheet from Apps Script...");
+                    try {
+                        const separator = scriptUrl.includes('?') ? '&' : '?';
+                        const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=Records`;
+                        const response = await fetch(fetchUrl);
+                        const appScriptJson = await response.json();
+
+                        if (appScriptJson.status === "success" && Array.isArray(appScriptJson.users)) {
+                            const headers = [
+                                "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
+                                "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
+                                "Week Pending", "All Pending Till Date", "Start Date", "End Date"
+                            ];
+                            const data2D = [
+                                headers,
+                                ...appScriptJson.users.map(u => [
+                                  u["Date Start"],
+                                  u["Date End"],
+                                  u["Name"],
+                                  u["Target"],
+                                  u["Actual  Work Done"] || u["Actual Work Done"],
+                                  u["% Work Not Done"],
+                                  u["% Work Not Done On Time"],
+                                  u["Total Work Done"],
+                                  u["Week Pending"],
+                                  u["All Pending Till Date"],
+                                  u["Start Date"],
+                                  u["End Date"]
+                                ])
+                            ];
+                            result = { success: true, data: data2D };
+                            console.log(`[History] Successfully loaded ${appScriptJson.users.length} history records from Apps Script.`);
+                        }
+                    } catch (e) {
+                        console.error("[History] Failed to fetch Records sheet from Apps Script:", e);
+                    }
+                }
+
+                // Fallback to supabaseFetchSheet('For Whatsapp') if Apps Script fetch failed or was empty
+                if (!result.success || !result.data || result.data.length <= 1) {
+                    console.log("[History] Falling back to Supabase 'For Whatsapp' sheet.");
+                    const fallbackRes = await supabaseFetchSheet('For Whatsapp');
+                    const fallbackJson = await fallbackRes.json();
+                    if (fallbackJson.success) {
+                        result = fallbackJson;
+                    }
+                }
 
                 const reportedByMap = {};
                 if (masterResult.success && Array.isArray(masterResult.data)) {
