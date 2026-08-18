@@ -1,4 +1,5 @@
 import PurchaseHeader from "../components/PurchaseHeader";
+import Modal from "../components/Modal";
 import ReceivingView from "../components/ReceivingView";
 
 export default function ReceivingPage() {

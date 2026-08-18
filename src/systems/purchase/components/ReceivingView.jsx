@@ -124,58 +124,58 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                 />
             </FilterBar>
 
-           <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full min-w-[820px] text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">Action</th>
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Transporter</th>
-                                <th className="px-3 py-2.5">Contact</th>
-                                <th className="px-3 py-2.5">Builty No.</th>
-                                <th className="px-3 py-2.5">Builty Image</th>
-                                <th className="px-3 py-2.5">Arrived</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pending.length === 0 ? (
-                                <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
-                            ) : filtered.map((d) => {
-                                const poNo = poMap.get(d.poId)?.poNo || '—';
-                                return (
-                                    <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                        <td className="px-3 py-2.5">
-                                            <button
-                                                className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
-                                                onClick={() => onUpdate(d)}
-                                            >
-                                                <PackageCheck size={14} /> Update
-                                            </button>
-                                        </td>
-                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
-                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
-                                        <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
-                                        <td className="px-3 py-2.5">
-                                            {d.builtyImageUrl ? (
-                                                <a href={d.builtyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
-                                                    <ImageIcon size={14} /> View
-                                                </a>
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-gray-500">
-                                            {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                       </tbody>
-                    </table>
-                </div>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Transporter</th>
+                            <th className="px-3 py-2.5">Contact</th>
+                            <th className="px-3 py-2.5">Builty No.</th>
+                            <th className="px-3 py-2.5">Builty Image</th>
+                            <th className="px-3 py-2.5">Arrived</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pending.length === 0 ? (
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                        ) : filtered.map((d) => {
+                            const poNo = poMap.get(d.poId)?.poNo || '—';
+                            return (
+                                <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5">
+                                        <button
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
+                                            onClick={() => onUpdate(d)}
+                                        >
+                                            <PackageCheck size={14} /> Update
+                                        </button>
+                                    </td>
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
+                                    <td className="px-3 py-2.5">
+                                        {d.builtyImageUrl ? (
+                                            <a href={d.builtyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
+                                                <ImageIcon size={14} /> View
+                                            </a>
+                                        ) : (
+                                            '—'
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-gray-500">
+                                        {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -228,38 +228,38 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
                 />
             </FilterBar>
 
-           <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full min-w-[820px] text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Transporter</th>
-                                <th className="px-3 py-2.5">Product</th>
-                                <th className="px-3 py-2.5">Ordered Qty</th>
-                                <th className="px-3 py-2.5">Received Qty</th>
-                                <th className="px-3 py-2.5">Received At</th>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Transporter</th>
+                            <th className="px-3 py-2.5">Product</th>
+                            <th className="px-3 py-2.5">Ordered Qty</th>
+                            <th className="px-3 py-2.5">Received Qty</th>
+                            <th className="px-3 py-2.5">Received At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.length === 0 ? (
+                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
+                        ) : filtered.map((r, i) => (
+                            <tr key={`${r.receivingId}-${i}`} className="border-t border-gray-100 hover:bg-gray-50">
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">{r.poNo}</td>
+                                <td className="px-3 py-2.5 text-gray-700">{r.transportName}</td>
+                                <td className="px-3 py-2.5 text-gray-800">{r.productName || '—'}</td>
+                                <td className="px-3 py-2.5 text-gray-700">{r.orderedQty}</td>
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">{r.receivedQty}</td>
+                                <td className="px-3 py-2.5 text-gray-500">
+                                    {r.receivedAt ? new Date(r.receivedAt).toLocaleString('en-IN') : '—'}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {rows.length === 0 ? (
-                                <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
-                            ) : filtered.map((r, i) => (
-                                <tr key={`${r.receivingId}-${i}`} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{r.poNo}</td>
-                                    <td className="px-3 py-2.5 text-gray-700">{r.transportName}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">{r.productName || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-700">{r.orderedQty}</td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{r.receivedQty}</td>
-                                    <td className="px-3 py-2.5 text-gray-500">
-                                        {r.receivedAt ? new Date(r.receivedAt).toLocaleString('en-IN') : '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                       </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
