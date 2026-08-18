@@ -67,52 +67,111 @@ const AdminTodayTasks = () => {
 
         // Fetch dynamic For Records sheet from Apps Script using extracted dates
         let recordsResult = { success: false, data: [] };
-        if (globalFromDate && globalToDate) {
-          const dynamicSheetName = `For Records : Report From ${globalFromDate} To ${globalToDate}`;
-          console.log(`[TodayTasks] Fetching dynamic sheet "${dynamicSheetName}" from Apps Script...`);
-          try {
-            const separator = scriptUrl.includes('?') ? '&' : '?';
-            const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=${encodeURIComponent(dynamicSheetName)}`;
-            const response = await fetch(fetchUrl);
-            const appScriptJson = await response.json();
+        // Fetch For Records sheet from Apps Script
+        console.log(`[TodayTasks] Fetching "For Records" sheet from Apps Script...`);
+        try {
+          const separator = scriptUrl.includes('?') ? '&' : '?';
+          const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=For Records`;
+          const response = await fetch(fetchUrl);
+          const appScriptJson = await response.json();
+          
+          if (appScriptJson.success && Array.isArray(appScriptJson.data)) {
+            const rawData = appScriptJson.data;
+            const taskRows = rawData.slice(1); // Row 0 is the headers
             
-            if (appScriptJson.status === "success" && Array.isArray(appScriptJson.users)) {
-              // Convert array of objects to 2D array matrix matching the expected format
-              const headers = [
-                "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
-                "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
-                "Week Pending", "All Pending Till Date", "Start Date", "End Date"
-              ];
-              const data2D = [
-                [], // Row 0 (empty dummy row to align with index slice(2))
-                headers, // Row 1 (header row)
-                ...appScriptJson.users.map(u => [
-                  u["Date Start"],
-                  u["Date End"],
-                  u["Name"],
-                  u["Target"],
-                  u["Actual  Work Done"] || u["Actual Work Done"],
-                  u["% Work Not Done"],
-                  u["% Work Not Done On Time"],
-                  u["Total Work Done"],
-                  u["Week Pending"],
-                  u["All Pending Till Date"],
-                  u["Start Date"],
-                  u["End Date"]
-                ])
-              ];
-              recordsResult = { success: true, data: data2D };
-              console.log(`[TodayTasks] Successfully loaded ${appScriptJson.users.length} records from Apps Script.`);
+            // Set the dataSheetRows directly for drill-down mapping
+            setDataSheetRows(taskRows);
+
+            // Extract date range from raw data (e.g. index 21/22 of first task row)
+            const firstRow = taskRows[0];
+            if (firstRow) {
+              const fromDate = firstRow[21] ? String(firstRow[21]).trim() : "";
+              const toDate = firstRow[22] ? String(firstRow[22]).trim() : "";
+              if (fromDate && toDate) {
+                globalFromDate = fromDate;
+                globalToDate = toDate;
+                console.log("[TodayTasks] Global Date Range:", globalFromDate, "to", globalToDate);
+              }
             }
-          } catch (e) {
-            console.error("[TodayTasks] Failed to fetch dynamic sheet from Apps Script:", e);
+
+            // Aggregate task-level rows by Person Name
+            const employeeMap = {};
+            taskRows.forEach(row => {
+              const empName = row[4] ? String(row[4]).trim() : "";
+              if (!empName) return;
+              
+              if (!employeeMap[empName]) {
+                employeeMap[empName] = {
+                  name: empName,
+                  target: 0,
+                  actualWorkDone: 0,
+                  actualOnTime: 0,
+                  totalWorkDone: 0,
+                  weekPending: 0,
+                  allPending: 0,
+                  startDate: "",
+                  endDate: ""
+                };
+              }
+              
+              const emp = employeeMap[empName];
+              emp.target += Number(row[10]) || 0;
+              emp.actualWorkDone += Number(row[11]) || Number(row[18]) || 0;
+              emp.actualOnTime += Number(row[20]) || 0;
+              emp.totalWorkDone += Number(row[11]) || 0;
+              emp.weekPending += Number(row[19]) || 0;
+              emp.allPending += Number(row[14]) || 0;
+              
+              if (!emp.startDate && row[21]) emp.startDate = String(row[21]).trim();
+              if (!emp.endDate && row[22]) emp.endDate = String(row[22]).trim();
+            });
+
+            // Format aggregated map back to 2D matrix matching dashboard format
+            const headers = [
+              "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
+              "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
+              "Week Pending", "All Pending Till Date", "Start Date", "End Date"
+            ];
+            
+            const aggregated2D = [
+              [], // Row 0: Dummy row
+              headers, // Row 1: Headers
+              ...Object.values(employeeMap).map(emp => {
+                const notDonePct = emp.target > 0 
+                  ? (((emp.actualWorkDone - emp.target) / emp.target) * 100).toFixed(2)
+                  : "0";
+                const notDoneOnTimePct = emp.target > 0
+                  ? (((emp.actualOnTime - emp.target) / emp.target) * 100).toFixed(2)
+                  : "0";
+                  
+                return [
+                  emp.startDate,
+                  emp.endDate,
+                  emp.name,
+                  emp.target,
+                  emp.actualWorkDone,
+                  notDonePct + "%",
+                  notDoneOnTimePct + "%",
+                  emp.totalWorkDone,
+                  emp.weekPending,
+                  emp.allPending,
+                  emp.startDate,
+                  emp.endDate
+                ];
+              })
+            ];
+            
+            recordsResult = { success: true, data: aggregated2D };
+            console.log(`[TodayTasks] Successfully loaded and aggregated ${taskRows.length} tasks for ${Object.keys(employeeMap).length} employees from Apps Script.`);
           }
+        } catch (e) {
+          console.error("[TodayTasks] Failed to fetch For Records sheet from Apps Script:", e);
         }
 
-        // Fallback to supabaseFetchSheet('For Whatsapp') if Apps Script fetch failed or was empty
+        // Fallback to supabaseFetchSheet('For Records') if Apps Script fetch failed or was empty
         if (!recordsResult.success || !recordsResult.data || recordsResult.data.length <= 2) {
-          console.log("[TodayTasks] Falling back to Supabase 'For Whatsapp' sheet.");
-          const fallbackRes = await supabaseFetchSheet('For Whatsapp');
+          console.log("[TodayTasks] Falling back to Supabase 'For Records' sheet.");
+          const fallbackRes = await supabaseFetchSheet('For Records');
           const fallbackJson = await fallbackRes.json();
           if (fallbackJson.success) {
             recordsResult = fallbackJson;

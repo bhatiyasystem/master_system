@@ -22,49 +22,95 @@ const AdminHistoryCommitment = () => {
                 const scriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
                 let result = { success: false, data: [] };
 
-                if (scriptUrl) {
-                    console.log("[History] Fetching 'Records' sheet from Apps Script...");
-                    try {
-                        const separator = scriptUrl.includes('?') ? '&' : '?';
-                        const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=Records`;
-                        const response = await fetch(fetchUrl);
-                        const appScriptJson = await response.json();
+                // Fetch For Records sheet from Apps Script
+                console.log("[History] Fetching 'For Records' sheet from Apps Script...");
+                try {
+                    const separator = scriptUrl.includes('?') ? '&' : '?';
+                    const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=For Records`;
+                    const response = await fetch(fetchUrl);
+                    const appScriptJson = await response.json();
+                    
+                    if (appScriptJson.success && Array.isArray(appScriptJson.data)) {
+                        const rawData = appScriptJson.data;
+                        const taskRows = rawData.slice(1); // Row 0 is the headers
+                        
+                        // Aggregate task-level rows by Person Name
+                        const employeeMap = {};
+                        taskRows.forEach(row => {
+                            const empName = row[4] ? String(row[4]).trim() : "";
+                            if (!empName) return;
+                            
+                            if (!employeeMap[empName]) {
+                                employeeMap[empName] = {
+                                    name: empName,
+                                    target: 0,
+                                    actualWorkDone: 0,
+                                    actualOnTime: 0,
+                                    totalWorkDone: 0,
+                                    weekPending: 0,
+                                    allPending: 0,
+                                    startDate: "",
+                                    endDate: ""
+                                };
+                            }
+                            
+                            const emp = employeeMap[empName];
+                            emp.target += Number(row[10]) || 0;
+                            emp.actualWorkDone += Number(row[11]) || Number(row[18]) || 0;
+                            emp.actualOnTime += Number(row[20]) || 0;
+                            emp.totalWorkDone += Number(row[11]) || 0;
+                            emp.weekPending += Number(row[19]) || 0;
+                            emp.allPending += Number(row[14]) || 0;
+                            
+                            if (!emp.startDate && row[21]) emp.startDate = String(row[21]).trim();
+                            if (!emp.endDate && row[22]) emp.endDate = String(row[22]).trim();
+                        });
 
-                        if (appScriptJson.status === "success" && Array.isArray(appScriptJson.users)) {
-                            const headers = [
-                                "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
-                                "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
-                                "Week Pending", "All Pending Till Date", "Start Date", "End Date"
-                            ];
-                            const data2D = [
-                                headers,
-                                ...appScriptJson.users.map(u => [
-                                  u["Date Start"],
-                                  u["Date End"],
-                                  u["Name"],
-                                  u["Target"],
-                                  u["Actual  Work Done"] || u["Actual Work Done"],
-                                  u["% Work Not Done"],
-                                  u["% Work Not Done On Time"],
-                                  u["Total Work Done"],
-                                  u["Week Pending"],
-                                  u["All Pending Till Date"],
-                                  u["Start Date"],
-                                  u["End Date"]
-                                ])
-                            ];
-                            result = { success: true, data: data2D };
-                            console.log(`[History] Successfully loaded ${appScriptJson.users.length} history records from Apps Script.`);
-                        }
-                    } catch (e) {
-                        console.error("[History] Failed to fetch Records sheet from Apps Script:", e);
+                        // Format aggregated map back to 2D matrix matching history format (no dummy row at index 0)
+                        const headers = [
+                            "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
+                            "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
+                            "Week Pending", "All Pending Till Date", "Start Date", "End Date"
+                        ];
+                        
+                        const aggregated2D = [
+                            headers, // Row 0: Headers
+                            ...Object.values(employeeMap).map(emp => {
+                                const notDonePct = emp.target > 0 
+                                    ? (((emp.actualWorkDone - emp.target) / emp.target) * 100).toFixed(2)
+                                    : "0";
+                                const notDoneOnTimePct = emp.target > 0
+                                    ? (((emp.actualOnTime - emp.target) / emp.target) * 100).toFixed(2)
+                                    : "0";
+                                    
+                                return [
+                                    emp.startDate,
+                                    emp.endDate,
+                                    emp.name,
+                                    emp.target,
+                                    emp.actualWorkDone,
+                                    notDonePct + "%",
+                                    notDoneOnTimePct + "%",
+                                    emp.totalWorkDone,
+                                    emp.weekPending,
+                                    emp.allPending,
+                                    emp.startDate,
+                                    emp.endDate
+                                ];
+                            })
+                        ];
+                        
+                        result = { success: true, data: aggregated2D };
+                        console.log(`[History] Successfully loaded and aggregated ${taskRows.length} tasks for ${Object.keys(employeeMap).length} employees from Apps Script.`);
                     }
+                } catch (e) {
+                    console.error("[History] Failed to fetch For Records sheet from Apps Script:", e);
                 }
 
-                // Fallback to supabaseFetchSheet('For Whatsapp') if Apps Script fetch failed or was empty
+                // Fallback to supabaseFetchSheet('For Records') if Apps Script fetch failed or was empty
                 if (!result.success || !result.data || result.data.length <= 1) {
-                    console.log("[History] Falling back to Supabase 'For Whatsapp' sheet.");
-                    const fallbackRes = await supabaseFetchSheet('For Whatsapp');
+                    console.log("[History] Falling back to Supabase 'For Records' sheet.");
+                    const fallbackRes = await supabaseFetchSheet('For Records');
                     const fallbackJson = await fallbackRes.json();
                     if (fallbackJson.success) {
                         result = fallbackJson;
