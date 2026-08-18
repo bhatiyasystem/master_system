@@ -581,7 +581,7 @@ const WhatsappHistory = () => {
         console.log(`[Template Send] Attempting to send template "${selectedTemplateName}" to ${selectedContact.name} (+${selectedContact.phone}) with params:`, templateParams);
         try {
             const { sendWhatsAppTemplateMessage } = await import('@/services/whatsappService');
-            
+
             const success = await sendWhatsAppTemplateMessage(
                 selectedContact.phone,
                 selectedTemplateName,
@@ -1936,23 +1936,23 @@ const WhatsappHistory = () => {
                                                                 onChange={async (e) => {
                                                                     const file = e.target.files[0];
                                                                     if (!file) return;
-                                                                    
+
                                                                     setSendingTemplate(true);
                                                                     try {
                                                                         const fileExt = file.name.split('.').pop();
                                                                         const fileName = `wa_template_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                                                                         const bucketName = 'task-instructions';
-                                                                        
+
                                                                         const { error: uploadError } = await supabase.storage
                                                                             .from(bucketName)
                                                                             .upload(fileName, file);
-                                                                        
+
                                                                         if (uploadError) throw uploadError;
-                                                                        
+
                                                                         const { data: { publicUrl } } = supabase.storage
                                                                             .from(bucketName)
                                                                             .getPublicUrl(fileName);
-                                                                        
+
                                                                         setTemplateMediaUrl(publicUrl);
                                                                         setTemplateFileName(file.name);
                                                                         toast.success("Header file uploaded successfully");

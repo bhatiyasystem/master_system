@@ -1,7 +1,7 @@
 // ============ DASHBOARD PAGE ============
 import { useState, useEffect, useMemo } from 'react';
 import { getDisplayableImageUrl } from '../../utils/imageUtils';
-import { employees, getLowestScorers, getWeeklyCommitmentComparison,  } from '../../data/mockData';
+import { employees, getLowestScorers, getWeeklyCommitmentComparison, } from '../../data/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../../services/supabaseApiAdapter';
 import DashboardHeader from './components/DashboardHeader';
@@ -375,12 +375,12 @@ const AdminDashboard = () => {
           const finalData = isAdmin
             ? parsedData
             : isHod
-            ? parsedData.filter(emp => {
+              ? parsedData.filter(emp => {
                 const empLowerName = emp.name.toLowerCase().trim();
                 const empManager = reportedByMap[empLowerName] || "";
                 return empLowerName === lowerName || empManager === lowerName || empManager === lowerId;
               })
-            : parsedData.filter(emp => {
+              : parsedData.filter(emp => {
                 const empLowerName = emp.name.toLowerCase().trim();
                 return empLowerName === lowerName;
               });
@@ -524,7 +524,7 @@ const AdminDashboard = () => {
       lowestScorers: getLowestScorers(5),
       commitmentComparison: getWeeklyCommitmentComparison()
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetEmployees, columnLabels]);
 
   const topScorersData = useMemo(() => topScorers.map((emp) => {
@@ -716,7 +716,7 @@ const AdminDashboard = () => {
         const urlsToTry = [import.meta.env.VITE_APPS_SCRIPT_URL]
           .map(u => String(u || "").trim())
           .filter(u => u.startsWith("http"));
-        
+
         let success = false;
         for (const url of urlsToTry) {
           try {
@@ -725,7 +725,7 @@ const AdminDashboard = () => {
             if (task.sheetId) {
               _fetchUrl += `&spreadsheetId=${encodeURIComponent(task.sheetId)}`;
             }
-            
+
             const res = await supabaseFetchSheet(name);
             if (!res.ok) throw new Error(`HTTP error ${res.status}`);
             const result = await res.json();
@@ -856,10 +856,10 @@ const AdminDashboard = () => {
 
       const maxLen = Math.max(plannedValues.length, actualValues.length, taskNameValues.length);
       const rows = [];
-      
+
       const parseFilterDate = (val) => {
         if (val === null || val === undefined || val === "") return null;
-        
+
         // Handle Google Sheets numeric serial date (e.g., 46200)
         const numVal = Number(val);
         if (!isNaN(numVal) && numVal > 1000 && numVal < 100000) {
@@ -867,9 +867,9 @@ const AdminDashboard = () => {
           const epoch = new Date(Date.UTC(1899, 11, 30));
           return new Date(epoch.getTime() + numVal * 24 * 60 * 60 * 1000);
         }
-        
+
         const str = String(val).trim();
-        
+
         // ISO format: 2026-05-19 or 2026-05-19T... 
         if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
           const isoDatePart = str.split('T')[0].split(' ')[0];
@@ -878,7 +878,7 @@ const AdminDashboard = () => {
             return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
           }
         }
-        
+
         // dd/mm/yyyy or dd-mm-yyyy (with optional time)
         const datePart = str.split(' ')[0];
         const parts = datePart.split(/[-/]/);
@@ -892,7 +892,7 @@ const AdminDashboard = () => {
             return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
           }
         }
-        
+
         const d = new Date(str);
         return isNaN(d.getTime()) ? null : d;
       };
@@ -907,12 +907,12 @@ const AdminDashboard = () => {
         const plannedVal = plannedValues[i] || "";
         const actualVal = actualValues[i] || "";
         const delayVal = delayValues[i] || "";
-        
+
         // Include all rows that have at least a planned date
         if (plannedVal) {
           let inRange = true;
           const pDate = parseFilterDate(plannedVal);
-          
+
           if (pDate) {
             if (filterFrom && pDate < filterFrom) inRange = false;
             if (filterTo && pDate > filterTo) inRange = false;
@@ -958,7 +958,7 @@ const AdminDashboard = () => {
     }
     console.log("EXECUTION START: handleWhatsAppSubmit");
     if (whatsappSubmitting || mainSubmitting) return;
-    
+
     if (selectedEmployees.length === 0) {
       alert("Please select at least one person.");
       return;
