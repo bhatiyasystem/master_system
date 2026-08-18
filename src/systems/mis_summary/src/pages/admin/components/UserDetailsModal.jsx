@@ -333,11 +333,11 @@ const UserDetailsModal = ({
                             </thead>
                             <tbody>
                                 ${tasks.map(task => {
-                                    const achievement = parseFloat(task.totalAchievement) || 0;
-                                    const target = parseFloat(task.target) || 0;
-                                    const isTargetMet = achievement >= target && target > 0;
-                                    
-                                    return `
+            const achievement = parseFloat(task.totalAchievement) || 0;
+            const target = parseFloat(task.target) || 0;
+            const isTargetMet = achievement >= target && target > 0;
+
+            return `
                                     <tr>
                                         <td>
                                             <div style="font-weight: 700; color: #0f172a; font-size: 11px;">${task.fmsName}</div>
@@ -676,6 +676,9 @@ const UserDetailsModal = ({
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50 sticky top-0">
                                                 <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Task ID</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Freq</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Task Name</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Planned</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actual</th>
@@ -686,6 +689,9 @@ const UserDetailsModal = ({
                                                 {filteredRows && filteredRows.length > 0 ? (
                                                     filteredRows.map((row, idx) => (
                                                         <tr key={idx} className={`${getRowBg(row)} transition-colors`}>
+                                                            <td className="px-4 py-3 text-sm text-gray-700">{row.name}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-700 font-semibold">{row.taskId}</td>
+                                                            <td className="px-4 py-3 text-sm text-gray-700">{row.freq}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-700">{row.taskName}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-700">{row.planned}</td>
                                                             <td className="px-4 py-3 text-sm text-gray-500">{row.actual || '-'}</td>
@@ -693,7 +699,7 @@ const UserDetailsModal = ({
                                                         </tr>
                                                     ))
                                                 ) : (
-                                                    <tr><td colSpan="4" className="px-4 py-10 text-center text-sm text-gray-500">No data available</td></tr>
+                                                    <tr><td colSpan="7" className="px-4 py-10 text-center text-sm text-gray-500">No data available</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -704,6 +710,10 @@ const UserDetailsModal = ({
                                         {filteredRows && filteredRows.length > 0 ? (
                                             filteredRows.map((row, idx) => (
                                                 <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[10px] font-bold text-gray-400">ID: {row.taskId} • {row.freq}</span>
+                                                        <span className="text-[10px] font-bold text-gray-700">{row.name}</span>
+                                                    </div>
                                                     <h4 className="text-sm font-bold text-gray-900 mb-2">{row.taskName}</h4>
                                                     <div className="grid grid-cols-2 gap-y-2 gap-x-4 border-t border-gray-50 pt-2">
                                                         <div>

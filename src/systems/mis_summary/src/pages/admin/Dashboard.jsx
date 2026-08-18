@@ -223,22 +223,23 @@ const AdminDashboard = () => {
         console.log(`[Dashboard] Fetching "For Records" sheet from Apps Script...`);
         try {
           const separator = scriptUrl.includes('?') ? '&' : '?';
-          const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=For Records`;
+          const fetchUrl = `${scriptUrl}${separator}action=getUsers&sheetName=For Records&spreadsheetId=1DAaZO7tZhcSpNAD2rPMjd5OoEL_8ciSJEgbviw0cqGo`;
           const response = await fetch(fetchUrl);
           const appScriptJson = await response.json();
-          
+
           if (appScriptJson.success && Array.isArray(appScriptJson.data)) {
             const rawData = appScriptJson.data;
             const taskRows = rawData.slice(1); // Row 0 is the headers
-            
+
             // Set the dataSheetRows directly for drill-down mapping
             setDataSheetRows(taskRows);
 
-            // Extract date range from raw data (e.g. index 21/22 of first task row)
-            const firstRow = taskRows[0];
-            if (firstRow) {
-              const fromDate = firstRow[21] ? String(firstRow[21]).trim() : "";
-              const toDate = firstRow[22] ? String(firstRow[22]).trim() : "";
+            // Extract date range from raw data headers (index 21/22 of header row)
+            const headerRow = rawData[0];
+            if (headerRow) {
+              const fromDate = headerRow[21] ? String(headerRow[21]).trim() : "";
+              const toDate = headerRow[22] ? String(headerRow[22]).trim() : "";
+              console.log("[Dashboard] Extracted date range from Apps Script headers -> fromDate:", fromDate, "toDate:", toDate);
               if (fromDate && toDate) {
                 setDataSheetDateRange({ fromDate, toDate });
               }
@@ -249,7 +250,7 @@ const AdminDashboard = () => {
             taskRows.forEach(row => {
               const empName = row[4] ? String(row[4]).trim() : "";
               if (!empName) return;
-              
+
               if (!employeeMap[empName]) {
                 employeeMap[empName] = {
                   name: empName,
@@ -263,7 +264,7 @@ const AdminDashboard = () => {
                   endDate: ""
                 };
               }
-              
+
               const emp = employeeMap[empName];
               emp.target += Number(row[10]) || 0;
               emp.actualWorkDone += Number(row[11]) || Number(row[18]) || 0;
@@ -271,29 +272,29 @@ const AdminDashboard = () => {
               emp.totalWorkDone += Number(row[11]) || 0;
               emp.weekPending += Number(row[19]) || 0;
               emp.allPending += Number(row[14]) || 0;
-              
+
               if (!emp.startDate && row[21]) emp.startDate = String(row[21]).trim();
               if (!emp.endDate && row[22]) emp.endDate = String(row[22]).trim();
             });
 
             // Format aggregated map back to 2D matrix matching dashboard format
             const headers = [
-              "Date Start", "Date End", "Name", "Target", "Actual Work Done", 
-              "% Work Not Done", "% Work Not Done On Time", "Total Work Done", 
+              "Date Start", "Date End", "Name", "Target", "Actual Work Done",
+              "% Work Not Done", "% Work Not Done On Time", "Total Work Done",
               "Week Pending", "All Pending Till Date", "Start Date", "End Date"
             ];
-            
+
             const aggregated2D = [
               [], // Row 0: Dummy row
               headers, // Row 1: Headers
               ...Object.values(employeeMap).map(emp => {
-                const notDonePct = emp.target > 0 
+                const notDonePct = emp.target > 0
                   ? (((emp.actualWorkDone - emp.target) / emp.target) * 100).toFixed(2)
                   : "0";
                 const notDoneOnTimePct = emp.target > 0
                   ? (((emp.actualOnTime - emp.target) / emp.target) * 100).toFixed(2)
                   : "0";
-                  
+
                 return [
                   emp.startDate,
                   emp.endDate,
@@ -310,7 +311,7 @@ const AdminDashboard = () => {
                 ];
               })
             ];
-            
+
             result = { success: true, data: aggregated2D };
             console.log(`[Dashboard] Successfully loaded and aggregated ${taskRows.length} tasks for ${Object.keys(employeeMap).length} employees from Apps Script.`);
           }
@@ -751,6 +752,7 @@ const AdminDashboard = () => {
       workNotDoneOnTime: row[13] || 0,
       allPendingTillDate: row[14] || 0,
       delayColRef: row[27] || "",
+      systemType: row[1] || "",
       // fromDate/toDate: individual rows are empty; use global date range from header row (Col V/W)
       fromDate: (row[21] && String(row[21]).trim()) || dataSheetDateRange.fromDate, // Column V (falls back to header value)
       toDate: (row[22] && String(row[22]).trim()) || dataSheetDateRange.toDate       // Column W (falls back to header value)
@@ -800,6 +802,21 @@ const AdminDashboard = () => {
     const taskNameParsed = parseSheetRef(task.taskNameColRef);
     const delayParsed = parseSheetRef(task.delayColRef);
 
+    const getRealSheetName = (parsedName) => {
+      if (!parsedName) return "";
+      const nameLower = parsedName.toLowerCase().trim();
+      if (nameLower === "data") {
+        return "Delegation";
+      }
+      return parsedName;
+    };
+
+    if (plannedParsed) plannedParsed.sheetName = getRealSheetName(plannedParsed.sheetName);
+    if (actualParsed) actualParsed.sheetName = getRealSheetName(actualParsed.sheetName);
+    if (nameParsed) nameParsed.sheetName = getRealSheetName(nameParsed.sheetName);
+    if (taskNameParsed) taskNameParsed.sheetName = getRealSheetName(taskNameParsed.sheetName);
+    if (delayParsed) delayParsed.sheetName = getRealSheetName(delayParsed.sheetName);
+
     setDrillDownLoading(true);
     setActiveDrillDown({
       taskId: task.taskName,
@@ -812,18 +829,39 @@ const AdminDashboard = () => {
     try {
       const employeeName = String(selectedUserDetails?.name || "").trim();
 
-      const sheetDataCache = {};
-      const sheetsToFetch = new Set();
-      if (plannedParsed?.sheetName) sheetsToFetch.add(plannedParsed.sheetName);
-      if (actualParsed?.sheetName) sheetsToFetch.add(actualParsed.sheetName);
-      if (nameParsed?.sheetName) sheetsToFetch.add(nameParsed.sheetName);
-      if (taskNameParsed?.sheetName) sheetsToFetch.add(taskNameParsed.sheetName);
-      if (delayParsed?.sheetName) sheetsToFetch.add(delayParsed.sheetName);
+      // Fetch date range dynamically from the range data source URL (Source 1 - For Records)
+      let rangeFrom = task.fromDate;
+      let rangeTo = task.toDate;
+      try {
+        const rangeRes = await fetch("https://script.google.com/macros/s/AKfycbwVrvQR9xI5ZmFDW08s4AeacnwYqSjuSUhieLpGOQi-qKQrXwleJYIIJvsye2F3_px-/exec?action=getUsers&sheetName=For Records&spreadsheetId=1DAaZO7tZhcSpNAD2rPMjd5OoEL_8ciSJEgbviw0cqGo");
+        if (rangeRes.ok) {
+          const rangeJson = await rangeRes.json();
+          if (rangeJson.success && Array.isArray(rangeJson.data) && rangeJson.data.length > 0) {
+            const headerRow = rangeJson.data[0]; // Row 0 is header containing the dates
+            if (headerRow) {
+              const fromVal = headerRow[21] ? String(headerRow[21]).trim() : "";
+              const toVal = headerRow[22] ? String(headerRow[22]).trim() : "";
+              if (fromVal && toVal) {
+                rangeFrom = fromVal;
+                rangeTo = toVal;
+                console.log("[DrillDown Date Range Source] Fetched date range:", rangeFrom, "to", rangeTo);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch date range from range data source:", err);
+      }
 
-      const fetchPromises = [...sheetsToFetch].map(async (name) => {
-        // Skip department-specific scriptUrl — it's CORS-blocked from localhost.
-        // Always use the global VITE_APPS_SCRIPT_URL with spreadsheetId directly.
-        const urlsToTry = [import.meta.env.VITE_APPS_SCRIPT_URL]
+      // Fetch tasks from both C-MIS and D-MIS using Source 2 URL
+      const sheetDataCache = {};
+      const sheetsToFetch = ["C-MIS", "D-MIS"];
+
+      const fetchPromises = sheetsToFetch.map(async (name) => {
+        const urlsToTry = [
+          "https://script.google.com/macros/s/AKfycbwXTdEm5vLhS3cAxNky8uA-hmrfY84DuMEXAqbsCFd05JoMpUvpBOI4UPcwUYuP8Tk6Mw/exec",
+          import.meta.env.VITE_APPS_SCRIPT_URL
+        ]
           .map(u => String(u || "").trim())
           .filter(u => u.startsWith("http"));
 
@@ -836,7 +874,7 @@ const AdminDashboard = () => {
               _fetchUrl += `&spreadsheetId=${encodeURIComponent(task.sheetId)}`;
             }
 
-            const res = await supabaseFetchSheet(name);
+            const res = await fetch(_fetchUrl);
             if (!res.ok) throw new Error(`HTTP error ${res.status}`);
             const result = await res.json();
             if (result.success && Array.isArray(result.data)) {
@@ -849,7 +887,8 @@ const AdminDashboard = () => {
           }
         }
         if (!success) {
-          throw new Error(`Failed to fetch sheet ${name} from all attempted URLs`);
+          console.error(`Gracefully handling fetch failure for sheet: ${name}`);
+          sheetDataCache[name] = [];
         }
       });
       await Promise.all(fetchPromises);
@@ -928,45 +967,6 @@ const AdminDashboard = () => {
         return String(val);
       };
 
-      let matchingRowIndices = null;
-
-      if (nameParsed && nameParsed.sheetName && nameParsed.colIndex >= 0) {
-        const nameSheetRows = sheetDataCache[nameParsed.sheetName] || [];
-        const nameRowsFromStart = nameParsed.startRowIndex > 0
-          ? nameSheetRows.slice(nameParsed.startRowIndex)
-          : nameSheetRows;
-
-        matchingRowIndices = [];
-        nameRowsFromStart.forEach((row, idx) => {
-          const nameInSheet = row[nameParsed.colIndex] ? String(row[nameParsed.colIndex]).trim() : "";
-          if (nameInSheet === employeeName) {
-            matchingRowIndices.push(idx);
-          }
-        });
-      }
-
-      const getColumnValues = (parsed, formatter = formatDateValue) => {
-        if (!parsed || !parsed.sheetName || parsed.colIndex < 0) return [];
-        const allRows = sheetDataCache[parsed.sheetName] || [];
-        const rowsFromStart = parsed.startRowIndex > 0 ? allRows.slice(parsed.startRowIndex) : allRows;
-
-        if (matchingRowIndices !== null) {
-          return matchingRowIndices.map(idx =>
-            rowsFromStart[idx] !== undefined ? formatter(rowsFromStart[idx][parsed.colIndex]) : ""
-          );
-        } else {
-          return rowsFromStart.map(row => formatter(row[parsed.colIndex]));
-        }
-      };
-
-      const plannedValues = getColumnValues(plannedParsed);
-      const actualValues = getColumnValues(actualParsed);
-      const taskNameValues = getColumnValues(taskNameParsed, (val) => (val === undefined || val === null) ? "" : String(val));
-      const delayValues = getColumnValues(delayParsed, formatDurationValue);
-
-      const maxLen = Math.max(plannedValues.length, actualValues.length, taskNameValues.length);
-      const rows = [];
-
       const parseFilterDate = (val) => {
         if (val === null || val === undefined || val === "") return null;
 
@@ -975,7 +975,8 @@ const AdminDashboard = () => {
         if (!isNaN(numVal) && numVal > 1000 && numVal < 100000) {
           // Google Sheets epoch: Dec 30, 1899
           const epoch = new Date(Date.UTC(1899, 11, 30));
-          return new Date(epoch.getTime() + numVal * 24 * 60 * 60 * 1000);
+          const utcDate = new Date(epoch.getTime() + numVal * 24 * 60 * 60 * 1000);
+          return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
         }
 
         const str = String(val).trim();
@@ -1004,21 +1005,77 @@ const AdminDashboard = () => {
         }
 
         const d = new Date(str);
-        return isNaN(d.getTime()) ? null : d;
+        if (isNaN(d.getTime())) return null;
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
       };
 
-      console.log("[DrillDown Filter] fromDate raw:", task.fromDate, "| toDate raw:", task.toDate);
-      const filterFrom = parseFilterDate(task.fromDate);
-      const filterTo = parseFilterDate(task.toDate);
+      const extractRowsForSheet = (sheetName) => {
+        if (!sheetName || !sheetDataCache[sheetName] || sheetDataCache[sheetName].length === 0) {
+          return [];
+        }
+        const allRows = sheetDataCache[sheetName];
+        // The first row of data is index 2, since row 0 is metadata and row 1 is headers.
+        const startRowIndex = 2; 
+        const dataRows = allRows.slice(startRowIndex);
+
+        // Find headers from row 1 to get column indexes dynamically
+        const headers = allRows[1] || [];
+        const nameIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "name");
+        const taskIdIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "task id");
+        const freqIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "freq");
+        const taskIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "task");
+        const plannedIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "planned");
+        const actualIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "actual");
+        const delayIdx = headers.findIndex(h => String(h).trim().toLowerCase() === "delay");
+
+        const sheetRows = [];
+        dataRows.forEach(row => {
+          if (!row) return;
+          const empName = nameIdx >= 0 && row[nameIdx] ? String(row[nameIdx]).trim() : "";
+          if (empName === employeeName) {
+            const plannedVal = plannedIdx >= 0 && row[plannedIdx] ? formatDateValue(row[plannedIdx]) : "";
+            const actualVal = actualIdx >= 0 && row[actualIdx] ? formatDateValue(row[actualIdx]) : "";
+            const delayVal = delayIdx >= 0 && row[delayIdx] ? formatDurationValue(row[delayIdx]) : "";
+            
+            sheetRows.push({
+              name: empName,
+              taskId: taskIdIdx >= 0 ? String(row[taskIdIdx] || "") : "",
+              freq: freqIdx >= 0 ? String(row[freqIdx] || "") : "",
+              taskName: taskIdx >= 0 ? String(row[taskIdx] || "") : "",
+              planned: plannedVal,
+              actual: actualVal,
+              delay: delayVal
+            });
+          }
+        });
+        return sheetRows;
+      };
+
+      // Extract and combine tasks from C-MIS and D-MIS
+      const allTasks = [
+        ...extractRowsForSheet("C-MIS"),
+        ...extractRowsForSheet("D-MIS")
+      ];
+
+      // Deduplicate tasks by taskId
+      const seenTaskIds = new Set();
+      const uniqueTasks = [];
+      allTasks.forEach(t => {
+        if (!t.taskId || !seenTaskIds.has(t.taskId)) {
+          if (t.taskId) seenTaskIds.add(t.taskId);
+          uniqueTasks.push(t);
+        }
+      });
+
+      console.log("[DrillDown Filter] rangeFrom:", rangeFrom, "| rangeTo:", rangeTo);
+      const filterFrom = parseFilterDate(rangeFrom);
+      const filterTo = parseFilterDate(rangeTo);
       if (filterTo) filterTo.setHours(23, 59, 59, 999);
       console.log("[DrillDown Filter] filterFrom:", filterFrom, "| filterTo:", filterTo);
 
-      for (let i = 0; i < maxLen; i++) {
-        const plannedVal = plannedValues[i] || "";
-        const actualVal = actualValues[i] || "";
-        const delayVal = delayValues[i] || "";
-
-        // Include all rows that have at least a planned date
+      const rows = [];
+      uniqueTasks.forEach(t => {
+        const plannedVal = t.planned;
         if (plannedVal) {
           let inRange = true;
           const pDate = parseFilterDate(plannedVal);
@@ -1029,15 +1086,10 @@ const AdminDashboard = () => {
           }
 
           if (inRange) {
-            rows.push({
-              taskName: taskNameValues[i] || "",
-              planned: plannedVal,
-              actual: actualVal,
-              delay: delayVal
-            });
+            rows.push(t);
           }
         }
-      }
+      });
 
       setActiveDrillDown({
         taskId: task.taskName,
