@@ -282,10 +282,16 @@ export const sendPOCreatedNotification = async ({ vendorName, poNo, poDate, docu
               })
             : 'N/A';
 
+        // Parameters must match the template variable order exactly:
+        //   {{1}} → vendorName  (vendor / contact name)
+        //   {{2}} → poNo        (PO number, e.g. "BE/PO/2026-27/001")
+        //   {{3}} → formattedDate (formatted date, e.g. "19 Aug 2026")
+        const templateParams = [vendorName || 'Vendor', poNo || 'N/A', formattedDate];
+
         return await sendPurchaseTemplate(
             recipientPhone,
             'purchase_po',
-            [vendorName || 'Vendor', poNo || 'N/A', formattedDate],
+            templateParams,
             'en',
             {
                 recipientName  : vendorName || 'Vendor',
@@ -293,7 +299,8 @@ export const sendPOCreatedNotification = async ({ vendorName, poNo, poDate, docu
                 stage          : 'PO Created',
                 referenceId    : poNo || '-',
                 senderName     : 'Purchase Team',
-                messageContent : `PO ${poNo} issued to ${vendorName} on ${formattedDate}`,
+                // Use structured format so WhatsApp History can parse {{1}}, {{2}}, {{3}} correctly
+                messageContent : `Template: purchase_po | Params: ${templateParams.join(' | ')}`,
                 fileName       : `PO_${(poNo || 'Order').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
                 mimeType       : 'application/pdf',
                 mediaUrl       : documentUrl,
