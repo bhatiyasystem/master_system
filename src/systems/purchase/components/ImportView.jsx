@@ -68,10 +68,19 @@ export default function ImportView({ onImported }) {
           return;
         }
         setImporting(true);
-        const { firstNo, lastNo } = await importIndentRows(parsed);
+        const { firstNo, lastNo, matchedCount, insertedCount } = await importIndentRows(parsed);
+        let successText = `${parsed.length} item(s) processed. `;
+        if (matchedCount > 0) {
+          successText += `${matchedCount} existing item(s) recognized and preserved. `;
+        }
+        if (insertedCount > 0) {
+          successText += `${insertedCount} new item(s) imported successfully (Unique numbers: ${firstNo} to ${lastNo}).`;
+        } else {
+          successText += `0 new items added.`;
+        }
         setResult({
           type: 'success',
-          text: `${parsed.length} item(s) imported successfully. Unique numbers generated from ${firstNo} to ${lastNo}.`,
+          text: successText,
         });
         onImported && onImported();
       } catch (err) {

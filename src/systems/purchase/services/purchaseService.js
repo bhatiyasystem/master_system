@@ -123,43 +123,116 @@ export async function fetchIndentHistory(indentId) {
 }
 
 export async function importIndentRows(parsedRows) {
-  if (!parsedRows || parsedRows.length === 0) return { rows: [], firstNo: null, lastNo: null };
+  if (!parsedRows || parsedRows.length === 0) return { rows: [], firstNo: null, lastNo: null, matchedCount: 0, insertedCount: 0 };
+
+  // Fetch active/pending items across the workflow
+  const [{ data: indents, error: indentErr }, { data: deliveries, error: delErr }] = await Promise.all([
+    supabase.from('purchase_indents').select('*').in('status', ['Pending', 'Approved']),
+    supabase.from('purchase_deliveries').select('po_id, received'),
+  ]);
+  if (indentErr) throw indentErr;
+  if (delErr) throw delErr;
+
+  const deliveriesByPo = {};
+  (deliveries || []).forEach((d) => {
+    if (!d.po_id) return;
+    if (!deliveriesByPo[d.po_id]) {
+      deliveriesByPo[d.po_id] = [];
+    }
+    deliveriesByPo[d.po_id].push(d);
+  });
+
+  const normalizeName = (name) => (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+  const activePool = {};
+  (indents || []).forEach((row) => {
+    let isActive = false;
+    if (row.status === 'Pending') {
+      isActive = true;
+    } else if (row.status === 'Approved') {
+      if (!row.po_id) {
+        isActive = true;
+      } else {
+        const dels = deliveriesByPo[row.po_id] || [];
+        if (dels.length === 0 || dels.some((d) => !d.received)) {
+          isActive = true;
+        }
+      }
+    }
+
+    if (isActive) {
+      const norm = normalizeName(row.item_details);
+      if (!activePool[norm]) {
+        activePool[norm] = [];
+      }
+      activePool[norm].push(row);
+    }
+  });
+
+  const newRowsToInsert = [];
+  const matchedRows = [];
+
+  parsedRows.forEach((r) => {
+    const norm = normalizeName(r.itemDetails);
+    const existingList = activePool[norm] || [];
+    if (existingList.length > 0) {
+      const matchedIndent = existingList.shift();
+      matchedRows.push(matchedIndent);
+    } else {
+      newRowsToInsert.push(r);
+    }
+  });
 
   const year = new Date().getFullYear();
-  const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
-    p_year: year,
-    p_count: parsedRows.length,
-  });
-  if (reserveError) throw reserveError;
+  let insertedRows = [];
+  let firstNo = null;
+  let lastNo = null;
 
-  const createdBy = localStorage.getItem('user-id') || null;
-  const importBatchId = crypto.randomUUID();
+  if (newRowsToInsert.length > 0) {
+    const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
+      p_year: year,
+      p_count: newRowsToInsert.length,
+    });
+    if (reserveError) throw reserveError;
 
-  const payload = parsedRows.map((r, i) => ({
-    unique_no: reserved[i].unique_no,
-    import_batch_id: importBatchId,
-    created_by: createdBy,
-    item_details: r.itemDetails,
-    category: r.category || 'Uncategorized',
-    vendor: r.vendor || '',
-    unit: r.unit || 'Pcs.',
-    alt_unit: r.altUnit || '',
-    parent_group: r.parentGroup || '',
-    shelf_capacity: r.shelfCapacity || '',
-    max_level_qty: Number(r.maxLevelQty) || 0,
-    rol_qty: Number(r.rolQty) || 0,
-    cl_qty: Number(r.clQty) || 0,
-    conversion_unit: r.conversionUnit || '',
-    order_formula: Number(r.orderFormula) || 0,
-  }));
+    const createdBy = localStorage.getItem('user-id') || null;
+    const importBatchId = crypto.randomUUID();
 
-  const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
-  if (error) throw error;
+    const payload = newRowsToInsert.map((r, i) => ({
+      unique_no: reserved[i].unique_no,
+      import_batch_id: importBatchId,
+      created_by: createdBy,
+      item_details: r.itemDetails,
+      category: r.category || 'Uncategorized',
+      vendor: r.vendor || '',
+      unit: r.unit || 'Pcs.',
+      alt_unit: r.altUnit || '',
+      parent_group: r.parentGroup || '',
+      shelf_capacity: r.shelfCapacity || '',
+      max_level_qty: Number(r.maxLevelQty) || 0,
+      rol_qty: Number(r.rolQty) || 0,
+      cl_qty: Number(r.clQty) || 0,
+      conversion_unit: r.conversionUnit || '',
+      order_formula: Number(r.orderFormula) || 0,
+    }));
+
+    const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
+    if (error) throw error;
+
+    insertedRows = data || [];
+    firstNo = reserved[0].unique_no;
+    lastNo = reserved[reserved.length - 1].unique_no;
+  }
+
+  const mappedMatched = matchedRows.map(mapIndentRow);
+  const mappedInserted = insertedRows.map(mapIndentRow);
 
   return {
-    rows: (data || []).map(mapIndentRow),
-    firstNo: reserved[0].unique_no,
-    lastNo: reserved[reserved.length - 1].unique_no,
+    rows: [...mappedMatched, ...mappedInserted],
+    firstNo,
+    lastNo,
+    matchedCount: matchedRows.length,
+    insertedCount: insertedRows.length,
   };
 }
 
