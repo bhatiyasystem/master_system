@@ -6,6 +6,7 @@ import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPagin
 import EnvelopePDF from '../components/EnvelopePDF';
 import PayslipPDF from '../components/PayslipPDF';
 import { PayEnvelopeCard, generatePayEnvelopeHTML } from '../components/PayEnvelopeTemplate';
+import { useMemo } from 'react';
 // ── Status badge ─────────────────────────────────────────────────────────────
 const statusStyle = {
   draft: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
@@ -390,8 +391,15 @@ const EmployeeEnvelopeModal = ({ row, onClose }) => {
 // ── Payslips Tab ──────────────────────────────────────────────────────────────
 // ── Payslips Tab ──────────────────────────────────────────────────────────────
 const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsChange }) => {
-  const [paidRecords, setPaidRecords] = useState([]);
-  const [payslipMap, setPayslipMap] = useState({});
+  const [allPaidRecords, setAllPaidRecords] = useState([]);
+  const [allSlipsData, setAllSlipsData] = useState([]);
+  
+  const now = useMemo(() => new Date(), []);
+  const currentY = now.getFullYear();
+  const currentM = now.getMonth() + 1;
+
+  const [selectedYear, setSelectedYear] = useState(filterYear || currentY);
+  const [selectedMonth, setSelectedMonth] = useState(filterMonth || currentM);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -403,28 +411,90 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
     setLoading(true);
     try {
       const [payrollData, slipsData] = await Promise.all([
-        fetchPayroll({ year: filterYear, month: filterMonth, status: 'paid' }),
-        fetchPayslips({ year: filterYear, month: filterMonth }),
+        fetchPayroll({ status: 'paid' }),
+        fetchPayslips(),
       ]);
 
-      const map = {};
-      (slipsData || []).forEach(s => {
-        if (s.emp_code) map[s.emp_code] = s;
-      });
-      setPayslipMap(map);
-      setPaidRecords(payrollData || []);
+      setAllPaidRecords(payrollData || []);
+      setAllSlipsData(slipsData || []);
     } catch (err) {
       notifyRef.current(`Failed to fetch payslips: ${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
-  }, [filterYear, filterMonth]);
+  }, []);
 
   useEffect(() => {
     loadPayslips();
   }, [loadPayslips]);
 
-  const totalDaysInMonth = (filterYear && filterMonth) ? new Date(filterYear, filterMonth, 0).getDate() : 30;
+  useEffect(() => {
+    if (filterYear) setSelectedYear(filterYear);
+    if (filterMonth) setSelectedMonth(filterMonth);
+  }, [filterYear, filterMonth]);
+
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set();
+    const currentYearVal = now.getFullYear();
+    const startYear = 2024;
+    for (let y = currentYearVal; y >= startYear; y--) {
+      yearsSet.add(y);
+    }
+    allPaidRecords.forEach(r => {
+      const y = parseInt(r.year, 10);
+      if (!isNaN(y) && y <= currentYearVal) {
+        yearsSet.add(y);
+      }
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [allPaidRecords, now]);
+
+  const availableMonths = useMemo(() => {
+    const currentYearVal = now.getFullYear();
+    const currentMonthVal = now.getMonth() + 1;
+
+    // Limit to current month if selecting the current year
+    const maxMonth = (selectedYear === currentYearVal) ? currentMonthVal : 12;
+    const monthsList = [];
+    for (let m = 1; m <= maxMonth; m++) {
+      monthsList.push({ value: m, label: MONTHS[m - 1] });
+    }
+    // Sort from newest to oldest (December -> January)
+    return monthsList.reverse();
+  }, [selectedYear, now]);
+
+  // Adjust month if it becomes a future month for the newly selected year
+  useEffect(() => {
+    const currentYearVal = now.getFullYear();
+    const currentMonthVal = now.getMonth() + 1;
+    if (selectedYear === currentYearVal && selectedMonth > currentMonthVal) {
+      setSelectedMonth(currentMonthVal);
+    }
+  }, [selectedYear, selectedMonth, now]);
+
+  const paidRecords = useMemo(() => {
+    return allPaidRecords.filter(r => {
+      const rM = parseInt(r.month, 10);
+      const rY = parseInt(r.year, 10);
+      return rM === selectedMonth && rY === selectedYear;
+    });
+  }, [allPaidRecords, selectedMonth, selectedYear]);
+
+  const payslipMap = useMemo(() => {
+    const map = {};
+    allSlipsData.forEach(s => {
+      const sM = parseInt(s.month, 10);
+      const sY = parseInt(s.year, 10);
+      if (sM === selectedMonth && sY === selectedYear && s.emp_code) {
+        map[s.emp_code] = s;
+      }
+    });
+    return map;
+  }, [allSlipsData, selectedMonth, selectedYear]);
+
+  const totalDaysInMonth = useMemo(() => {
+    return (selectedYear && selectedMonth) ? new Date(selectedYear, selectedMonth, 0).getDate() : 30;
+  }, [selectedMonth, selectedYear]);
 
   const yesCount = paidRecords.filter(r => (r.puttha_status || 'Yes') !== 'No' && (parseFloat(r.payable_days) || 0) >= 15).length;
   const totalPutthaPool = paidRecords.reduce((s, r) => s + (parseFloat(r.puttha_price) || 0), 0);
@@ -549,11 +619,29 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-gray-800">
-            Paid Employees Payslips for {MONTHS[filterMonth - 1]} {filterYear}
+            Paid Employees Payslips for {MONTHS[selectedMonth - 1]} {selectedYear}
           </p>
           <p className="text-xs text-gray-500">Paid employees with full breakdown ({filteredPaid.length} records)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            {availableYears.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          >
+            {availableMonths.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
           <button
             onClick={loadPayslips}
             disabled={loading}
@@ -581,8 +669,8 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
         ) : filteredPaid.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <FileText size={48} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No paid employees found for {MONTHS[filterMonth - 1]} {filterYear}</p>
-            <p className="text-sm mt-1">Mark employees as "Paid" in the Payroll tab to show them here</p>
+            <p className="font-medium text-lg">No data for {MONTHS[selectedMonth - 1]} {selectedYear}</p>
+            <p className="text-sm mt-1">There are no paid payroll records or payslips generated for this month.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -618,7 +706,13 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
                         {row.payable_days ?? '—'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">{MONTHS[filterMonth - 1]} {filterYear.toString().slice(-2)}</td>
+                    <td className="px-4 py-3 text-left text-sm text-gray-700 whitespace-nowrap">
+                      {(() => {
+                        const mVal = parseInt(row.month, 10);
+                        const mName = (!isNaN(mVal) && mVal >= 1 && mVal <= 12) ? MONTHS[mVal - 1] : 'Unknown';
+                        return `${mName} ${String(row.year || '').slice(-2)}`;
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.basic_salary)}</td>
                     <td className="px-4 py-3 text-right text-sm text-gray-700">
                       {(row.ot_amount > 0 || parseOtHours(row.ot_hours) > 0) ? (
