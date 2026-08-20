@@ -149,7 +149,20 @@ function PendingPaymentPanel({ approvals, poMap, onPay }) {
                                             </button>
                                         </td>
                                         <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-800">{po?.vendor?.name || '—'}</td>
+                                        <td className="px-3 py-2.5 text-gray-800">
+                                            <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                            {po?.vendor && (
+                                                <div className="text-[11px] text-gray-500 mt-0.5">
+                                                    {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                    {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                    {po.vendor.paymentTerms && (
+                                                        <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                            {po.vendor.paymentTerms}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
                                         
                                         <td className="px-3 py-2.5 text-gray-500">
                                             {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
@@ -192,6 +205,7 @@ function PaymentHistoryPanel({ payments, poMap }) {
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
                                 <th className="px-3 py-2.5">PO No.</th>
+                                <th className="px-3 py-2.5">Vendor</th>
                                 <th className="px-3 py-2.5">Amount Paid</th>
                                 <th className="px-3 py-2.5">Remark</th>
                                 <th className="px-3 py-2.5">Payment Proof</th>
@@ -200,12 +214,28 @@ function PaymentHistoryPanel({ payments, poMap }) {
                         </thead>
                         <tbody>
                             {payments.length === 0 ? (
-                                <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No payments recorded yet.</td></tr>
+                                <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No payments recorded yet.</td></tr>
                             ) : filtered.length === 0 ? (
-                                <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
-                            ) : filtered.map((p) => (
+                                <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                            ) : filtered.map((p) => {
+                                const po = poMap.get(p.poId);
+                                return (
                                 <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{poMap.get(p.poId)?.poNo || '—'}</td>
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-800">
+                                        <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                        {po?.vendor && (
+                                            <div className="text-[11px] text-gray-500 mt-0.5">
+                                                {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                {po.vendor.paymentTerms && (
+                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                        {po.vendor.paymentTerms}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">₹ {fmt(p.amountPaid)}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{p.remarks || '—'}</td>
                                     <td className="px-3 py-2.5">
@@ -221,7 +251,7 @@ function PaymentHistoryPanel({ payments, poMap }) {
                                         {p.paidAt ? new Date(p.paidAt).toLocaleString('en-IN') : '—'}
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                        </tbody>
                     </table>
                 </div>

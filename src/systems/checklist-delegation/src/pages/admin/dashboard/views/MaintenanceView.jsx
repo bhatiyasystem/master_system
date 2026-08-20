@@ -5,8 +5,6 @@ import { Settings, Calendar, CheckCircle, Clock, AlertTriangle, IndianRupee, Fil
 import { useDispatch } from 'react-redux'
 import { updateMaintenanceTask } from '../../../../redux/slice/maintenanceSlice'
 import { fetchUniqueGivenByDataApi, fetchUniqueDoerNameDataApi } from '../../../../redux/api/assignTaskApi'
-
-
 import RenderDescription, { MediaViewer } from "../../../../components/RenderDescription"
 import AudioPlayer from "../../../../components/AudioPlayer"
 

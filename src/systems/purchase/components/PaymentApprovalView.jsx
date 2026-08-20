@@ -142,7 +142,20 @@ function PendingApprovalPanel({ pos, onDecide }) {
                                 </td>
                                 <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
                                 <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                <td className="px-3 py-2.5 text-gray-800">{po.vendor?.name}</td>
+                                <td className="px-3 py-2.5 text-gray-800">
+                                    <div className="font-semibold text-gray-900">{po.vendor?.name || '—'}</div>
+                                    {po.vendor && (
+                                        <div className="text-[11px] text-gray-500 mt-0.5">
+                                            {po.vendor.city && <span>{po.vendor.city}</span>}
+                                            {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                            {po.vendor.paymentTerms && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                    {po.vendor.paymentTerms}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-3 py-2.5 text-gray-800">
                                     {po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Parli PI'
                                         ? po.vendor.paymentTerms
@@ -185,6 +198,7 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
                             <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Status</th>
                             <th className="px-3 py-2.5">Remark</th>
                             <th className="px-3 py-2.5">Decided At</th>
@@ -192,12 +206,28 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
                     </thead>
                     <tbody>
                         {approvals.length === 0 ? (
-                            <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No payment approval decisions yet.</td></tr>
+                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No payment approval decisions yet.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
-                        ) : filtered.map((a) => (
+                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                        ) : filtered.map((a) => {
+                            const po = poMap.get(a.poId);
+                            return (
                             <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                <td className="px-3 py-2.5 font-semibold text-gray-900">{poMap.get(a.poId)?.poNo || '—'}</td>
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
+                                <td className="px-3 py-2.5 text-gray-800">
+                                    <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                    {po?.vendor && (
+                                        <div className="text-[11px] text-gray-500 mt-0.5">
+                                            {po.vendor.city && <span>{po.vendor.city}</span>}
+                                            {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                            {po.vendor.paymentTerms && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                    {po.vendor.paymentTerms}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-3 py-2.5">
                                     <StatusPill status={a.status} />
                                 </td>
@@ -206,7 +236,7 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
                                     {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </table>
             </div>

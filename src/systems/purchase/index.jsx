@@ -2,7 +2,6 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import systemRegistry from '../../core/registry/systemRegistry';
 import './purchase.css';
-
 import DashboardPage from './pages/DashboardPage';
 import IndentPage from './pages/IndentPage';
 import ApprovalPage from './pages/ApprovalPage';

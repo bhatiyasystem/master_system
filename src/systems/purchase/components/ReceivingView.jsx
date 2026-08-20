@@ -130,6 +130,7 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
                             <th className="px-3 py-2.5">Action</th>
                             <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Transporter</th>
                             <th className="px-3 py-2.5">Contact</th>
                             <th className="px-3 py-2.5">Builty No.</th>
@@ -139,11 +140,12 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                     </thead>
                     <tbody>
                         {pending.length === 0 ? (
-                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
+                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
                         ) : filtered.map((d) => {
-                            const poNo = poMap.get(d.poId)?.poNo || '—';
+                            const po = poMap.get(d.poId);
+                            const poNo = po?.poNo || '—';
                             return (
                                 <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="px-3 py-2.5">
@@ -155,6 +157,20 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                                         </button>
                                     </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
+                                    <td className="px-3 py-2.5 text-gray-800">
+                                        <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                        {po?.vendor && (
+                                            <div className="text-[11px] text-gray-500 mt-0.5">
+                                                {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                {po.vendor.paymentTerms && (
+                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                        {po.vendor.paymentTerms}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
@@ -193,11 +209,13 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
         const flat = [];
         receivings.forEach((r) => {
             const delivery = deliveryMap.get(r.deliveryId);
-            const poNo = delivery ? poMap.get(delivery.poId)?.poNo : null;
+            const po = delivery ? poMap.get(delivery.poId) : null;
+            const poNo = po?.poNo || null;
             (r.items || []).forEach((item) => {
                 flat.push({
                     receivingId: r.id,
                     poNo: poNo || '—',
+                    po: po,
                     transportName: delivery?.transportName || '—',
                     productName: item.productName,
                     productCode: item.productCode,
@@ -233,6 +251,7 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
                             <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Transporter</th>
                             <th className="px-3 py-2.5">Product</th>
                             <th className="px-3 py-2.5">Ordered Qty</th>
@@ -242,12 +261,26 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
                     </thead>
                     <tbody>
                         {rows.length === 0 ? (
-                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
                         ) : filtered.map((r, i) => (
                             <tr key={`${r.receivingId}-${i}`} className="border-t border-gray-100 hover:bg-gray-50">
                                 <td className="px-3 py-2.5 font-semibold text-gray-900">{r.poNo}</td>
+                                <td className="px-3 py-2.5 text-gray-800">
+                                    <div className="font-semibold text-gray-900">{r.po?.vendor?.name || '—'}</div>
+                                    {r.po?.vendor && (
+                                        <div className="text-[11px] text-gray-500 mt-0.5">
+                                            {r.po.vendor.city && <span>{r.po.vendor.city}</span>}
+                                            {r.po.vendor.contact && <span> • {r.po.vendor.contact}</span>}
+                                            {r.po.vendor.paymentTerms && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                    {r.po.vendor.paymentTerms}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-3 py-2.5 text-gray-700">{r.transportName}</td>
                                 <td className="px-3 py-2.5 text-gray-800">{r.productName || '—'}</td>
                                 <td className="px-3 py-2.5 text-gray-700">{r.orderedQty}</td>

@@ -212,7 +212,20 @@ function PendingDeliveryPanel({ pos, deliveries, indents, onLogDelivery }) {
                                     </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">{po.vendor?.name}</td>
+                                    <td className="px-3 py-2.5 text-gray-800">
+                                        <div className="font-semibold text-gray-900">{po.vendor?.name || '—'}</div>
+                                        {po.vendor && (
+                                            <div className="text-[11px] text-gray-500 mt-0.5">
+                                                {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                {po.vendor.paymentTerms && (
+                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                        {po.vendor.paymentTerms}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'category')}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'unit')}</td>
                                    <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'parentGroup')}</td>
@@ -272,6 +285,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents }) {
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
                                 <th className="px-3 py-2.5">PO No.</th>
+                                <th className="px-3 py-2.5">Vendor</th>
                                 <th className="px-3 py-2.5">Transport Name</th>
                                 <th className="px-3 py-2.5">Bill No.</th>
                                 <th className="px-3 py-2.5">Contact</th>
@@ -288,15 +302,29 @@ function DeliveryHistoryPanel({ deliveries, pos, indents }) {
                         </thead>
                         <tbody>
                             {deliveries.length === 0 ? (
-                                <tr><td colSpan={13} className="px-3 py-10 text-center text-gray-500">No deliveries submitted yet.</td></tr>
+                                <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries submitted yet.</td></tr>
                             ) : filteredDeliveries.length === 0 ? (
-                                <tr><td colSpan={13} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                                <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
                             ) : filteredDeliveries.map((d) => {
                                 const poNo = poMap.get(d.poId)?.poNo || '—';
                                 const po = poMap.get(d.poId);
                                 return (
                                     <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
                                         <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
+                                        <td className="px-3 py-2.5 text-gray-800">
+                                            <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                            {po?.vendor && (
+                                                <div className="text-[11px] text-gray-500 mt-0.5">
+                                                    {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                    {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                    {po.vendor.paymentTerms && (
+                                                        <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                            {po.vendor.paymentTerms}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
                                         <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
                                         <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
