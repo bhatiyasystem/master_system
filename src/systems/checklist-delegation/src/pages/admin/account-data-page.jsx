@@ -58,8 +58,8 @@ function AccountDataPage() {
   }
 
   useEffect(() => {
-    const role = sessionStorage.getItem("role")
-    const user = sessionStorage.getItem("username")
+    const role = localStorage.getItem("role")
+    const user = localStorage.getItem("user-name")
     setUserRole(role || "")
     setUsername(user || "")
   }, [])
@@ -240,8 +240,8 @@ function AccountDataPage() {
         }
       }
 
-      const currentUsername = sessionStorage.getItem("username")
-      const currentUserRole = sessionStorage.getItem("role")
+      const currentUsername = localStorage.getItem("user-name")
+      const currentUserRole = localStorage.getItem("role")
 
       const today = new Date()
       const tomorrow = new Date(today)

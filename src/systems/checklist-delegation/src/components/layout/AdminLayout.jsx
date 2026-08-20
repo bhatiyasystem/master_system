@@ -8,11 +8,14 @@ import { fetchNotifications } from '../../redux/slice/notificationSlice';
 import supabase from "../../SupabaseClient";
 import { CheckSquare, ClipboardList, Database, Zap, Settings, CalendarCheck, Calendar as CalendarIcon, BookmarkCheck, Bell, Video, Link, ChevronDown, ChevronRight, LogOut, Home, X, Menu, UserRound } from 'lucide-react';
 
+import { useChecklistDelegationPendingCounts } from '../../hooks/usePendingCounts';
+
 export default function AdminLayout({ children, darkMode, toggleDarkMode, showLayout = true }) {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { list: notifications } = useSelector((state) => state.notifications);
+  const pendingCounts = useChecklistDelegationPendingCounts();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isHolidaySubmenuOpen, setIsHolidaySubmenuOpen] = useState(false);
@@ -239,6 +242,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       icon: ClipboardList,
       active: location.pathname === "/dashboard/delegation",
       showFor: ["admin", "user", "HOD"],
+      badge: pendingCounts.delegationPending || null,
     },
     {
       href: "/dashboard/task",
@@ -246,6 +250,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       icon: CalendarCheck,
       active: location.pathname === "/dashboard/task",
       showFor: ["admin", "HOD", "user"],
+      badge: pendingCounts.taskPending || null,
     },
     {
       href: "/dashboard/calendar",
@@ -283,6 +288,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       icon: BookmarkCheck,
       active: location.pathname === "/dashboard/admin-approval",
       showFor: ["admin", "HOD"],
+      badge: pendingCounts.adminApprovalPending || null,
     },
     // {
     //   href: "/dashboard/mis-report",

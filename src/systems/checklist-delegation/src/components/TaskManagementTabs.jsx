@@ -1,5 +1,5 @@
 "use client"
-import { ClipboardCheck, Hammer, Wrench, Users } from 'lucide-react'
+import { ClipboardCheck, Hammer, Wrench, Users, Share2 } from 'lucide-react'
 import { motion } from 'framer-motion';
 
 
@@ -23,6 +23,17 @@ export default function TaskManagementTabs({ activeTab, setActiveTab }) {
         }
         return true;
     });
+
+    const getActiveColor = (tabId) => {
+        switch (tabId) {
+            case 'checklist': return 'bg-purple-600';
+            case 'delegation': return 'bg-indigo-600';
+            case 'maintenance': return 'bg-blue-600';
+            case 'repair': return 'bg-orange-600';
+            case 'ea': return 'bg-green-600';
+            default: return 'bg-purple-600';
+        }
+    };
 
     return (
         <div className="bg-white/40 backdrop-blur-md rounded-2xl p-1.5 border border-gray-100/80 shadow-sm">
@@ -48,7 +59,7 @@ export default function TaskManagementTabs({ activeTab, setActiveTab }) {
                                     {isActive && (
                                         <motion.div
                                             layoutId="activeTabPillGlobal"
-                                            className={`absolute inset-0 rounded-lg shadow-md z-[-1] ${tab.id === 'checklist' ? 'bg-purple-600' : tab.id === 'maintenance' ? 'bg-blue-600' : tab.id === 'repair' ? 'bg-orange-600' : 'bg-green-600'}`}
+                                            className={`absolute inset-0 rounded-lg shadow-md z-[-1] ${getActiveColor(tab.id)}`}
                                             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                                         />
                                     )}

@@ -145,7 +145,8 @@ export const fetchDelegationDataSortByDate = async () => {
     let query = supabase
       .from('delegation')
       .select('*')
-      .or('submission_date.is.null,status.neq.done') // Fetch pending tasks (never submitted) OR tasks that are not 'done' (extended)
+      .or('submission_date.is.null,and(status.neq.done,admin_done.eq.false)') // Fetch pending tasks (never submitted) OR tasks that are not 'done' and not yet admin approved
+      .is('admin_done', false) // Exclude tasks that have been approved/marked done by admin
       .order('planned_date', { ascending: true });
 
     if (role === 'user' && username) {

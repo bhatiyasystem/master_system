@@ -23,12 +23,12 @@ const isAudioUrl = (url) => {
   );
 };
 
-const AllTasks = () => {
+const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
   const dispatch = useDispatch();
   const { customDropdowns = [] } = useSelector((state) => state.setting || {});
   const { showToast } = useMagicToast();
   // Active tab state
-  const [activeTab, setActiveTab] = useState("checklist"); // checklist, maintenance, repair, ea
+  const [activeTab, setActiveTab] = useState(defaultTab); // checklist, maintenance, repair, ea, delegation
   const [showHistory, setShowHistory] = useState(false);
 
   // Data states
@@ -1131,16 +1131,18 @@ const AllTasks = () => {
           <div className="max-w-7xl mx-auto space-y-2">
             {/* Tab System & Primary Actions */}
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-              <div className="flex-shrink-0">
-                <TaskManagementTabs activeTab={activeTab} setActiveTab={(newTab) => {
-                  setActiveTab(newTab);
-                  setShowHistory(false);
-                  setSelectedItems(new Set());
-                  setSearchTerm("");
-                  setDateFilter("all");
-                  setNameFilter("all");
-                }} />
-              </div>
+              {!lockedTab && (
+                <div className="flex-shrink-0">
+                  <TaskManagementTabs activeTab={activeTab} setActiveTab={(newTab) => {
+                    setActiveTab(newTab);
+                    setShowHistory(false);
+                    setSelectedItems(new Set());
+                    setSearchTerm("");
+                    setDateFilter("all");
+                    setNameFilter("all");
+                  }} />
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-2 flex-grow justify-start sm:justify-end">
                 <div className="relative w-full sm:max-w-sm">
@@ -1155,97 +1157,103 @@ const AllTasks = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
-                  <button
-                    onClick={() => {
-                      setShowHistory(!showHistory);
-                      setSearchTerm("");
-                      setStartDate("");
-                      setEndDate("");
-                    }}
-                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200/80 rounded-xl hover:bg-gray-50 hover:text-purple-600 transition-all shadow-sm"
-                  >
-                    {showHistory ? (
-                      <><ArrowLeft className="h-4 w-4" /><span>Live</span></>
-                    ) : (
-                      <><History className="h-4 w-4" /><span>History</span></>
-                    )}
-                  </button>
-
-                  <div className="relative" ref={deptDropdownRef}>
+                  {!lockedTab && (
                     <button
-                      onClick={() => setDropdownOpen(prev => ({ ...prev, deptFilter: !prev.deptFilter }))}
-                      className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-sm ${deptFilter !== 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'}`}
+                      onClick={() => {
+                        setShowHistory(!showHistory);
+                        setSearchTerm("");
+                        setStartDate("");
+                        setEndDate("");
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-600 bg-white border border-gray-200/80 rounded-xl hover:bg-gray-50 hover:text-purple-600 transition-all shadow-sm"
                     >
-                      <Filter className="h-3 w-3" />
-                      <span className="truncate max-w-[80px]">{deptFilter === 'all' ? 'Dept' : deptFilter}</span>
-                      <ChevronDown size={14} className={`transition-transform ${dropdownOpen?.deptFilter ? 'rotate-180' : ''}`} />
+                      {showHistory ? (
+                        <><ArrowLeft className="h-4 w-4" /><span>Live</span></>
+                      ) : (
+                        <><History className="h-4 w-4" /><span>History</span></>
+                      )}
                     </button>
-                    {dropdownOpen?.deptFilter && (
-                      <div className="absolute z-50 mt-2 w-48 right-0 rounded-xl bg-white shadow-xl border border-gray-100 py-1 overflow-auto max-h-64 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <button
-                          onClick={() => {
-                            setDeptFilter('all');
-                            setNameFilter('all');
-                            setDropdownOpen(prev => ({ ...prev, deptFilter: false }));
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${deptFilter === 'all' ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
-                        >
-                          All Departments
-                        </button>
-                        {allDepartments.map((dept) => (
+                  )}
+
+                  {!lockedTab && (
+                    <div className="relative" ref={deptDropdownRef}>
+                      <button
+                        onClick={() => setDropdownOpen(prev => ({ ...prev, deptFilter: !prev.deptFilter }))}
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-sm ${deptFilter !== 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'}`}
+                      >
+                        <Filter className="h-3 w-3" />
+                        <span className="truncate max-w-[80px]">{deptFilter === 'all' ? 'Dept' : deptFilter}</span>
+                        <ChevronDown size={14} className={`transition-transform ${dropdownOpen?.deptFilter ? 'rotate-180' : ''}`} />
+                      </button>
+                      {dropdownOpen?.deptFilter && (
+                        <div className="absolute z-50 mt-2 w-48 right-0 rounded-xl bg-white shadow-xl border border-gray-100 py-1 overflow-auto max-h-64 animate-in fade-in slide-in-from-top-2 duration-200">
                           <button
-                            key={dept}
                             onClick={() => {
-                              setDeptFilter(dept);
+                              setDeptFilter('all');
                               setNameFilter('all');
                               setDropdownOpen(prev => ({ ...prev, deptFilter: false }));
                             }}
-                            className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${deptFilter === dept ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${deptFilter === 'all' ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
                           >
-                            {dept}
+                            All Departments
                           </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          {allDepartments.map((dept) => (
+                            <button
+                              key={dept}
+                              onClick={() => {
+                                setDeptFilter(dept);
+                                setNameFilter('all');
+                                setDropdownOpen(prev => ({ ...prev, deptFilter: false }));
+                              }}
+                              className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${deptFilter === dept ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                              {dept}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
 
 
-                  <div className="relative" ref={nameDropdownRef}>
-                    <button
-                      onClick={() => setDropdownOpen(prev => ({ ...prev, nameFilter: !prev.nameFilter }))}
-                      className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-sm ${nameFilter !== 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'}`}
-                    >
-                      <Users className="h-3 w-3" />
-                      <span className="truncate max-w-[80px]">{nameFilter === 'all' ? 'Users' : nameFilter}</span>
-                      <ChevronDown size={14} className={`transition-transform ${dropdownOpen?.nameFilter ? 'rotate-180' : ''}`} />
-                    </button>
-                    {dropdownOpen?.nameFilter && (
-                      <div className="absolute z-50 mt-2 w-48 right-0 rounded-xl bg-white shadow-xl border border-gray-100 py-1 overflow-auto max-h-64 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <button
-                          onClick={() => {
-                            setNameFilter('all');
-                            setDropdownOpen(prev => ({ ...prev, nameFilter: false }));
-                          }}
-                          className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${nameFilter === 'all' ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
-                        >
-                          All Users
-                        </button>
-                        {uniqueNamesFromData.map((name) => (
+                  {!lockedTab && (
+                    <div className="relative" ref={nameDropdownRef}>
+                      <button
+                        onClick={() => setDropdownOpen(prev => ({ ...prev, nameFilter: !prev.nameFilter }))}
+                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-sm ${nameFilter !== 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'}`}
+                      >
+                        <Users className="h-3 w-3" />
+                        <span className="truncate max-w-[80px]">{nameFilter === 'all' ? 'Users' : nameFilter}</span>
+                        <ChevronDown size={14} className={`transition-transform ${dropdownOpen?.nameFilter ? 'rotate-180' : ''}`} />
+                      </button>
+                      {dropdownOpen?.nameFilter && (
+                        <div className="absolute z-50 mt-2 w-48 right-0 rounded-xl bg-white shadow-xl border border-gray-100 py-1 overflow-auto max-h-64 animate-in fade-in slide-in-from-top-2 duration-200">
                           <button
-                            key={name}
                             onClick={() => {
-                              setNameFilter(name);
+                              setNameFilter('all');
                               setDropdownOpen(prev => ({ ...prev, nameFilter: false }));
                             }}
-                            className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${nameFilter === name ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${nameFilter === 'all' ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
                           >
-                            {name}
+                            All Users
                           </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          {uniqueNamesFromData.map((name) => (
+                            <button
+                              key={name}
+                              onClick={() => {
+                                setNameFilter(name);
+                                setDropdownOpen(prev => ({ ...prev, nameFilter: false }));
+                              }}
+                              className={`block w-full text-left px-4 py-2 text-xs font-bold transition-colors ${nameFilter === name ? 'bg-purple-50 text-purple-700 border-l-2 border-purple-500' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {!showHistory && (
                     <>

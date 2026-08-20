@@ -88,6 +88,44 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '
   }
 };
 
+export const fetchChecklistDataSortByDate = async () => {
+  try {
+    const role = localStorage.getItem('role');
+    const username = localStorage.getItem('user-name');
+    const userAccess = localStorage.getItem('user_access');
+
+    let query = supabase
+      .from('checklist')
+      .select('*')
+      .is('submission_date', null)
+      .is('admin_done', false)
+      .order('planned_date', { ascending: true });
+
+    if (role === 'user' && username) {
+      query = query.eq('name', username);
+    } else if (role === 'HOD' && username) {
+      const { data: reports } = await supabase
+        .from("users")
+        .select("user_name")
+        .eq("reported_by", username);
+      const reportingUsers = [username, ...(reports?.map(r => r.user_name) || [])];
+      query = query.in('name', reportingUsers);
+    } else if (role === 'admin' && userAccess && userAccess !== 'all') {
+      const allowedDepartments = userAccess.split(',').map(dept => dept.trim()).filter(d => d && d !== 'all');
+      if (allowedDepartments.length > 0) {
+        query = query.in('department', allowedDepartments);
+      }
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(row => ({ ...row, id: row.task_id }));
+  } catch (error) {
+    console.log("Error from Supabase fetchChecklistDataSortByDate", error);
+    return [];
+  }
+};
+
 // Fetch unique delegation tasks — one row per unique task_description + name combination
 export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = '', _dateFilter = 'all', deptFilter = '', personFilter = '') => {
   try {

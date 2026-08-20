@@ -3,7 +3,7 @@ import { fetchDelegationDataSortByDate, fetchPendingApprovals } from '../redux/a
 import { fetchPendingMaintenanceApprovals } from '../redux/api/maintenanceApi';
 import { fetchPendingRepairApprovals } from '../redux/api/repairApi';
 import { fetchPendingEAApprovals } from '../redux/api/eaApi';
-import { fetchPendingChecklistApprovals } from '../redux/api/quickTaskApi';
+import { fetchPendingChecklistApprovals, fetchChecklistDataSortByDate } from '../redux/api/quickTaskApi';
 
 // Same de-dup rule AdminApprovalPage.jsx applies per tab, so counts match
 // exactly what the page itself would show.
@@ -39,13 +39,15 @@ export async function fetchChecklistDelegationPendingCounts() {
     if (isAdmin) return deduped.length;
     return deduped.filter((t) => {
       const doer = (t.doer_name || t.name || t.filled_by || '').toLowerCase();
-      return reportingUsersLower.includes(doer);
+      // Non-admins cannot approve their own tasks and only see direct reports' tasks
+      return doer !== username.toLowerCase() && reportingUsersLower.includes(doer);
     }).length;
   };
 
-  const [delegationMine, delegationApprovals, maintenanceApprovals, repairApprovals, eaApprovals, checklistApprovals] =
+  const [delegationMine, checklistMine, delegationApprovals, maintenanceApprovals, repairApprovals, eaApprovals, checklistApprovals] =
     await Promise.all([
       fetchDelegationDataSortByDate(), // already role-scoped to "my" pending delegation tasks
+      fetchChecklistDataSortByDate(), // already role-scoped to "my" pending checklist tasks
       fetchPendingApprovals(),
       fetchPendingMaintenanceApprovals(),
       fetchPendingRepairApprovals(),
@@ -53,7 +55,45 @@ export async function fetchChecklistDelegationPendingCounts() {
       fetchPendingChecklistApprovals(),
     ]);
 
-  const delegationPending = (delegationMine || []).length;
+  // Fetch holidays list to exclude them from the counts, matching the checklist & delegation frontend list logic
+  let holidaysList = [];
+  try {
+    const { data: holidaysData } = await supabase.from('holidays').select('holiday_date');
+    if (holidaysData) {
+      holidaysList = holidaysData.map(h => h.holiday_date);
+    }
+  } catch (err) {
+    console.error("Error fetching holidays in badge counts:", err);
+  }
+
+  const filterPending = (tasksList) => {
+    return (tasksList || []).filter(item => {
+      const taskDateStr = item.planned_date || item.task_start_date || item.created_at;
+      if (!taskDateStr) return false;
+
+      // Parse task date and compare with today (local date boundaries)
+      const date = new Date(taskDateStr);
+      if (isNaN(date.getTime())) return false;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const taskDate = new Date(date);
+      taskDate.setHours(0, 0, 0, 0);
+
+      const isExtended = item.status?.toLowerCase() === "extended" || item.status?.toLowerCase() === "extend";
+      const timeStatus = (isExtended && taskDate >= today) ? "Today" : (taskDate < today ? "Overdue" : (taskDate.getTime() === today.getTime() ? "Today" : "Upcoming"));
+
+      // Only count "Today" or "Overdue" tasks (Upcoming is excluded)
+      if (timeStatus === "Upcoming") return false;
+
+      const taskDateOnly = taskDateStr.split('T')[0];
+      return !holidaysList.includes(taskDateOnly);
+    }).length;
+  };
+
+  const delegationPending = filterPending(delegationMine);
+  const taskPending = filterPending(checklistMine);
 
   const adminApprovalPending =
     scopeAndCount(delegationApprovals) +
@@ -64,7 +104,8 @@ export async function fetchChecklistDelegationPendingCounts() {
 
   return {
     delegationPending,
+    taskPending,
     adminApprovalPending,
-    total: delegationPending + adminApprovalPending,
+    total: delegationPending + taskPending + adminApprovalPending,
   };
 }

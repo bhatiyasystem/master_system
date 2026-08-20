@@ -135,7 +135,7 @@ systemRegistry.register({
     },
     {
       path: '/dashboard/delegation',
-      element: <AccountDataPage />,
+      element: <AllTasks defaultTab="delegation" lockedTab={true} />,
       protected: true,
     },
     {

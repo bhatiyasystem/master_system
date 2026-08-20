@@ -429,6 +429,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
       total: checklistDelegationPendingCounts.total,
       items: {
         Delegation: checklistDelegationPendingCounts.delegationPending,
+        Task: checklistDelegationPendingCounts.taskPending,
         "Admin Approval": checklistDelegationPendingCounts.adminApprovalPending,
       },
     },
