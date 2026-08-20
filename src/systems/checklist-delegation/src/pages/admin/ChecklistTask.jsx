@@ -9,6 +9,7 @@ import supabase from "../../SupabaseClient";
 import { sendTaskAssignmentNotification, isWhatsAppConnected } from '../../services/whatsappService';
 import { useMagicToast } from '../../context/MagicToastContext';
 import { ReactMediaRecorder } from 'react-media-recorder';
+import CalendarComponent from '../../components/CalendarComponent'
 import { Mic } from 'lucide-react';
 
 const formatDate = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";

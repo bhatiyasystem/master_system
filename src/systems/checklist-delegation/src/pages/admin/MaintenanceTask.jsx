@@ -10,6 +10,7 @@ import { ReactMediaRecorder } from 'react-media-recorder';
 import supabase from "../../SupabaseClient";
 import { sendTaskAssignmentNotification, sendUrgentTaskNotification, isWhatsAppConnected } from '../../services/whatsappService';
 import { useMagicToast } from '../../context/MagicToastContext';
+import CalendarComponent from '../../components/CalendarComponent';
 
 const formatDateLong = (date) => date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
 const formatDateISO = (date) => {
