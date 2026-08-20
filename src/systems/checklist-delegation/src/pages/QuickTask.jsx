@@ -661,8 +661,9 @@ export default function QuickTask() {
   return (
     <>
       <AdminLayout>
-        <div className="sticky top-0 z-30 bg-white pb-4 border-b border-gray-200">
-          <div className="flex flex-col gap-4">
+        <div className="sticky top-0 z-30 bg-gray-50/80 backdrop-blur-md px-1 pt-3 pb-3">
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-6 py-4">
+            <div className="flex flex-col gap-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex items-center gap-4 flex-wrap">
                 <div>
@@ -761,6 +762,7 @@ export default function QuickTask() {
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
 
