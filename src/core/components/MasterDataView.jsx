@@ -399,7 +399,7 @@ function FieldFormatModal({ config, onClose, onDownloadTemplate, onUploadClick }
     );
 }
 
-function AddRecordModal({ config, record, onClose, onSaved }) {
+function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inset-0 z-50' }) {
     const initialForm = {};
     config.fields.forEach((f) => {
         if (record) {
@@ -463,7 +463,7 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
                 ? await supabase.from(config.table).update(payload).eq('id', record.id)
                 : await supabase.from(config.table).insert(payload);
             if (error) throw error;
-            onSaved();
+            onSaved(payload.name);
         } catch (err) {
             setError(err.message || 'Failed to save.');
         } finally {
@@ -472,7 +472,7 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className={`${zClass} flex items-center justify-center p-4`}>
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
                 {/* Header — sticky */}
@@ -540,6 +540,7 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
                                             table={f.fetchFrom}
                                             value={form[f.key]}
                                             onChange={(val) => update(f.key, val)}
+                                            parentConfig={config}
                                         />
                                     ) : f.key === 'address' ? (
                                         <textarea
@@ -591,21 +592,25 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
 function TransporterComboField({ table, value, onChange }) {
     const [options, setOptions] = useState([]);
     const [loadingOpts, setLoadingOpts] = useState(true);
-    // 'select' mode or 'custom' mode
-    const [mode, setMode] = useState('select');
+    const [showAddTransporter, setShowAddTransporter] = useState(false);
 
-    useEffect(() => {
-        supabase
+    const transporterConfig = CONFIG['transporter'];
+
+    function loadOptions(selectName) {
+        return supabase
             .from(table)
             .select('name')
             .order('name', { ascending: true })
             .then(({ data }) => {
                 const names = (data || []).map((r) => r.name).filter(Boolean);
                 setOptions(names);
-                // If editing and the current value isn't in the list, switch to custom mode
-                if (value && !names.includes(value)) setMode('custom');
                 setLoadingOpts(false);
+                if (selectName) onChange(selectName);
             });
+    }
+
+    useEffect(() => {
+        loadOptions();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [table]);
 
@@ -616,51 +621,50 @@ function TransporterComboField({ table, value, onChange }) {
     }
 
     return (
-        <div className="space-y-2">
-            {mode === 'select' ? (
-                <>
-                    <select
-                        value={value}
-                        onChange={(e) => {
-                            if (e.target.value === '__custom__') {
-                                setMode('custom');
-                                onChange('');
-                            } else {
-                                onChange(e.target.value);
-                            }
-                        }}
-                        className={inputCls}
-                    >
-                        <option value="" disabled selected>Select Transporter</option>
-                        {options.map((name) => (
-                            <option key={name} value={name}>{name}</option>
-                        ))}
-                        <option value="__custom__">✏️ Other — type manually</option>
-                    </select>
-                </>
-            ) : (
-                <div className="flex items-center gap-2">
-                    <input
-                        type="text"
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        placeholder="Type transporter name…"
-                        autoFocus
-                        className={inputCls + ' flex-1'}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => { setMode('select'); onChange(''); }}
-                        className="shrink-0 text-[11px] font-bold text-blue-600 hover:text-blue-800 border border-blue-200 rounded-xl px-2.5 py-2 bg-blue-50 hover:bg-blue-100 transition-all"
-                        title="Pick from list instead"
-                    >
-                        <Lucide.List size={14} />
-                    </button>
-                </div>
+        <>
+            <div className="space-y-2">
+                <select
+                    value={value}
+                    onChange={(e) => {
+                        if (e.target.value === '__add_new__') {
+                            setShowAddTransporter(true);
+                        } else {
+                            onChange(e.target.value);
+                        }
+                    }}
+                    className={inputCls}
+                >
+                    <option value="">Select Transporter</option>
+                    {options.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                    ))}
+                    <option value="__add_new__">➕ Add New Transporter</option>
+                </select>
+                {options.length === 0 && (
+                    <p className="text-[11px] text-gray-400">
+                        No transporters found.{' '}
+                        <button
+                            type="button"
+                            className="text-blue-600 font-bold hover:underline"
+                            onClick={() => setShowAddTransporter(true)}
+                        >
+                            Add one now
+                        </button>
+                    </p>
+                )}
+            </div>
+
+            {showAddTransporter && (
+                <AddRecordModal
+                    config={transporterConfig}
+                    onClose={() => setShowAddTransporter(false)}
+                    onSaved={(savedName) => {
+                        setShowAddTransporter(false);
+                        loadOptions(savedName);
+                    }}
+                    zClass="fixed inset-0 z-[60]"
+                />
             )}
-            {mode === 'select' && options.length === 0 && (
-                <p className="text-[11px] text-gray-400">No transporters found. <button type="button" className="text-blue-600 font-bold hover:underline" onClick={() => setMode('custom')}>Type manually</button></p>
-            )}
-        </div>
+        </>
     );
 }
