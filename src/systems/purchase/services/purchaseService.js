@@ -434,6 +434,24 @@ export async function revisePO({ poId, form, items }) {
   return mapPoRow(poRow, itemRows);
 }
 function mapDeliveryRow(row) {
+  let billNumber = row.bill_number;
+  let billImageUrl = row.bill_image_url || null;
+
+  if (!billImageUrl) {
+    if (row.bill_number && row.bill_number.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(row.bill_number);
+        billNumber = parsed.billNumber || '';
+        billImageUrl = parsed.billImageUrl || null;
+      } catch (e) {
+        // fallback
+      }
+    } else if (row.bill_number && (row.bill_number.startsWith('http://') || row.bill_number.startsWith('https://'))) {
+      billImageUrl = row.bill_number;
+      billNumber = '—';
+    }
+  }
+
   return {
     id: row.id,
     poId: row.po_id,
@@ -443,7 +461,8 @@ function mapDeliveryRow(row) {
     builtyNumber: row.builty_number,
     builtyImageUrl: row.builty_image_url,
     daggCount: row.dagg_count,
-    billNumber: row.bill_number,
+    billNumber: billNumber,
+    billImageUrl: billImageUrl,
     received: row.received,
     receivedAt: row.received_at,
     createdAt: row.created_at,
@@ -489,10 +508,21 @@ export async function uploadBuiltyImage(file) {
   return data.publicUrl;
 }
 
-export async function createDelivery({ poId, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, builtyImageFile }) {
+export async function createDelivery({ poId, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, builtyImageFile, billImageFile }) {
   let builtyImageUrl = null;
   if (builtyImageFile) {
     builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
+  }
+
+  let billImageUrl = null;
+  if (billImageFile) {
+    const fileExt = billImageFile.name.split('.').pop();
+    const fileName = `bill_${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from('purchase-builty').upload(fileName, billImageFile);
+    if (!uploadError) {
+      const { data } = supabase.storage.from('purchase-builty').getPublicUrl(fileName);
+      billImageUrl = data.publicUrl;
+    }
   }
 
   const createdBy = localStorage.getItem('user-id') || null;
@@ -506,7 +536,8 @@ export async function createDelivery({ poId, transportName, contact, builtyDate,
       builty_date: builtyDate || null,
       builty_number: builtyNumber,
       dagg_count: Number(daggCount) || 0,
-      bill_number: billNumber,
+      bill_number: billNumber || '',
+      bill_image_url: billImageUrl,
       builty_image_url: builtyImageUrl,
       created_by: createdBy,
     })

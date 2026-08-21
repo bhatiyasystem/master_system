@@ -280,90 +280,105 @@ function DeliveryHistoryPanel({ deliveries, pos, indents }) {
                 />
             </FilterBar>
 
-           <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full min-w-[820px] text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Vendor</th>
-                                <th className="px-3 py-2.5">Transport Name</th>
-                                <th className="px-3 py-2.5">Bill No.</th>
-                                <th className="px-3 py-2.5">Contact</th>
-                                <th className="px-3 py-2.5">Category</th>
-                                <th className="px-3 py-2.5">Unit</th>
-                                <th className="px-3 py-2.5">Parent Group</th>
-                                <th className="px-3 py-2.5">Advance Amount</th>
-                                <th className="px-3 py-2.5">Builty No.</th>
-                                <th className="px-3 py-2.5">Builty Date</th>
-                                <th className="px-3 py-2.5">No. of Dagg</th>
-                                <th className="px-3 py-2.5">Builty Image</th>
-                                <th className="px-3 py-2.5">Arrived</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {deliveries.length === 0 ? (
-                                <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries submitted yet.</td></tr>
-                            ) : filteredDeliveries.length === 0 ? (
-                                <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
-                            ) : filteredDeliveries.map((d) => {
-                                const poNo = poMap.get(d.poId)?.poNo || '—';
-                                const po = poMap.get(d.poId);
-                                return (
-                                    <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
-                                        <td className="px-3 py-2.5 text-gray-800">
-                                            <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
-                                            {po?.vendor && (
-                                                <div className="text-[11px] text-gray-500 mt-0.5">
-                                                    {po.vendor.city && <span>{po.vendor.city}</span>}
-                                                    {po.vendor.contact && <span> • {po.vendor.contact}</span>}
-                                                    {po.vendor.paymentTerms && (
-                                                        <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
-                                                            {po.vendor.paymentTerms}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
-                                        <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'category') : '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'unit') : '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'parentGroup') : '—'}</td>
-                                        <td className="px-3 py-2.5">
-                                            {po?.advanceRequired ? (
-                                                <span className="font-semibold text-amber-700">₹ {fmt(po.advanceAmount)}</span>
-                                            ) : (
-                                                <span className="text-gray-400">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-600">{d.builtyDate || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-600">{d.daggCount ?? '—'}</td>
-                                        <td className="px-3 py-2.5">
-                                            {d.builtyImageUrl ? (
-                                               <a 
-                                                    href={d.builtyImageUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]"
-                                                >
-                                                    <ImageIcon size={14} /> View
-                                                </a>
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-2.5 text-gray-500">
-                                            {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                       </tbody>
-                    </table>
-                </div>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Vendor</th>
+                            <th className="px-3 py-2.5">Transport Name</th>
+                            <th className="px-3 py-2.5">Bill No.</th>
+                            <th className="px-3 py-2.5">Contact</th>
+                            <th className="px-3 py-2.5">Category</th>
+                            <th className="px-3 py-2.5">Unit</th>
+                            <th className="px-3 py-2.5">Parent Group</th>
+                            <th className="px-3 py-2.5">Advance Amount</th>
+                            <th className="px-3 py-2.5">Builty No.</th>
+                            <th className="px-3 py-2.5">Builty Date</th>
+                            <th className="px-3 py-2.5">No. of Dagg</th>
+                            <th className="px-3 py-2.5">Builty Image</th>
+                            <th className="px-3 py-2.5">Bill Image</th>
+                            <th className="px-3 py-2.5">Arrived</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {deliveries.length === 0 ? (
+                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries submitted yet.</td></tr>
+                        ) : filteredDeliveries.length === 0 ? (
+                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                        ) : filteredDeliveries.map((d) => {
+                            const poNo = poMap.get(d.poId)?.poNo || '—';
+                            const po = poMap.get(d.poId);
+                            return (
+                                <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
+                                    <td className="px-3 py-2.5 text-gray-800">
+                                        <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                        {po?.vendor && (
+                                            <div className="text-[11px] text-gray-500 mt-0.5">
+                                                {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                {po.vendor.paymentTerms && (
+                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                        {po.vendor.paymentTerms}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
+                                    <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'category') : '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'unit') : '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'parentGroup') : '—'}</td>
+                                    <td className="px-3 py-2.5">
+                                        {po?.advanceRequired ? (
+                                            <span className="font-semibold text-amber-700">₹ {fmt(po.advanceAmount)}</span>
+                                        ) : (
+                                            <span className="text-gray-400">—</span>
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.builtyDate || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.daggCount ?? '—'}</td>
+                                    <td className="px-3 py-2.5">
+                                        {d.builtyImageUrl ? (
+                                           <a 
+                                                href={d.builtyImageUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]"
+                                            >
+                                                <ImageIcon size={14} /> View
+                                            </a>
+                                        ) : (
+                                            '—'
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                        {d.billImageUrl ? (
+                                           <a 
+                                                href={d.billImageUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]"
+                                            >
+                                                <ImageIcon size={14} /> View
+                                            </a>
+                                        ) : (
+                                            '—'
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-gray-500">
+                                        {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -373,7 +388,9 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
     const [transporters, setTransporters] = useState([]);
     const [showAddTransporter, setShowAddTransporter] = useState(false);
     const [builtyImageFile, setBuiltyImageFile] = useState(null);
+    const [billImageFile, setBillImageFile] = useState(null);
     const [builtyImagePreview, setBuiltyImagePreview] = useState(null);
+    const [billImagePreview, setBillImagePreview] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -403,6 +420,12 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
         if (builtyImagePreview) URL.revokeObjectURL(builtyImagePreview);
         setBuiltyImagePreview(file ? URL.createObjectURL(file) : null);
     }
+    function handleBillFileChange(e) {
+        const file = e.target.files?.[0] || null;
+        setBillImageFile(file);
+        if (billImagePreview) URL.revokeObjectURL(billImagePreview);
+        setBillImagePreview(file ? URL.createObjectURL(file) : null);
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -415,7 +438,7 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
 
        setSubmitting(true);
         try {
-            await createDelivery({ ...form, poId: po.id, builtyImageFile });
+            await createDelivery({ ...form, poId: po.id, builtyImageFile, billImageFile });
             if (builtyImagePreview) URL.revokeObjectURL(builtyImagePreview);
             onSuccess();
         } catch (err) {
@@ -507,12 +530,19 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
                         <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                     </label>
                 </Field>
+                <Field label="Bill Image">
+                    <label className="flex h-[42px] cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 text-[13px] text-gray-500 hover:border-gray-400">
+                        <Upload size={16} />
+                        {billImageFile ? billImageFile.name : 'Choose image'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleBillFileChange} />
+                    </label>
+                </Field>
 
-                {builtyImagePreview && (
+                {/* {builtyImagePreview && (
                     <div className="md:col-span-2">
                         <img src={builtyImagePreview} alt="Builty preview" className="max-h-48 rounded-xl border border-gray-200" />
                     </div>
-                )}
+                )} */}
 
                 {error && <div className="md:col-span-2 text-[12.5px] font-semibold text-rose-600">{error}</div>}
 

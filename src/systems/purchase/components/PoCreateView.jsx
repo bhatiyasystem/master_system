@@ -11,7 +11,8 @@ const DEFAULT_TERMS = `1. We deserve the right to cancel the purchase order anyt
 2. Invoice raised to us should contain the details of purchase order with data mentioned.
 3. Adherence to agreed product specifications is a must. Any deviation during delivery will result in cancellation of PO.
 4. Packing and shipping charges to be borne by vendor, unless mentioned.
-5. Delivery should be strictly done within 5 days from the date of purchase order.`;
+5. Delivery should be strictly done within 5 days from the date of purchase order.
+6. It will be Vendor's responsibility for Incorrect GST No. In bill.`;
 
 function itemsFromIndents(items) {
   return items.map((i) => ({
@@ -45,26 +46,50 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
       .select('*')
       .order('name', { ascending: true })
       .then(({ data }) => setVendors(data || []));
-  }, []);
 
+    // Fetch Global Ship To Settings
+    if (!existingPO) {
+      supabase
+        .from('festival_contacts')
+        .select('extra_fields')
+        .eq('name', 'GLOBAL_SHIP_TO')
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data && data.extra_fields) {
+            const ship = data.extra_fields;
+            setForm((prev) => ({
+              ...prev,
+              shipName: ship.name || prev.shipName,
+              shipContact: ship.contact || prev.shipContact,
+              shipEmail: ship.email || prev.shipEmail,
+              shipGstin: ship.gstin || prev.shipGstin,
+              shipAddr: ship.address || prev.shipAddr,
+            }));
+          }
+        });
+    }
+  }, [existingPO]);
+
+  // Auto-fill vendor details whenever vendorName or the vendors list changes.
+  // This also covers the case where vendorName arrives from navigation state
+  // before the vendors list has loaded.
   useEffect(() => {
     if (!form.vendorName || vendors.length === 0) return;
-    const match = vendors.find((v) => (v.name || '').trim().toLowerCase() === form.vendorName.trim().toLowerCase());
+    const match = vendors.find(
+      (v) => (v.name || '').trim().toLowerCase() === form.vendorName.trim().toLowerCase()
+    );
     if (!match) return;
-    setForm((prev) => {
-      if (prev.vendorAddr || prev.vendorGstin || prev.vendorContact || prev.vendorEmail) return prev;
-      return {
-        ...prev,
-        vendorAddr: match.address || '',
-        vendorGstin: match.gstin || '',
-        vendorContact: match.contact || '',
-        vendorEmail: match.email || '',
-        vendorCity: match.city || '',
-        fixTransporter: match.fix_transporter || '',
-        vendorPaymentTerms: match.payment_terms || '',
-      };
-    });
-
+    setForm((prev) => ({
+      ...prev,
+      vendorAddr: match.address || prev.vendorAddr,
+      vendorGstin: match.gstin || prev.vendorGstin,
+      vendorContact: match.contact || prev.vendorContact,
+      vendorEmail: match.email || prev.vendorEmail,
+      vendorCity: match.city || prev.vendorCity,
+      fixTransporter: match.fix_transporter || prev.fixTransporter,
+      vendorPaymentTerms: match.payment_terms || prev.vendorPaymentTerms,
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.vendorName, vendors]);
 
   useEffect(() => {
@@ -106,7 +131,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
     fob: form.fob,
     shipTerms: form.shipTerms,
     vendor: { name: form.vendorName, addr: form.vendorAddr, gstin: form.vendorGstin, contact: form.vendorContact, email: form.vendorEmail, fixTransporter: form.fixTransporter, paymentTerms: form.vendorPaymentTerms },
-    shipTo: { gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
+    shipTo: { name: form.shipName, addr: form.shipAddr, gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
     terms: form.terms,
     discount: form.discount,
   });
@@ -144,7 +169,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
               fob: form.fob,
               shipTerms: form.shipTerms,
               vendor: { name: form.vendorName, addr: form.vendorAddr, gstin: form.vendorGstin, contact: form.vendorContact, email: form.vendorEmail },
-              shipTo: { gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
+              shipTo: { name: form.shipName, addr: form.shipAddr, gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
               terms: form.terms,
               items,
             };
@@ -229,13 +254,13 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
         </div>
         <div>
           <div className="mb-2 text-[13px] font-bold text-[#173254]">Ship To</div>
-          <input className="form-input mb-2 bg-gray-50" value="Bhatia Enterprises" readOnly />
-          <input className="form-input mb-2 bg-gray-50" value="Nehru Chowk, Bilaspur (C.G.)" readOnly />
+          <input className="form-input mb-2 bg-gray-50" value={form.shipName || 'Bhatia Enterprises'} readOnly />
+          <textarea rows={2} className="form-input mb-2 bg-gray-50 resize-none" value={form.shipAddr || 'Nehru Chowk, Bilaspur (C.G.)'} readOnly />
           <div className="grid grid-cols-2 gap-2">
-            <input className="form-input" placeholder="GSTIN" value={form.shipGstin} onChange={(e) => updateField('shipGstin', e.target.value)} />
-            <input className="form-input" placeholder="Contact no." value={form.shipContact} onChange={(e) => updateField('shipContact', e.target.value)} />
+            <input className="form-input bg-gray-50" placeholder="GSTIN" value={form.shipGstin} readOnly />
+            <input className="form-input bg-gray-50" placeholder="Contact no." value={form.shipContact} readOnly />
           </div>
-          <input className="form-input mt-2" placeholder="Email" value={form.shipEmail} onChange={(e) => updateField('shipEmail', e.target.value)} />
+          <input className="form-input mt-2 bg-gray-50" placeholder="Email" value={form.shipEmail} readOnly />
         </div>
       </div>
 
@@ -333,9 +358,11 @@ function buildInitialForm(draft) {
       fixTransporter: existingPO.vendor.fixTransporter || '',
       vendorPaymentTerms: existingPO.vendor.paymentTerms || '',
       vendorCity: existingPO.vendor.city || '',
-      shipGstin: existingPO.shipTo.gstin,
-      shipContact: existingPO.shipTo.contact,
-      shipEmail: existingPO.shipTo.email,
+      shipName: existingPO.shipTo.name || '',
+      shipAddr: existingPO.shipTo.addr || '',
+      shipGstin: existingPO.shipTo.gstin || '',
+      shipContact: existingPO.shipTo.contact || '',
+      shipEmail: existingPO.shipTo.email || '',
       terms: existingPO.terms,
       discount: existingPO.discount,
     };
@@ -355,8 +382,10 @@ function buildInitialForm(draft) {
     fixTransporter: '',
     vendorPaymentTerms: '',
     vendorCity: '',
-    shipGstin: '',
-    shipContact: '',
+    shipName: 'Bhatia Enterprises',
+    shipAddr: 'Nehru Chowk, Bilaspur (C.G.)',
+    shipGstin: '22AAAFB4097G1ZR', // default fallback
+    shipContact: 'Contact no.',
     shipEmail: 'purchase-team@bhatia.com',
     terms: DEFAULT_TERMS,
     discount: 0,

@@ -107,8 +107,10 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
         const term = search.toLowerCase().trim();
         if (!term) return pending;
         return pending.filter((d) => {
-            const poNo = poMap.get(d.poId)?.poNo || '';
-            return `${poNo} ${d.transportName} ${d.builtyNumber}`.toLowerCase().includes(term);
+            const po = poMap.get(d.poId);
+            const poNo = po?.poNo || '';
+            const vendorName = po?.vendor?.name || '';
+            return `${poNo} ${vendorName} ${d.transportName} ${d.builtyNumber}`.toLowerCase().includes(term);
         });
     }, [pending, search, poMap]);
 
@@ -134,6 +136,7 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                             <th className="px-3 py-2.5">Transporter</th>
                             <th className="px-3 py-2.5">Contact</th>
                             <th className="px-3 py-2.5">Builty No.</th>
+                            <th className="px-3 py-2.5">Builty Date</th>
                             <th className="px-3 py-2.5">Builty Image</th>
                             <th className="px-3 py-2.5">Arrived</th>
                         </tr>
@@ -146,8 +149,9 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                         ) : filtered.map((d) => {
                             const po = poMap.get(d.poId);
                             const poNo = po?.poNo || '—';
+                            const isDelayed = d.builtyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.builtyDate).getTime()) / 86400000)) > 3 : false;
                             return (
-                                <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                <tr key={d.id} className={`border-t border-gray-100 transition-colors ${isDelayed ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                                     <td className="px-3 py-2.5">
                                         <button
                                             className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
@@ -174,6 +178,13 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">
+                                        {d.builtyDate ? (
+                                            <span className={isDelayed ? 'text-red-700 font-semibold' : ''}>
+                                                {d.builtyDate}
+                                            </span>
+                                        ) : '—'}
+                                    </td>
                                     <td className="px-3 py-2.5">
                                         {d.builtyImageUrl ? (
                                             <a href={d.builtyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
@@ -231,7 +242,10 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
         if (!term) return rows;
-        return rows.filter((r) => `${r.poNo} ${r.transportName} ${r.productName}`.toLowerCase().includes(term));
+        return rows.filter((r) => {
+            const vendorName = r.po?.vendor?.name || '';
+            return `${r.poNo} ${vendorName} ${r.transportName} ${r.productName}`.toLowerCase().includes(term);
+        });
     }, [rows, search]);
 
     return (
@@ -239,7 +253,7 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
             <FilterBar onClear={() => setSearch('')}>
                 <input
                     type="text"
-                    placeholder="Search PO no, driver, product..."
+                    placeholder="Search PO no, vendor, product..."
                     className="min-w-[150px] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}

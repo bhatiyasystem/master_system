@@ -11,6 +11,77 @@ import { motion } from 'framer-motion';
 export default function GlobalSettings() {
   const { showToast } = useMagicToast();
   const [activeTab, setActiveTab] = useState("users");
+  const [showGlobalShipToModal, setShowGlobalShipToModal] = useState(false);
+  const [globalShipToForm, setGlobalShipToForm] = useState({
+    name: 'Bhatia Enterprises',
+    contact: '9028105766',
+    email: 'purchase-team@bhatia.com',
+    gstin: '22AAAFB4097G1ZR',
+    address: 'Nehru Chowk, Bilaspur (C.G.)'
+  });
+  const [savingGlobalShipTo, setSavingGlobalShipTo] = useState(false);
+
+  // Load Ship To Config on mount
+  useEffect(() => {
+    supabase
+      .from('festival_contacts')
+      .select('extra_fields')
+      .eq('name', 'GLOBAL_SHIP_TO')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && data.extra_fields) {
+          setGlobalShipToForm({
+            name: data.extra_fields.name || 'Bhatia Enterprises',
+            contact: data.extra_fields.contact || '9028105766',
+            email: data.extra_fields.email || 'purchase-team@bhatia.com',
+            gstin: data.extra_fields.gstin || '22AAAFB4097G1ZR',
+            address: data.extra_fields.address || 'Nehru Chowk, Bilaspur (C.G.)'
+          });
+        }
+      });
+  }, []);
+
+  const handleSaveGlobalShipTo = async (e) => {
+    e.preventDefault();
+    setSavingGlobalShipTo(true);
+    try {
+      // Check if existing record exists
+      const { data: existing } = await supabase
+        .from('festival_contacts')
+        .select('id')
+        .eq('name', 'GLOBAL_SHIP_TO')
+        .maybeSingle();
+
+      const payload = {
+        name: 'GLOBAL_SHIP_TO',
+        phone_number: globalShipToForm.contact || '0000000000',
+        is_active: false,
+        extra_fields: globalShipToForm
+      };
+
+      let error;
+      if (existing) {
+        const res = await supabase
+          .from('festival_contacts')
+          .update(payload)
+          .eq('id', existing.id);
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from('festival_contacts')
+          .insert([payload]);
+        error = res.error;
+      }
+
+      if (error) throw error;
+      showToast('Global Ship To settings updated successfully!', 'success');
+      setShowGlobalShipToModal(false);
+    } catch (err) {
+      showToast('Failed to save settings: ' + err.message, 'error');
+    } finally {
+      setSavingGlobalShipTo(false);
+    }
+  };
 
   // Data States
   const [users, setUsers] = useState([]);
@@ -541,27 +612,58 @@ export default function GlobalSettings() {
           </p>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex bg-white/60 backdrop-blur-md border border-blue-100 rounded-2xl p-1 max-w-max shadow-sm">
+        {/* Tab & Settings Controls */}
+        <div className="flex items-center gap-3">
+          <div className="flex bg-white/60 backdrop-blur-md border border-blue-100 rounded-2xl p-1 shadow-sm">
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${activeTab === "users"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-100"
+                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                }`}
+            >
+              <Lucide.Users size={14} />
+              User Accounts
+            </button>
+            <button
+              onClick={() => setActiveTab("modules")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${activeTab === "modules"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-100"
+                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                }`}
+            >
+              <Lucide.Grid size={14} />
+              Master
+            </button>
+          </div>
+
           <button
-            onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${activeTab === "users"
-              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-100"
-              : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-              }`}
+            onClick={async () => {
+              // Fetch latest configuration from Supabase before opening the modal
+              try {
+                const { data } = await supabase
+                  .from('festival_contacts')
+                  .select('extra_fields')
+                  .eq('name', 'GLOBAL_SHIP_TO')
+                  .maybeSingle();
+                if (data && data.extra_fields) {
+                  setGlobalShipToForm({
+                    name: data.extra_fields.name || '',
+                    contact: data.extra_fields.contact || '',
+                    email: data.extra_fields.email || '',
+                    gstin: data.extra_fields.gstin || '',
+                    address: data.extra_fields.address || ''
+                  });
+                }
+              } catch (err) {
+                console.error("Error loading global settings:", err);
+              }
+              setShowGlobalShipToModal(true);
+            }}
+            className="flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-blue-100 active:scale-98"
           >
-            <Lucide.Users size={14} />
-            User Accounts
-          </button>
-          <button
-            onClick={() => setActiveTab("modules")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${activeTab === "modules"
-              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-100"
-              : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-              }`}
-          >
-            <Lucide.Grid size={14} />
-            Master
+            <Lucide.Settings size={14} />
+            Global Settings
           </button>
         </div>
       </div>
@@ -1147,6 +1249,122 @@ export default function GlobalSettings() {
                   className="flex-1 py-3 text-xs font-black text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl hover:opacity-90 transition-opacity shadow-md shadow-blue-100 uppercase tracking-wider"
                 >
                   {isNewUser ? "Create User" : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+      {/* GLOBAL SHIP TO SETTINGS MODAL */}
+      {showGlobalShipToModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowGlobalShipToModal(false)}></div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-blue-50 flex flex-col max-h-[90vh] overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 flex justify-between items-center border-b border-blue-50 flex-shrink-0">
+              <div>
+                <h3 className="font-black text-gray-900 text-lg">Global Ship To Settings</h3>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Centrally configure the default delivery address
+                </p>
+              </div>
+              <button
+                onClick={() => setShowGlobalShipToModal(false)}
+                className="p-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Lucide.X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveGlobalShipTo} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              {/* Scrollable Form Body */}
+              <div className="overflow-y-auto flex-1 p-6 space-y-4">
+                {/* Name */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Company/Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={globalShipToForm.name}
+                    onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, name: e.target.value })}
+                    placeholder="e.g. Bhatia Enterprises"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Contact */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Contact Number *</label>
+                  <input
+                    type="text"
+                    required
+                    value={globalShipToForm.contact}
+                    onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, contact: e.target.value })}
+                    placeholder="e.g. 9876543210"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Email Address</label>
+                  <input
+                    type="email"
+                    value={globalShipToForm.email}
+                    onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, email: e.target.value })}
+                    placeholder="e.g. shipping@bhatia.com"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* GSTIN */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">GSTIN</label>
+                  <input
+                    type="text"
+                    value={globalShipToForm.gstin}
+                    onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, gstin: e.target.value })}
+                    placeholder="e.g. 22AAAFB4097G1ZR"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Address */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Address *</label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={globalShipToForm.address}
+                    onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, address: e.target.value })}
+                    placeholder="Enter complete shipping address"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-gray-50 border-t border-gray-100 px-6 py-4 flex gap-3 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalShipToModal(false)}
+                  className="flex-1 py-3 text-xs font-bold text-gray-400 border border-gray-200 bg-white rounded-2xl hover:bg-gray-50 hover:text-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingGlobalShipTo}
+                  className="flex-1 py-3 text-xs font-black text-white bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl hover:opacity-90 transition-opacity shadow-md shadow-blue-100 uppercase tracking-wider disabled:opacity-60"
+                >
+                  {savingGlobalShipTo ? 'Saving...' : 'Save Settings'}
                 </button>
               </div>
             </form>
