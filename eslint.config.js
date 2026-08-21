@@ -25,7 +25,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      ...reactHookfs.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
       'no-unused-vars': ['off', { vars: 'all', varsIgnorePattern: '^_.*|^React$|^[A-Z]', args: 'all', argsIgnorePattern: '^_.*|^[A-Z]', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_.*', ignoreRestSiblings: true }],
       'no-undef': 'error',
       'no-empty': 'warn',
