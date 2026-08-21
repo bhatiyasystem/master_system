@@ -4,22 +4,22 @@ import * as Lucide from 'lucide-react';
 import supabase from '../../SupabaseClient';
 
 const VENDOR_FIELDS = [
-    { key: 'name', label: 'Vendor Name', required: true },
-    { key: 'contact', label: 'Contact Number' },
-    { key: 'address', label: 'Address' },
-    { key: 'email', label: 'Email ID' },
-    { key: 'city', label: 'City' },
-    { key: 'gstin', label: 'GST Number' },
-    { key: 'payment_terms', label: 'Payment Terms', options: ['Credit', 'Advance', 'Parli PI'] },
-    { key: 'fix_transporter', label: 'Fix Transporter' },
+    { key: 'name', label: 'Vendor Name', placeholder: 'Enter vendor name', required: true },
+    { key: 'contact', label: 'Contact Number', placeholder: 'Enter vendor number' },
+    { key: 'address', label: 'Address', placeholder: 'Enter vendor address' },
+    { key: 'email', label: 'Email ID', placeholder: 'Enter vendor email' },
+    { key: 'city', label: 'City', placeholder: 'Enter vendor city' },
+    { key: 'gstin', label: 'GST Number', placeholder: 'e.g. 27AAPFU0939F1ZV' },
+    { key: 'payment_terms', label: 'Payment Terms', options: ['Credit', 'Advance', 'Saman aatey saath'] },
+    { key: 'fix_transporter', label: 'Fix Transporter', fetchFrom: 'transporters' },
 ];
 
 const TRANSPORTER_FIELDS = [
-    { key: 'name', label: 'Transporter Name', required: true },
-    { key: 'contacts', label: 'Contact Number', multi: true },
-    { key: 'duration', label: 'Duration' },
+    { key: 'name', label: 'Transporter Name', placeholder: 'Enter transporter name', required: true },
+    { key: 'contacts', label: 'Contact Number', placeholder: 'Enter transporter number', multi: true },
+    { key: 'duration', label: 'Duration', placeholder: 'Enter duration' },
     { key: 'cities', label: 'City', multi: true },
-    { key: 'address', label: 'Address' },
+    { key: 'address', label: 'Address', placeholder: 'Enter transporter address' },
 ];
 
 const CONFIG = {
@@ -31,7 +31,7 @@ export default function MasterDataView() {
     const [type, setType] = useState('vendor');
 
     return (
-        <div className="bg-white rounded-3xl border border-blue-100 p-6 shadow-sm">
+        <div className="bg-white rounded-3xl border border-blue-100 p-6 sha0dow-sm">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h2 className="text-xl font-bold text-gray-800">Master Data</h2>
@@ -69,9 +69,14 @@ function MasterDataPanel({ type }) {
     const [error, setError] = useState('');
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
- const [showForm, setShowForm] = useState(false);
+    const [showForm, setShowForm] = useState(false);
     const [editingRecord, setEditingRecord] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const fileInputRef = useRef(null);
+
+    const filteredRows = searchTerm.trim()
+        ? rows.filter((r) => String(r.name || '').toLowerCase().includes(searchTerm.trim().toLowerCase()))
+        : rows;
 
     async function handleDelete(row) {
         if (!window.confirm(`Delete this ${config.label.toLowerCase()}?`)) return;
@@ -88,7 +93,7 @@ function MasterDataPanel({ type }) {
         }
     }
     const [showFieldFormat, setShowFieldFormat] = useState(false);
-    
+
 
     function downloadTemplate() {
         const headers = config.fields.map((f) => f.label);
@@ -206,9 +211,19 @@ function MasterDataPanel({ type }) {
                     <Lucide.Plus size={15} />
                     Add {config.label} Manually
                 </button>
-                <span className="text-[11px] text-gray-400">
+                {/* <span className="text-[11px] text-gray-400">
                     Expected columns: {config.fields.map((f) => f.label).join(', ')}
-                </span>
+                </span> */}
+                <div className="relative flex-1 min-w-[200px]">
+                    <Lucide.Search className="absolute left-3.5 top-3.5 text-gray-400" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search users by name..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50/50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                    />
+                </div>
             </div>
 
             {importResult && (
@@ -224,8 +239,10 @@ function MasterDataPanel({ type }) {
 
             {loading ? (
                 <div className="py-10 text-center text-sm text-gray-500">Loading {config.pluralLabel.toLowerCase()}…</div>
-            ) : rows.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">No {config.pluralLabel.toLowerCase()} added yet.</div>
+            ) : filteredRows.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-500">
+                    {searchTerm.trim() ? `No ${config.pluralLabel.toLowerCase()} match "${searchTerm}".` : `No ${config.pluralLabel.toLowerCase()} added yet.`}
+                </div>
             ) : (
                 <div className="overflow-x-auto rounded-xl border border-gray-200">
                     <table className="w-full text-[12.6px]">
@@ -241,8 +258,8 @@ function MasterDataPanel({ type }) {
                                 ))}
                             </tr>
                         </thead>
-                       <tbody>
-                            {rows.map((r) => (
+                        <tbody>
+                            {filteredRows.map((r) => (
                                 <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="whitespace-nowrap px-3 py-2.5">
                                         <button
@@ -316,8 +333,9 @@ function FieldFormatModal({ config, onClose, onDownloadTemplate, onUploadClick }
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-blue-50">
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex justify-between items-center">
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
+                {/* Header — sticky */}
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/20 rounded-xl p-2.5">
                             <Lucide.Table size={22} className="text-white" />
@@ -332,7 +350,8 @@ function FieldFormatModal({ config, onClose, onDownloadTemplate, onUploadClick }
                     </button>
                 </div>
 
-                <div className="px-6 py-5">
+                {/* Scrollable body */}
+                <div className="overflow-y-auto flex-1 px-6 py-5">
                     <div className="mb-4 flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wide">
                         <Lucide.Info size={14} />
                         Column header alignment: provide data according to format below
@@ -438,7 +457,7 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
             setError(`${requiredMissing.label} is required.`);
             return;
         }
-       setSaving(true);
+        setSaving(true);
         try {
             const { error } = record
                 ? await supabase.from(config.table).update(payload).eq('id', record.id)
@@ -455,86 +474,99 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
-           <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-blue-50">
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 flex justify-between items-center border-b border-blue-50">
-                   <h3 className="font-black text-gray-900 text-lg">{record ? 'Edit' : 'Add'} {config.label}</h3>
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
+                {/* Header — sticky */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 flex justify-between items-center border-b border-blue-50 flex-shrink-0">
+                    <h3 className="font-black text-gray-900 text-lg">{record ? 'Edit' : 'Add'} {config.label}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
                         <Lucide.X size={20} />
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-                    {config.fields.map((f) => (
-                        <div key={f.key} className={`space-y-1 ${f.multi || f.key === 'address' ? 'col-span-2' : ''}`}>
-                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                {f.label} {f.required && <span className="text-rose-500">*</span>}
-                            </label>
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                    {/* Scrollable fields */}
+                    <div className="overflow-y-auto flex-1 px-6 py-5">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                            {config.fields.map((f) => (
+                                <div key={f.key} className={`space-y-1 ${f.multi || f.key === 'address' ? 'col-span-2' : ''}`}>
+                                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                        {f.label} {f.required && <span className="text-rose-500">*</span>}
+                                    </label>
 
-                            {f.multi ? (
-                                <div className="space-y-2">
-                                    {form[f.key].map((val, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={val}
-                                                onChange={(e) => updateMulti(f.key, i, e.target.value)}
-                                                placeholder={f.label}
-                                                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                                            />
-                                            {form[f.key].length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeMultiRow(f.key, i)}
-                                                    className="shrink-0 text-gray-400 hover:text-rose-500"
-                                                    title={`Remove ${f.label}`}
-                                                >
-                                                    <Lucide.X size={16} />
-                                                </button>
-                                            )}
+                                    {f.multi ? (
+                                        <div className="space-y-2">
+                                            {form[f.key].map((val, i) => (
+                                                <div key={i} className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={val}
+                                                        onChange={(e) => updateMulti(f.key, i, e.target.value)}
+                                                        placeholder={f.label} 
+                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                                    />
+                                                    {form[f.key].length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeMultiRow(f.key, i)}
+                                                            className="shrink-0 text-gray-400 hover:text-rose-500"
+                                                            title={`Remove ${f.label}`}
+                                                        >
+                                                            <Lucide.X size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => addMultiRow(f.key)}
+                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700"
+                                            >
+                                                <Lucide.Plus size={13} />
+                                                Add {f.label}
+                                            </button>
                                         </div>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => addMultiRow(f.key)}
-                                        className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700"
-                                    >
-                                        <Lucide.Plus size={13} />
-                                        Add {f.label}
-                                    </button>
+                                    ) : f.options ? (
+                                        <select
+                                            value={form[f.key]}
+                                            onChange={(e) => update(f.key, e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                        >
+                                            <option value="" disabled selected>Select {f.label}</option>
+                                            {f.options.map((opt) => (
+                                                <option key={opt} value={opt}>{opt}</option>
+                                            ))}
+                                        </select>
+                                    ) : f.fetchFrom ? (
+                                        <TransporterComboField
+                                            table={f.fetchFrom}
+                                            value={form[f.key]}
+                                            onChange={(val) => update(f.key, val)}
+                                        />
+                                    ) : f.key === 'address' ? (
+                                        <textarea
+                                            rows={2}
+                                            value={form[f.key]}
+                                            onChange={(e) => update(f.key, e.target.value)}
+                                            placeholder={f.placeholder}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
+                                        />
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={form[f.key]}
+                                            onChange={(e) => update(f.key, e.target.value)}
+                                            placeholder={f.placeholder || ''}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                        />
+                                    )}
                                 </div>
-                            ) : f.options ? (
-                                <select
-                                    value={form[f.key]}
-                                    onChange={(e) => update(f.key, e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                                >
-                                    <option value="">Select {f.label}</option>
-                                    {f.options.map((opt) => (
-                                        <option key={opt} value={opt}>{opt}</option>
-                                    ))}
-                                </select>
-                            ) : f.key === 'address' ? (
-                                <textarea
-                                    rows={2}
-                                    value={form[f.key]}
-                                    onChange={(e) => update(f.key, e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
-                                />
-                            ) : (
-                                <input
-                                    type="text"
-                                    value={form[f.key]}
-                                    onChange={(e) => update(f.key, e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                                />
-                            )}
+                            ))}
                         </div>
-                   ))}
+
+                        {error && <div className="mt-3 text-xs font-semibold text-rose-600">{error}</div>}
                     </div>
 
-                    {error && <div className="text-xs font-semibold text-rose-600">{error}</div>}
-
-                    <div className="flex justify-end gap-2 pt-2">
+                    {/* Footer — sticky */}
+                    <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
@@ -552,6 +584,83 @@ function AddRecordModal({ config, record, onClose, onSaved }) {
                     </div>
                 </form>
             </div>
+        </div>
+    );
+}
+
+function TransporterComboField({ table, value, onChange }) {
+    const [options, setOptions] = useState([]);
+    const [loadingOpts, setLoadingOpts] = useState(true);
+    // 'select' mode or 'custom' mode
+    const [mode, setMode] = useState('select');
+
+    useEffect(() => {
+        supabase
+            .from(table)
+            .select('name')
+            .order('name', { ascending: true })
+            .then(({ data }) => {
+                const names = (data || []).map((r) => r.name).filter(Boolean);
+                setOptions(names);
+                // If editing and the current value isn't in the list, switch to custom mode
+                if (value && !names.includes(value)) setMode('custom');
+                setLoadingOpts(false);
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [table]);
+
+    const inputCls = 'w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all';
+
+    if (loadingOpts) {
+        return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-150 rounded-2xl">Loading transporters…</div>;
+    }
+
+    return (
+        <div className="space-y-2">
+            {mode === 'select' ? (
+                <>
+                    <select
+                        value={value}
+                        onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                                setMode('custom');
+                                onChange('');
+                            } else {
+                                onChange(e.target.value);
+                            }
+                        }}
+                        className={inputCls}
+                    >
+                        <option value="" disabled selected>Select Transporter</option>
+                        {options.map((name) => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                        <option value="__custom__">✏️ Other — type manually</option>
+                    </select>
+                </>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <input
+                        type="text"
+                        value={value}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder="Type transporter name…"
+                        autoFocus
+                        className={inputCls + ' flex-1'}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => { setMode('select'); onChange(''); }}
+                        className="shrink-0 text-[11px] font-bold text-blue-600 hover:text-blue-800 border border-blue-200 rounded-xl px-2.5 py-2 bg-blue-50 hover:bg-blue-100 transition-all"
+                        title="Pick from list instead"
+                    >
+                        <Lucide.List size={14} />
+                    </button>
+                </div>
+            )}
+            {mode === 'select' && options.length === 0 && (
+                <p className="text-[11px] text-gray-400">No transporters found. <button type="button" className="text-blue-600 font-bold hover:underline" onClick={() => setMode('custom')}>Type manually</button></p>
+            )}
         </div>
     );
 }

@@ -822,7 +822,7 @@ export default function GlobalSettings() {
             {/* Modal Form */}
             <form onSubmit={handleSaveUser} className="flex-1 overflow-y-auto flex flex-col min-h-0">
               {modalTab === "profile" ? (
-                <div className="p-6 space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto flex-1 min-h-0">
                   {/* Profile Image */}
                   <div className="md:col-span-2 flex items-center gap-4">
                     <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-blue-500/20 to-purple-500/20 border border-blue-100 flex items-center justify-center overflow-hidden flex-shrink-0">

@@ -157,7 +157,7 @@ function PendingApprovalPanel({ pos, onDecide }) {
                                     )}
                                 </td>
                                 <td className="px-3 py-2.5 text-gray-800">
-                                    {po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Parli PI'
+                                    {po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Saman aatey saath'
                                         ? po.vendor.paymentTerms
                                         : 'No'}
                                 </td>
@@ -263,7 +263,7 @@ function DecideModal({ po, onClose, onSuccess }) {
     const [advanceAmount, setAdvanceAmount] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
-    const isAdvanceVendor = po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Parli PI';
+    const isAdvanceVendor = po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Saman aatey saath';
 
     async function handleSubmit(e) {
         e.preventDefault();
