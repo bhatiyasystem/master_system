@@ -6,7 +6,7 @@ import RealtimeLogoutListener from "./components/RealtimeLogoutListener";
 import LoginPage from "./pages/LoginPage";
 import MasterLayout from "./core/layout/MasterLayout";
 import CoreDashboard from "./core/components/CoreDashboard";
-import GlobalSettings from "./core/pages/GlobalSettings";
+import CompanySettings from "./core/pages/CompanySettings";
 import ProtectedRoute from "./core/authentication/ProtectedRoute";
 import SuperAdminRoute from "./core/authentication/SuperAdminRoute";
 import systemRegistry from "./core/registry/systemRegistry";
@@ -52,7 +52,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SuperAdminRoute>
-                    <GlobalSettings />
+                    <CompanySettings />
                   </SuperAdminRoute>
                 </ProtectedRoute>
               }

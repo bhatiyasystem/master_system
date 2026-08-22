@@ -139,6 +139,8 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                             <th className="px-3 py-2.5">Builty Date</th>
                             <th className="px-3 py-2.5">Builty Image</th>
                             <th className="px-3 py-2.5">Arrived</th>
+                            <th className="px-3 py-2.5">Delay</th>
+                            
                         </tr>
                     </thead>
                     <tbody>
@@ -149,7 +151,8 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                         ) : filtered.map((d) => {
                             const po = poMap.get(d.poId);
                             const poNo = po?.poNo || '—';
-                            const isDelayed = d.builtyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.builtyDate).getTime()) / 86400000)) > 3 : false;
+                            const diffDays = d.builtyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.builtyDate).getTime()) / 86400000)) : null;
+                            const isDelayed = diffDays !== null && diffDays >= 1;
                             return (
                                 <tr key={d.id} className={`border-t border-gray-100 transition-colors ${isDelayed ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                                     <td className="px-3 py-2.5">
@@ -196,6 +199,9 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                                     </td>
                                     <td className="px-3 py-2.5 text-gray-500">
                                         {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-gray-500">
+                                        {diffDays !== null ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}` : '—'}
                                     </td>
                                 </tr>
                             );

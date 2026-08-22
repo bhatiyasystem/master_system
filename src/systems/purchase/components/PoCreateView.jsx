@@ -64,6 +64,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
               shipEmail: ship.email || prev.shipEmail,
               shipGstin: ship.gstin || prev.shipGstin,
               shipAddr: ship.address || prev.shipAddr,
+              terms: ship.term || prev.terms,
             }));
           }
         });

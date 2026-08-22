@@ -4,11 +4,13 @@ import { AnimatePresence } from 'framer-motion';
 import * as Lucide from "lucide-react";
 import supabase from "../../SupabaseClient";
 import { useMagicToast } from '../../context/MagicToastContext';
-import systemRegistry from "../../core/registry/systemRegistry";
+import systemRegistry from "../registry/systemRegistry";
 import MasterDataView from "../components/MasterDataView";
 import { motion } from 'framer-motion';
 
-export default function GlobalSettings() {
+const DEFAULT_COMPANY_TERMS = '1. Deliveries are accepted only between 10:00 AM and 5:00 PM.\n2. The receiver must check the quantity and quality of the items before signing the delivery challan.\n3. In case of any discrepancy, it must be reported immediately.\n4. No delivery will be accepted without a proper GST Invoice.';
+
+export default function CompanySettings() {
   const { showToast } = useMagicToast();
   const [activeTab, setActiveTab] = useState("users");
   const [showGlobalShipToModal, setShowGlobalShipToModal] = useState(false);
@@ -17,7 +19,8 @@ export default function GlobalSettings() {
     contact: '9028105766',
     email: 'purchase-team@bhatia.com',
     gstin: '22AAAFB4097G1ZR',
-    address: 'Nehru Chowk, Bilaspur (C.G.)'
+    address: 'Nehru Chowk, Bilaspur (C.G.)',
+    term: DEFAULT_COMPANY_TERMS
   });
   const [savingGlobalShipTo, setSavingGlobalShipTo] = useState(false);
 
@@ -35,7 +38,8 @@ export default function GlobalSettings() {
             contact: data.extra_fields.contact || '9028105766',
             email: data.extra_fields.email || 'purchase-team@bhatia.com',
             gstin: data.extra_fields.gstin || '22AAAFB4097G1ZR',
-            address: data.extra_fields.address || 'Nehru Chowk, Bilaspur (C.G.)'
+            address: data.extra_fields.address || 'Nehru Chowk, Bilaspur (C.G.)',
+            term: data.extra_fields.term || DEFAULT_COMPANY_TERMS
           });
         }
       });
@@ -652,7 +656,8 @@ export default function GlobalSettings() {
                     contact: data.extra_fields.contact || '',
                     email: data.extra_fields.email || '',
                     gstin: data.extra_fields.gstin || '',
-                    address: data.extra_fields.address || ''
+                    address: data.extra_fields.address || '',
+                    term: data.extra_fields.term || DEFAULT_COMPANY_TERMS
                   });
                 }
               } catch (err) {
@@ -663,7 +668,7 @@ export default function GlobalSettings() {
             className="flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-blue-100 active:scale-98"
           >
             <Lucide.Settings size={14} />
-            Global Settings
+            Company Settings
           </button>
         </div>
       </div>
@@ -1269,9 +1274,9 @@ export default function GlobalSettings() {
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 flex justify-between items-center border-b border-blue-50 flex-shrink-0">
               <div>
-                <h3 className="font-black text-gray-900 text-lg">Global Ship To Settings</h3>
+                <h3 className="font-black text-gray-900 text-lg">Update Company Information</h3>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                  Centrally configure the default delivery address
+                  Update the Company Information
                 </p>
               </div>
               <button
@@ -1345,6 +1350,17 @@ export default function GlobalSettings() {
                     value={globalShipToForm.address}
                     onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, address: e.target.value })}
                     placeholder="Enter complete shipping address"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Term & Condition</label>
+                  <textarea
+                    rows={2}
+                    // required
+                    value={globalShipToForm.term}
+                    onChange={(e) => setGlobalShipToForm({ ...globalShipToForm, term: e.target.value })}
+                    placeholder="Enter complete terms and conditions"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
                   />
                 </div>
