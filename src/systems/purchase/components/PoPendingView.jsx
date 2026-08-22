@@ -4,11 +4,12 @@ import Modal from './Modal';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, fixIndentVendor, deleteIndents } from '../services/purchaseService';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function PoPendingView({ onCreatePO }) {
   const [indents, setIndents] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -41,6 +42,16 @@ export default function PoPendingView({ onCreatePO }) {
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
+        }
+
+        try {
+          const settingsData = await fetchTatSettings();
+          const setting = settingsData.find(s => s.stage_key === 'purchase_order');
+          if (setting && setting.is_active) {
+            setTatMins(setting.tat_minutes);
+          }
+        } catch (settingsErr) {
+          console.error('Failed to load TAT settings:', settingsErr);
         }
       })
       .catch((err) => setError(err.message || 'Failed to load indent data.'))
@@ -289,7 +300,7 @@ function DiffCell({ orderQty, approvedQty }) {
                         <td className="px-2.5 py-2">
                           <DiffCell orderQty={i.orderFormula} approvedQty={i.approvedQty} />
                         </td>
-                        <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId])}</td>
+                        <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId], i.decidedAt, tatMins)}</td>
                       </tr>
                     ))}
                  </tbody>

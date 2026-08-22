@@ -4,11 +4,12 @@ import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents } from '../services/purchaseService';
 import ImportView from './ImportView';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function IndentView({ onTabChange, refreshKey, onImported }) {
   const [indents, setIndents] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -47,6 +48,16 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
+        }
+
+        try {
+          const settingsData = await fetchTatSettings();
+          const setting = settingsData.find(s => s.stage_key === 'indent_approval');
+          if (setting && setting.is_active) {
+            setTatMins(setting.tat_minutes);
+          }
+        } catch (settingsErr) {
+          console.error('Failed to load TAT settings:', settingsErr);
         }
       })
       .catch((err) => {
@@ -182,7 +193,7 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
                             <td className="px-2.5 py-2">{i.conversionUnit}</td>
                             <td className="px-2.5 py-2 font-semibold">{i.orderFormula}</td>
                             <td className="px-2.5 py-2"><StatusBadge status={i.status} /></td>
-                            <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId])}</td>
+                            <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId], i.createdAt, tatMins)}</td>
                           </tr>
                         ))}
                       </tbody>

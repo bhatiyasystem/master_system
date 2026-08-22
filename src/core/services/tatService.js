@@ -126,9 +126,9 @@ export async function completeStage(entityId, stageKey, completedAt = new Date()
     .eq('stage_key', stageKey)
     .select()
     .single();
-  
+
   if (error && error.code !== 'PGRST116') {
-     console.error('Error completing stage:', error);
+    console.error('Error completing stage:', error);
   }
   return data || null;
 }
@@ -160,20 +160,45 @@ export async function handleDeliveryReceived(deliveryId) {
   }
 }
 
-export function renderPlannedDateCell(tracking) {
-  if (!tracking || !tracking.planned_at) return '—';
-  const plannedDate = new Date(tracking.planned_at);
+export function renderPlannedDateCell(tracking, fallbackStartDate, configuredMinutes) {
+  let plannedAtStr = null;
+  let isPending = true;
+
+  if (tracking) {
+    if (tracking.status === 'Completed') {
+      plannedAtStr = tracking.planned_at;
+      isPending = false;
+    } else {
+      if (configuredMinutes !== undefined && configuredMinutes !== null) {
+        const start = new Date(tracking.started_at || fallbackStartDate);
+        const planned = new Date(start.getTime() + configuredMinutes * 60000);
+        plannedAtStr = planned.toISOString();
+      } else {
+        plannedAtStr = tracking.planned_at;
+      }
+    }
+  } else if (fallbackStartDate) {
+    const mins = (configuredMinutes !== undefined && configuredMinutes !== null) ? configuredMinutes : 20;
+    const start = new Date(fallbackStartDate);
+    const planned = new Date(start.getTime() + mins * 60000);
+    plannedAtStr = planned.toISOString();
+  }
+
+  if (!plannedAtStr) return '—';
+
+  const plannedDate = new Date(plannedAtStr);
   const plannedText = plannedDate.toLocaleString('en-IN');
-  const isOverdue = tracking.status === 'Pending' && Date.now() > plannedDate.getTime();
+  const isOverdue = isPending && Date.now() > plannedDate.getTime();
+
   if (isOverdue) {
     return React.createElement(
       'div',
       { className: 'text-red-600 font-semibold' },
-      plannedText,
+      plannedText.toUpperCase(),
       React.createElement(
         'span',
         { className: 'block text-[10px] text-red-500 font-bold uppercase tracking-wider' },
-        'Delayed'
+        // 'Delayed'
       )
     );
   }

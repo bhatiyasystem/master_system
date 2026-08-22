@@ -698,6 +698,76 @@ export async function submitReceiving({ deliveryId, items, fullyReceived }) {
 
   return mapReceivingRow(receivingRow, itemRows);
 }
+
+export async function updateDelivery({ id, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, builtyImageFile, billImageFile, existingBuiltyUrl, existingBillUrl }) {
+  let builtyImageUrl = existingBuiltyUrl;
+  if (builtyImageFile) {
+    builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
+  }
+
+  let billImageUrl = existingBillUrl;
+  if (billImageFile) {
+    const fileExt = billImageFile.name.split('.').pop();
+    const fileName = `bill_${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from('purchase-builty').upload(fileName, billImageFile);
+    if (!uploadError) {
+      const { data } = supabase.storage.from('purchase-builty').getPublicUrl(fileName);
+      billImageUrl = data.publicUrl;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('purchase_deliveries')
+    .update({
+      transport_name: transportName,
+      contact,
+      builty_date: builtyDate || null,
+      builty_number: builtyNumber,
+      dagg_count: Number(daggCount) || 0,
+      bill_number: billNumber || '',
+      bill_image_url: billImageUrl,
+      builty_image_url: builtyImageUrl,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return mapDeliveryRow(data);
+}
+
+export async function reviseReceiving({ receivingId, items, fullyReceived }) {
+  const { data: exRec, error: exRecErr } = await supabase.from('purchase_receivings').select('*').eq('id', receivingId).single();
+  if (exRecErr) throw exRecErr;
+
+  const { error: delErr } = await supabase.from('purchase_receiving_items').delete().eq('receiving_id', receivingId);
+  if (delErr) throw delErr;
+
+  const itemPayload = items
+    .filter((it) => Number(it.receivedQty) > 0)
+    .map((it) => ({
+      receiving_id: receivingId,
+      product_code: it.productCode,
+      product_name: it.productName,
+      ordered_qty: Number(it.orderedQty) || 0,
+      received_qty: Number(it.receivedQty) || 0,
+    }));
+
+  const { data: itemRows, error: itemErr } = await supabase
+    .from('purchase_receiving_items')
+    .insert(itemPayload)
+    .select();
+  if (itemErr) throw itemErr;
+
+  const receivedBy = localStorage.getItem('user-id') || null;
+  const { error: updErr } = await supabase
+    .from('purchase_deliveries')
+    .update({ received: fullyReceived, received_at: fullyReceived ? new Date().toISOString() : null, received_by: receivedBy })
+    .eq('id', exRec.delivery_id);
+  if (updErr) throw updErr;
+
+  return mapReceivingRow(exRec, itemRows);
+}
 // ── Sidebar badge counts ────────────────────────────────────────────────
 // Lightweight, column-limited queries (no joins) so this can be polled
 // from the sidebar without the cost of the full fetch* functions above.

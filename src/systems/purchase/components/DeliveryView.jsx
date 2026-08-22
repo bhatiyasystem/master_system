@@ -2,9 +2,9 @@ import { Loader2, Truck, ImageIcon, Plus, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
-import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters } from '../services/purchaseService';
+import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters, updateDelivery } from '../services/purchaseService';
 import Modal from './Modal';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 const emptyForm = {
     transportName: '',
@@ -38,7 +38,9 @@ export default function DeliveryView() {
     const [success, setSuccess] = useState('');
 
     const [selectedPo, setSelectedPo] = useState(null);
+    const [selectedDeliveryToEdit, setSelectedDeliveryToEdit] = useState(null);
     const [tatTracking, setTatTracking] = useState({});
+    const [tatMins, setTatMins] = useState(60);
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -67,6 +69,16 @@ export default function DeliveryView() {
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
+            }
+
+            try {
+                const settingsData = await fetchTatSettings();
+                const deliverySetting = settingsData.find(s => s.stage_key === 'delivery');
+                if (deliverySetting && deliverySetting.is_active) {
+                    setTatMins(deliverySetting.tat_minutes);
+                }
+            } catch (settingsErr) {
+                console.error('Failed to load TAT settings:', settingsErr);
             }
         } catch (err) {
             setError(err.message || 'Failed to load delivery data.');
@@ -122,19 +134,33 @@ export default function DeliveryView() {
                     deliveries={deliveries}
                     indents={indents}
                     tatTracking={tatTracking}
+                    tatMins={tatMins}
                     onLogDelivery={(po) => setSelectedPo(po)}
                 />
             ) : (
-                <DeliveryHistoryPanel deliveries={deliveries} pos={pos} indents={indents} />
+                <DeliveryHistoryPanel
+                    deliveries={deliveries}
+                    pos={pos}
+                    indents={indents}
+                    onRevise={(d, po) => {
+                        setSelectedDeliveryToEdit(d);
+                        setSelectedPo(po);
+                    }}
+                />
             )}
 
             {selectedPo && (
                 <CreateDeliveryModal
                     po={selectedPo}
-                    onClose={() => setSelectedPo(null)}
+                    deliveryToEdit={selectedDeliveryToEdit}
+                    onClose={() => {
+                        setSelectedPo(null);
+                        setSelectedDeliveryToEdit(null);
+                    }}
                     onSuccess={() => {
                         setSelectedPo(null);
-                        setSuccess('Delivery recorded successfully.');
+                        setSelectedDeliveryToEdit(null);
+                        setSuccess(selectedDeliveryToEdit ? 'Delivery revised successfully.' : 'Delivery recorded successfully.');
                         setTimeout(() => setSuccess(''), 4000);
                         loadData();
                     }}
@@ -144,7 +170,7 @@ export default function DeliveryView() {
     );
 }
 
-function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, onLogDelivery }) {
+function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, onLogDelivery }) {
     const [search, setSearch] = useState('');
     const [vendor, setVendor] = useState('');
 
@@ -258,7 +284,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, onLogDeli
   return <span className={d > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{d}</span>;
 })() : '—'}
                                     </td>
-                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id])}</td>
+                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                                 </tr>
                             ))}
                        </tbody>
@@ -268,7 +294,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, onLogDeli
     );
 }
 
-function DeliveryHistoryPanel({ deliveries, pos, indents }) {
+function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
     const [search, setSearch] = useState('');
 
     const poMap = useMemo(() => {
@@ -308,6 +334,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents }) {
                 <table className="w-full min-w-[820px] text-left text-[12.5px]">
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
                             <th className="px-3 py-2.5">PO No.</th>
                             <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Transport Name</th>
@@ -327,14 +354,22 @@ function DeliveryHistoryPanel({ deliveries, pos, indents }) {
                     </thead>
                     <tbody>
                         {deliveries.length === 0 ? (
-                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries submitted yet.</td></tr>
+                            <tr><td colSpan={16} className="px-3 py-10 text-center text-gray-500">No deliveries submitted yet.</td></tr>
                         ) : filteredDeliveries.length === 0 ? (
-                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                            <tr><td colSpan={16} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
                         ) : filteredDeliveries.map((d) => {
                             const poNo = poMap.get(d.poId)?.poNo || '—';
                             const po = poMap.get(d.poId);
                             return (
                                 <tr key={d.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5">
+                                        <button
+                                            onClick={() => onRevise(d, po)}
+                                            className="rounded-lg bg-[#C99A3E] px-2.5 py-1 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
+                                        >
+                                            Revise
+                                        </button>
+                                    </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
                                     <td className="px-3 py-2.5 text-gray-800">
                                         <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
@@ -407,8 +442,21 @@ function DeliveryHistoryPanel({ deliveries, pos, indents }) {
     );
 }
 
-function CreateDeliveryModal({ po, onClose, onSuccess }) {
-   const [form, setForm] = useState(emptyForm);
+function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
+    const [form, setForm] = useState(deliveryToEdit ? {
+        transportName: deliveryToEdit.transportName || '',
+        contact: deliveryToEdit.contact || '',
+        builtyDate: deliveryToEdit.builtyDate ? (() => {
+            try {
+                return new Date(deliveryToEdit.builtyDate).toISOString().split('T')[0];
+            } catch (e) {
+                return deliveryToEdit.builtyDate;
+            }
+        })() : '',
+        builtyNumber: deliveryToEdit.builtyNumber || '',
+        daggCount: deliveryToEdit.daggCount || '',
+        billNumber: deliveryToEdit.billNumber || '',
+    } : emptyForm);
     const [transporters, setTransporters] = useState([]);
     const [showAddTransporter, setShowAddTransporter] = useState(false);
     const [builtyImageFile, setBuiltyImageFile] = useState(null);
@@ -462,7 +510,18 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
 
        setSubmitting(true);
         try {
-            await createDelivery({ ...form, poId: po.id, builtyImageFile, billImageFile });
+            if (deliveryToEdit) {
+                await updateDelivery({
+                    id: deliveryToEdit.id,
+                    ...form,
+                    builtyImageFile,
+                    billImageFile,
+                    existingBuiltyUrl: deliveryToEdit.builtyImageUrl,
+                    existingBillUrl: deliveryToEdit.billImageUrl
+                });
+            } else {
+                await createDelivery({ ...form, poId: po.id, builtyImageFile, billImageFile });
+            }
             if (builtyImagePreview) URL.revokeObjectURL(builtyImagePreview);
             onSuccess();
         } catch (err) {
@@ -473,7 +532,7 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={`Create Delivery — ${po.poNo}`} size="lg">
+        <Modal open={true} onClose={onClose} title={deliveryToEdit ? `Revise Delivery — ${po.poNo}` : `Create Delivery — ${po.poNo}`} size="lg">
             <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="md:col-span-2 rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
                     Delivery against <span className="font-bold text-gray-900">{po.poNo}</span> ({po.vendor?.name})
@@ -584,7 +643,7 @@ function CreateDeliveryModal({ po, onClose, onSuccess }) {
                         className="inline-flex items-center gap-2 rounded-xl bg-[#173254] px-5 py-2 text-[13px] font-bold text-white hover:bg-[#10243e] disabled:opacity-50"
                     >
                         <Truck size={16} />
-                        {submitting ? 'Saving…' : 'Save Delivery'}
+                        {submitting ? 'Saving…' : deliveryToEdit ? 'Save Revision' : 'Save Delivery'}
                     </button>
                 </div>
             </form>

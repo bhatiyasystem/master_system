@@ -1,9 +1,23 @@
 import { Loader2, PackageCheck, ImageIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
-import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving } from '../services/purchaseService';
+import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving, reviseReceiving } from '../services/purchaseService';
 import Modal from './Modal';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
+
+// Helper function to format delay in terms of days and hours
+const formatDelay = (builtyDate) => {
+    if (!builtyDate) return '—';
+    const diffMs = Date.now() - new Date(builtyDate).getTime();
+    if (diffMs <= 0) return '0 hours';
+    const totalHours = Math.floor(diffMs / 3600000);
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+    return parts.join(' ') || '0 hours';
+};
 
 export default function ReceivingView() {
     const [tab, setTab] = useState('pending');
@@ -14,8 +28,10 @@ export default function ReceivingView() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [tatMins, setTatMins] = useState(20);
 
     const [selectedDelivery, setSelectedDelivery] = useState(null);
+    const [selectedReceivingToEdit, setSelectedReceivingToEdit] = useState(null);
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -44,6 +60,16 @@ export default function ReceivingView() {
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
+            }
+
+            try {
+                const settingsData = await fetchTatSettings();
+                const receivingSetting = settingsData.find(s => s.stage_key === 'receiving');
+                if (receivingSetting && receivingSetting.is_active) {
+                    setTatMins(receivingSetting.tat_minutes);
+                }
+            } catch (settingsErr) {
+                console.error('Failed to load TAT settings:', settingsErr);
             }
         } catch (err) {
             setError(err.message || 'Failed to load receiving data.');
@@ -97,9 +123,17 @@ export default function ReceivingView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading receiving data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingReceivingPanel deliveries={deliveries} poMap={poMap} tatTracking={tatTracking} onUpdate={(d) => setSelectedDelivery(d)} />
+                <PendingReceivingPanel deliveries={deliveries} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onUpdate={(d) => setSelectedDelivery(d)} />
             ) : (
-                <ReceivingHistoryPanel receivings={receivings} deliveries={deliveries} poMap={poMap} />
+                <ReceivingHistoryPanel
+                    receivings={receivings}
+                    deliveries={deliveries}
+                    poMap={poMap}
+                    onRevise={(rec, del) => {
+                        setSelectedReceivingToEdit(rec);
+                        setSelectedDelivery(del);
+                    }}
+                />
             )}
 
             {selectedDelivery && (
@@ -107,10 +141,15 @@ export default function ReceivingView() {
                     delivery={selectedDelivery}
                     po={poMap.get(selectedDelivery.poId)}
                     receivings={receivings}
-                    onClose={() => setSelectedDelivery(null)}
+                    receivingToEdit={selectedReceivingToEdit}
+                    onClose={() => {
+                        setSelectedDelivery(null);
+                        setSelectedReceivingToEdit(null);
+                    }}
                     onSuccess={() => {
                         setSelectedDelivery(null);
-                        setSuccess('Receiving recorded successfully.');
+                        setSelectedReceivingToEdit(null);
+                        setSuccess(selectedReceivingToEdit ? 'Receiving revised successfully.' : 'Receiving recorded successfully.');
                         setTimeout(() => setSuccess(''), 4000);
                         loadData();
                     }}
@@ -120,7 +159,7 @@ export default function ReceivingView() {
     );
 }
 
-function PendingReceivingPanel({ deliveries, poMap, tatTracking, onUpdate }) {
+function PendingReceivingPanel({ deliveries, poMap, tatTracking, tatMins, onUpdate }) {
     const [search, setSearch] = useState('');
 
     const pending = useMemo(() => deliveries.filter((d) => !d.received), [deliveries]);
@@ -225,7 +264,7 @@ function PendingReceivingPanel({ deliveries, poMap, tatTracking, onUpdate }) {
                                     <td className="px-3 py-2.5 text-gray-500">
                                         {diffDays !== null ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}` : '—'}
                                     </td>
-                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[d.id])}</td>
+                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[d.id], d.createdAt, tatMins)}</td>
                                 </tr>
                             );
                         })}
@@ -236,7 +275,7 @@ function PendingReceivingPanel({ deliveries, poMap, tatTracking, onUpdate }) {
     );
 }
 
-function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
+function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
     const [search, setSearch] = useState('');
 
     const deliveryMap = useMemo(() => {
@@ -254,6 +293,9 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
             (r.items || []).forEach((item) => {
                 flat.push({
                     receivingId: r.id,
+                    deliveryId: r.deliveryId,
+                    delivery: delivery,
+                    receivingRow: r,
                     poNo: poNo || '—',
                     po: po,
                     transportName: delivery?.transportName || '—',
@@ -293,6 +335,7 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
                 <table className="w-full min-w-[820px] text-left text-[12.5px]">
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
                             <th className="px-3 py-2.5">PO No.</th>
                             <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Transporter</th>
@@ -304,11 +347,19 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
                     </thead>
                     <tbody>
                         {rows.length === 0 ? (
-                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
+                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
-                        ) : filtered.map((r, i) => (
-                            <tr key={`${r.receivingId}-${i}`} className="border-t border-gray-100 hover:bg-gray-50">
+                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
+                        ) : filtered.map((r, idx) => (
+                            <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                                <td className="px-3 py-2.5">
+                                    <button
+                                        onClick={() => onRevise(r.receivingRow, r.delivery)}
+                                        className="rounded-lg bg-[#C99A3E] px-2.5 py-1 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
+                                    >
+                                        Revise
+                                    </button>
+                                </td>
                                 <td className="px-3 py-2.5 font-semibold text-gray-900">{r.poNo}</td>
                                 <td className="px-3 py-2.5 text-gray-800">
                                     <div className="font-semibold text-gray-900">{r.po?.vendor?.name || '—'}</div>
@@ -340,33 +391,40 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap }) {
     );
 }
 
-function ReceiveItemsModal({ delivery, po, receivings, onClose, onSuccess }) {
+function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose, onSuccess }) {
     const alreadyReceivedMap = useMemo(() => {
         const map = {};
         receivings
-            .filter((r) => r.deliveryId === delivery.id)
+            .filter((r) => r.deliveryId === delivery.id && (!receivingToEdit || r.id !== receivingToEdit.id))
             .forEach((r) => {
                 (r.items || []).forEach((it) => {
                     map[it.productName] = (map[it.productName] || 0) + Number(it.receivedQty || 0);
                 });
             });
         return map;
-    }, [receivings, delivery]);
+    }, [receivings, delivery, receivingToEdit]);
 
     const initialItems = (po?.items || [])
         .map((it) => {
             const already = alreadyReceivedMap[it.productName] || 0;
             const remaining = Math.max(Number(it.qty) - already, 0);
+            
+            let curReceived = 0;
+            if (receivingToEdit) {
+                const foundItem = (receivingToEdit.items || []).find(x => x.productName === it.productName);
+                if (foundItem) curReceived = Number(foundItem.receivedQty) || 0;
+            }
+            
             return {
                 productCode: it.productCode,
                 productName: it.productName,
                 orderedQty: it.qty,
                 alreadyReceived: already,
                 remaining,
-                receivedQty: remaining,
+                receivedQty: receivingToEdit ? curReceived : remaining,
             };
         })
-        .filter((it) => it.remaining > 0);
+        .filter((it) => it.remaining > 0 || (receivingToEdit && it.alreadyReceived > 0));
 
     const [items, setItems] = useState(initialItems);
     const [submitting, setSubmitting] = useState(false);
@@ -391,7 +449,11 @@ function ReceiveItemsModal({ delivery, po, receivings, onClose, onSuccess }) {
             const fullyReceived = items.every(
                 (it) => it.alreadyReceived + Number(it.receivedQty || 0) >= Number(it.orderedQty)
             );
-            await submitReceiving({ deliveryId: delivery.id, items, fullyReceived });
+            if (receivingToEdit) {
+                await reviseReceiving({ receivingId: receivingToEdit.id, items, fullyReceived });
+            } else {
+                await submitReceiving({ deliveryId: delivery.id, items, fullyReceived });
+            }
             onSuccess();
         } catch (err) {
             setError(err.message || 'Failed to save receiving.');
@@ -401,7 +463,7 @@ function ReceiveItemsModal({ delivery, po, receivings, onClose, onSuccess }) {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={`Receive — ${po?.poNo || delivery.transportName}`} size="lg">
+        <Modal open={true} onClose={onClose} title={receivingToEdit ? `Revise Receiving — ${po?.poNo || delivery.transportName}` : `Receive — ${po?.poNo || delivery.transportName}`} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
                     Delivery by <span className="font-bold text-gray-900">{delivery.transportName}</span>

@@ -4,13 +4,14 @@ import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPayablePOs, fetchPaymentApprovals, submitPaymentApproval } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function PaymentApprovalView() {
     const [tab, setTab] = useState('pending');
     const [payablePOs, setPayablePOs] = useState([]);
     const [approvals, setApprovals] = useState([]);
     const [tatTracking, setTatTracking] = useState({});
+    const [tatMins, setTatMins] = useState(15);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -42,6 +43,16 @@ export default function PaymentApprovalView() {
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
+            }
+
+            try {
+                const settingsData = await fetchTatSettings();
+                const approvalSetting = settingsData.find(s => s.stage_key === 'payment_approval');
+                if (approvalSetting && approvalSetting.is_active) {
+                    setTatMins(approvalSetting.tat_minutes);
+                }
+            } catch (settingsErr) {
+                console.error('Failed to load TAT settings:', settingsErr);
             }
         } catch (err) {
             setError(err.message || 'Failed to load payment approval data.');
@@ -95,7 +106,7 @@ export default function PaymentApprovalView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading payment approval data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingApprovalPanel pos={pendingPOs} tatTracking={tatTracking} onDecide={(po) => setSelectedPo(po)} />
+                <PendingApprovalPanel pos={pendingPOs} tatTracking={tatTracking} tatMins={tatMins} onDecide={(po) => setSelectedPo(po)} />
             ) : (
                 <ApprovalHistoryPanel approvals={approvals} poMap={poMap} />
             )}
@@ -116,7 +127,7 @@ export default function PaymentApprovalView() {
     );
 }
 
-function PendingApprovalPanel({ pos, tatTracking, onDecide }) {
+function PendingApprovalPanel({ pos, tatTracking, tatMins, onDecide }) {
     const [search, setSearch] = useState('');
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -184,7 +195,7 @@ function PendingApprovalPanel({ pos, tatTracking, onDecide }) {
                                         ? po.vendor.paymentTerms
                                         : 'No'}
                                 </td>
-                                <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id])}</td>
+                                <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                             </tr>
                         ))}
                     </tbody>

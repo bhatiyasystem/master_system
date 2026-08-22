@@ -5,12 +5,13 @@ import PreviewModal from './PreviewModal';
 import { CardPanel, EmptyState, FilterBar, RevisionChip } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
 import { fetchPOs, fetchPoRevisions } from '../services/purchaseService';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 
 export default function PoListView({ onRevise }) {
   const [pos, setPos] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(60);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -44,6 +45,16 @@ export default function PoListView({ onRevise }) {
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
+        }
+
+        try {
+          const settingsData = await fetchTatSettings();
+          const deliverySetting = settingsData.find(s => s.stage_key === 'delivery');
+          if (deliverySetting && deliverySetting.is_active) {
+            setTatMins(deliverySetting.tat_minutes);
+          }
+        } catch (settingsErr) {
+          console.error('Failed to load TAT settings:', settingsErr);
         }
       })
       .catch((err) => {
@@ -157,7 +168,7 @@ export default function PoListView({ onRevise }) {
                   <td className="px-2.5 py-2">
                     <RevisionChip revision={po.revision} />
                   </td>
-                  <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[po.id])}</td>
+                  <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                   <td className="whitespace-nowrap px-2.5 py-2">
                     <button
                       className="mr-1 rounded-lg border border-[#173254] px-2.5 py-1 text-xs font-semibold text-[#173254]"

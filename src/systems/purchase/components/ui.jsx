@@ -23,7 +23,7 @@ export function StatusBadge({ status }) {
 export function EmptyState({ icon, children, action }) {
   return (
     <div className="py-10 px-5 text-center text-sm text-gray-500">
-      {icon && <div className="mx-auto mb-2 opacity-50">{icon}</div>}
+      {icon && <div className="flex justify-center mb-2 opacity-50">{icon}</div>}
       <div>{children}</div>
       {action}
     </div>

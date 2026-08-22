@@ -4,7 +4,7 @@ import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function PaymentView() {
     const [tab, setTab] = useState('pending');
@@ -12,6 +12,7 @@ export default function PaymentView() {
     const [payments, setPayments] = useState([]);
     const [pos, setPos] = useState([]);
     const [tatTracking, setTatTracking] = useState({});
+    const [tatMins, setTatMins] = useState(10);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -44,6 +45,16 @@ export default function PaymentView() {
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
+            }
+
+            try {
+                const settingsData = await fetchTatSettings();
+                const paymentSetting = settingsData.find(s => s.stage_key === 'payment');
+                if (paymentSetting && paymentSetting.is_active) {
+                    setTatMins(paymentSetting.tat_minutes);
+                }
+            } catch (settingsErr) {
+                console.error('Failed to load TAT settings:', settingsErr);
             }
         } catch (err) {
             setError(err.message || 'Failed to load payment data.');
@@ -100,7 +111,7 @@ export default function PaymentView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading payment data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingPaymentPanel approvals={pendingApprovals} poMap={poMap} tatTracking={tatTracking} onPay={(a) => setSelectedApproval(a)} />
+                <PendingPaymentsPanel approvals={pendingApprovals} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onPay={(a) => setSelectedApproval(a)} />
             ) : (
                 <PaymentHistoryPanel payments={payments} poMap={poMap} />
             )}
@@ -122,7 +133,7 @@ export default function PaymentView() {
     );
 }
 
-function PendingPaymentPanel({ approvals, poMap, tatTracking, onPay }) {
+function PendingPaymentsPanel({ approvals, poMap, tatTracking, tatMins, onPay }) {
     const [search, setSearch] = useState('');
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -190,7 +201,7 @@ function PendingPaymentPanel({ approvals, poMap, tatTracking, onPay }) {
                                         <td className="px-3 py-2.5 text-gray-500">
                                             {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
                                         </td>
-                                         <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[a.id])}</td>
+                                         <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[a.id], a.decidedAt, tatMins)}</td>
                                      </tr>
                                 );
                             })}

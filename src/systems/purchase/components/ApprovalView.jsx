@@ -4,12 +4,13 @@ import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, decideCategory, fetchIndentHistory, findOutstandingConflicts } from '../services/purchaseService';
 import Modal from './Modal';
-import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function ApprovalView() {
   const [tab, setTab] = useState('pending');
   const [indents, setIndents] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [, setTick] = useState(0);
@@ -37,6 +38,16 @@ export default function ApprovalView() {
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
+        }
+
+        try {
+          const settingsData = await fetchTatSettings();
+          const setting = settingsData.find(s => s.stage_key === 'indent_approval');
+          if (setting && setting.is_active) {
+            setTatMins(setting.tat_minutes);
+          }
+        } catch (settingsErr) {
+          console.error('Failed to load TAT settings:', settingsErr);
         }
       })
       .catch((err) => setError(err.message || 'Failed to load indent data.'))
@@ -75,7 +86,7 @@ export default function ApprovalView() {
       ) : error ? (
         <EmptyState>{error}</EmptyState>
       ) : tab === 'pending' ? (
-        <PendingPanel indents={indents} onDecided={load} />
+        <PendingPanel indents={indents} tatTracking={tatTracking} tatMins={tatMins} onDecided={load} />
       ) : (
         <HistoryPanel indents={indents} />
       )}
@@ -83,7 +94,7 @@ export default function ApprovalView() {
   );
 }
 
-function PendingPanel({ indents, onDecided }) {
+function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [vendor, setVendor] = useState('');
@@ -228,7 +239,7 @@ function PendingPanel({ indents, onDecided }) {
                             <td className="px-2.5 py-2">{i.category}</td>
                             <td className="px-2.5 py-2">{i.vendor}</td>
                             <td className="px-2.5 py-2 font-semibold">{i.orderFormula}</td>
-                            <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId])}</td>
+                            <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId], i.createdAt, tatMins)}</td>
                           </tr>
                         ))}
                       </tbody>
