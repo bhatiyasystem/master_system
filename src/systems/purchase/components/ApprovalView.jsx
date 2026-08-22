@@ -4,18 +4,41 @@ import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, decideCategory, fetchIndentHistory, findOutstandingConflicts } from '../services/purchaseService';
 import Modal from './Modal';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 export default function ApprovalView() {
   const [tab, setTab] = useState('pending');
   const [indents, setIndents] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   const load = () => {
     setLoading(true);
     setError(null);
     return fetchIndents()
-      .then((rows) => setIndents(rows))
+      .then(async (rows) => {
+        setIndents(rows);
+        const dbIds = rows.map(r => r.dbId);
+        if (dbIds.length > 0) {
+          try {
+            const trackings = await fetchTatTracking('indent_approval', dbIds);
+            const trackingMap = {};
+            trackings.forEach(t => {
+              trackingMap[t.entity_id] = t;
+            });
+            setTatTracking(trackingMap);
+          } catch (tatErr) {
+            console.error('Failed to load TAT tracking:', tatErr);
+          }
+        }
+      })
       .catch((err) => setError(err.message || 'Failed to load indent data.'))
       .finally(() => setLoading(false));
   };
@@ -131,7 +154,7 @@ function PendingPanel({ indents, onDecided }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty'].map((h) => (
+                {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -139,7 +162,7 @@ function PendingPanel({ indents, onDecided }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={5} className="px-2.5 py-10 text-center text-gray-500">No pending items with Order Formula &gt; 0.</td></tr>
+              <tr><td colSpan={6} className="px-2.5 py-10 text-center text-gray-500">No pending items with Order Formula &gt; 0.</td></tr>
             </tbody>
           </table>
         </div>
@@ -148,7 +171,7 @@ function PendingPanel({ indents, onDecided }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty'].map((h) => (
+                {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -156,7 +179,7 @@ function PendingPanel({ indents, onDecided }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={5} className="px-2.5 py-10 text-center text-gray-500">No items match the current filters.</td></tr>
+              <tr><td colSpan={6} className="px-2.5 py-10 text-center text-gray-500">No items match the current filters.</td></tr>
             </tbody>
           </table>
         </div>
@@ -190,7 +213,7 @@ function PendingPanel({ indents, onDecided }) {
                     <table className="w-full text-[12.6px]">
                       <thead>
                         <tr className="bg-gray-50 text-gray-500">
-                          {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty'].map((h) => (
+                          {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
                             <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                               {h}
                             </th>
@@ -205,6 +228,7 @@ function PendingPanel({ indents, onDecided }) {
                             <td className="px-2.5 py-2">{i.category}</td>
                             <td className="px-2.5 py-2">{i.vendor}</td>
                             <td className="px-2.5 py-2 font-semibold">{i.orderFormula}</td>
+                            <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId])}</td>
                           </tr>
                         ))}
                       </tbody>

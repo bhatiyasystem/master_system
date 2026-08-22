@@ -4,15 +4,23 @@ import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPayablePOs, fetchPaymentApprovals, submitPaymentApproval } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 export default function PaymentApprovalView() {
     const [tab, setTab] = useState('pending');
     const [payablePOs, setPayablePOs] = useState([]);
     const [approvals, setApprovals] = useState([]);
+    const [tatTracking, setTatTracking] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [selectedPo, setSelectedPo] = useState(null);
+    const [, setTick] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 10000);
+        return () => clearInterval(timer);
+    }, []);
 
     async function loadData() {
         setLoading(true);
@@ -21,6 +29,20 @@ export default function PaymentApprovalView() {
             const [posData, approvalsData] = await Promise.all([fetchPayablePOs(), fetchPaymentApprovals()]);
             setPayablePOs(posData || []);
             setApprovals(approvalsData || []);
+
+            const poIds = (posData || []).map(p => p.id);
+            if (poIds.length > 0) {
+                try {
+                    const trackings = await fetchTatTracking('payment_approval', poIds);
+                    const trackingMap = {};
+                    trackings.forEach(t => {
+                        trackingMap[t.entity_id] = t;
+                    });
+                    setTatTracking(trackingMap);
+                } catch (tatErr) {
+                    console.error('Failed to load TAT tracking:', tatErr);
+                }
+            }
         } catch (err) {
             setError(err.message || 'Failed to load payment approval data.');
         } finally {
@@ -73,7 +95,7 @@ export default function PaymentApprovalView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading payment approval data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingApprovalPanel pos={pendingPOs} onDecide={(po) => setSelectedPo(po)} />
+                <PendingApprovalPanel pos={pendingPOs} tatTracking={tatTracking} onDecide={(po) => setSelectedPo(po)} />
             ) : (
                 <ApprovalHistoryPanel approvals={approvals} poMap={poMap} />
             )}
@@ -94,7 +116,7 @@ export default function PaymentApprovalView() {
     );
 }
 
-function PendingApprovalPanel({ pos, onDecide }) {
+function PendingApprovalPanel({ pos, tatTracking, onDecide }) {
     const [search, setSearch] = useState('');
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -123,13 +145,14 @@ function PendingApprovalPanel({ pos, onDecide }) {
                             <th className="px-3 py-2.5">Date</th>
                             <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Advance</th>
+                            <th className="px-3 py-2.5">Planned Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pos.length === 0 ? (
-                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No fully received POs waiting for payment approval.</td></tr>
+                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No fully received POs waiting for payment approval.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No POs match the search.</td></tr>
+                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No POs match the search.</td></tr>
                         ) : filtered.map((po) => (
                             <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
                                 <td className="px-3 py-2.5">
@@ -161,6 +184,7 @@ function PendingApprovalPanel({ pos, onDecide }) {
                                         ? po.vendor.paymentTerms
                                         : 'No'}
                                 </td>
+                                <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id])}</td>
                             </tr>
                         ))}
                     </tbody>

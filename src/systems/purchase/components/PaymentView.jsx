@@ -4,16 +4,24 @@ import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 export default function PaymentView() {
     const [tab, setTab] = useState('pending');
     const [approvals, setApprovals] = useState([]);
     const [payments, setPayments] = useState([]);
     const [pos, setPos] = useState([]);
+    const [tatTracking, setTatTracking] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [selectedApproval, setSelectedApproval] = useState(null);
+    const [, setTick] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 10000);
+        return () => clearInterval(timer);
+    }, []);
 
     async function loadData() {
         setLoading(true);
@@ -23,6 +31,20 @@ export default function PaymentView() {
             setApprovals(approvalsData || []);
             setPayments(paymentsData || []);
             setPos(posData || []);
+
+            const approvalIds = (approvalsData || []).map(a => a.id);
+            if (approvalIds.length > 0) {
+                try {
+                    const trackings = await fetchTatTracking('payment', approvalIds);
+                    const trackingMap = {};
+                    trackings.forEach(t => {
+                        trackingMap[t.entity_id] = t;
+                    });
+                    setTatTracking(trackingMap);
+                } catch (tatErr) {
+                    console.error('Failed to load TAT tracking:', tatErr);
+                }
+            }
         } catch (err) {
             setError(err.message || 'Failed to load payment data.');
         } finally {
@@ -78,7 +100,7 @@ export default function PaymentView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading payment data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingPaymentPanel approvals={pendingApprovals} poMap={poMap} onPay={(a) => setSelectedApproval(a)} />
+                <PendingPaymentPanel approvals={pendingApprovals} poMap={poMap} tatTracking={tatTracking} onPay={(a) => setSelectedApproval(a)} />
             ) : (
                 <PaymentHistoryPanel payments={payments} poMap={poMap} />
             )}
@@ -100,7 +122,7 @@ export default function PaymentView() {
     );
 }
 
-function PendingPaymentPanel({ approvals, poMap, onPay }) {
+function PendingPaymentPanel({ approvals, poMap, tatTracking, onPay }) {
     const [search, setSearch] = useState('');
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -129,13 +151,14 @@ function PendingPaymentPanel({ approvals, poMap, onPay }) {
                                 <th className="px-3 py-2.5">Vendor</th>
                                 
                                 <th className="px-3 py-2.5">Approved At</th>
+                                <th className="px-3 py-2.5">Planned Date</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {approvals.length === 0 ? (
-                                <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No approved POs waiting for payment.</td></tr>
+                             {approvals.length === 0 ? (
+                                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No approved POs waiting for payment.</td></tr>
                             ) : filtered.length === 0 ? (
-                                <tr><td colSpan={4} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
                             ) : filtered.map((a) => {
                                 const po = poMap.get(a.poId);
                                 return (
@@ -167,7 +190,8 @@ function PendingPaymentPanel({ approvals, poMap, onPay }) {
                                         <td className="px-3 py-2.5 text-gray-500">
                                             {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
                                         </td>
-                                    </tr>
+                                         <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[a.id])}</td>
+                                     </tr>
                                 );
                             })}
                         </tbody>

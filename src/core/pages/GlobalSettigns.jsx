@@ -7,10 +7,11 @@ import { useMagicToast } from '../../context/MagicToastContext';
 import systemRegistry from "../registry/systemRegistry";
 import MasterDataView from "../components/MasterDataView";
 import { motion } from 'framer-motion';
+import TatView from "../components/TatView";
 
 const DEFAULT_COMPANY_TERMS = '1. Deliveries are accepted only between 10:00 AM and 5:00 PM.\n2. The receiver must check the quantity and quality of the items before signing the delivery challan.\n3. In case of any discrepancy, it must be reported immediately.\n4. No delivery will be accepted without a proper GST Invoice.';
 
-export default function CompanySettings() {
+export default function GlobalSettings() {
   const { showToast } = useMagicToast();
   const [activeTab, setActiveTab] = useState("users");
   const [showGlobalShipToModal, setShowGlobalShipToModal] = useState(false);
@@ -639,6 +640,16 @@ export default function CompanySettings() {
               <Lucide.Grid size={14} />
               Master
             </button>
+            <button
+              onClick={() => setActiveTab("tat")}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${activeTab === "tat"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-100"
+                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                }`}
+            >
+              <Lucide.Grid size={14} />
+              TAT Management
+            </button>
           </div>
 
           <button
@@ -867,7 +878,19 @@ export default function CompanySettings() {
               <MasterDataView />
             </motion.div>
           )}
-
+          {/* TAB 2: SYSTEM MODULES CONTROLLER */}
+          {/* TAB 2: MASTER DATA (VENDORS / TRANSPORTERS) */}
+          {activeTab === "tat" && (
+            <motion.div
+              key="tat"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.3 }}
+            >
+              <TatView />
+            </motion.div>
+          )}
 
 
         </AnimatePresence>

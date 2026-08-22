@@ -1,4 +1,5 @@
 import supabase from '../../../SupabaseClient';
+import { startOrUpdateStage, completeStage, handleDeliveryReceived } from '../../../core/services/tatService';
 
 function mapIndentRow(row) {
   return {
@@ -67,6 +68,20 @@ export async function decideCategory({ ids, qtyById, status, remarks }) {
     p_remarks: remarks,
   });
   if (error) throw error;
+
+  // Complete Indent Approval stage and start Purchase Order stage if approved
+  try {
+    const timestamp = new Date().toISOString();
+    await Promise.all(ids.map(async (id) => {
+      await completeStage(id, 'indent_approval', timestamp);
+      if (status === 'Approved') {
+        await startOrUpdateStage(id, 'purchase_order', timestamp);
+      }
+    }));
+  } catch (tatErr) {
+    console.error('Error logging decideCategory TAT:', tatErr);
+  }
+
   return (data || []).map(mapIndentRow);
 }
 
@@ -222,6 +237,15 @@ export async function importIndentRows(parsedRows) {
     insertedRows = data || [];
     firstNo = reserved[0].unique_no;
     lastNo = reserved[reserved.length - 1].unique_no;
+
+    // Start Indent Approval stage for newly imported indents
+    try {
+      if (insertedRows.length) {
+        await Promise.all(insertedRows.map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
+      }
+    } catch (tatErr) {
+      console.error('Error logging import Indent TAT:', tatErr);
+    }
   }
 
   const mappedMatched = matchedRows.map(mapIndentRow);
@@ -392,6 +416,17 @@ export async function submitNewPO({ form, items }) {
     if (updErr) throw updErr;
   }
 
+  // Complete Purchase Order stage for these indents, and start Delivery stage for PO
+  try {
+    const timestamp = new Date().toISOString();
+    if (indentIds.length) {
+      await Promise.all(indentIds.map(id => completeStage(id, 'purchase_order', timestamp)));
+    }
+    await startOrUpdateStage(poRow.id, 'delivery', poRow.created_at || timestamp);
+  } catch (tatErr) {
+    console.error('Error logging PO submit TAT:', tatErr);
+  }
+
   return mapPoRow(poRow, itemRows);
 }
 
@@ -544,6 +579,17 @@ export async function createDelivery({ poId, transportName, contact, builtyDate,
     .select()
     .single();
   if (error) throw error;
+
+  // Complete Delivery stage for PO and start Receiving stage for delivery
+  try {
+    if (poId) {
+      await completeStage(poId, 'delivery', data.created_at);
+    }
+    await startOrUpdateStage(data.id, 'receiving', data.created_at);
+  } catch (tatErr) {
+    console.error('Error logging createDelivery TAT:', tatErr);
+  }
+
   return mapDeliveryRow(data);
 }
 
@@ -560,6 +606,16 @@ export async function markDeliveryReceived(deliveryId, received) {
     .select()
     .single();
   if (error) throw error;
+
+  // Complete Receiving stage and conditionally trigger Payment Approval stage
+  if (received) {
+    try {
+      await handleDeliveryReceived(deliveryId);
+    } catch (tatErr) {
+      console.error('Error handling TAT for delivery receive:', tatErr);
+    }
+  }
+
   return mapDeliveryRow(data);
 }
 function mapReceivingRow(row, itemRows) {
@@ -631,6 +687,13 @@ export async function submitReceiving({ deliveryId, items, fullyReceived }) {
       .update({ received: true, received_at: new Date().toISOString(), received_by: receivedBy })
       .eq('id', deliveryId);
     if (updErr) throw updErr;
+
+    // Complete Receiving stage and conditionally trigger Payment Approval stage
+    try {
+      await handleDeliveryReceived(deliveryId);
+    } catch (tatErr) {
+      console.error('Error handling TAT for delivery receive:', tatErr);
+    }
   }
 
   return mapReceivingRow(receivingRow, itemRows);
@@ -758,6 +821,18 @@ export async function submitPaymentApproval({ poId, status, remarks, advanceAmou
     .select()
     .single();
   if (error) throw error;
+
+  // Complete Payment Approval stage and start Payment stage if approved
+  try {
+    const timestamp = new Date().toISOString();
+    await completeStage(poId, 'payment_approval', timestamp);
+    if (status === 'Approved') {
+      await startOrUpdateStage(data.id, 'payment', timestamp);
+    }
+  } catch (tatErr) {
+    console.error('Error logging Payment Approval TAT:', tatErr);
+  }
+
   return mapPaymentApprovalRow(data);
 }
 
@@ -811,5 +886,13 @@ export async function submitPayment({ paymentApprovalId, poId, proofFile, remark
     .select()
     .single();
   if (error) throw error;
+
+  // Complete Payment stage
+  try {
+    await completeStage(paymentApprovalId, 'payment', data.created_at || new Date().toISOString());
+  } catch (tatErr) {
+    console.error('Error logging complete Payment TAT:', tatErr);
+  }
+
   return mapPaymentRow(data);
 }

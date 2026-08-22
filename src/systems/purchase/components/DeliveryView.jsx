@@ -4,6 +4,7 @@ import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
 import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters } from '../services/purchaseService';
 import Modal from './Modal';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 const emptyForm = {
     transportName: '',
@@ -37,6 +38,13 @@ export default function DeliveryView() {
     const [success, setSuccess] = useState('');
 
     const [selectedPo, setSelectedPo] = useState(null);
+    const [tatTracking, setTatTracking] = useState({});
+    const [, setTick] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 10000);
+        return () => clearInterval(timer);
+    }, []);
 
     const loadData = async () => {
         setLoading(true);
@@ -46,6 +54,20 @@ export default function DeliveryView() {
             setPos(posData || []);
             setDeliveries(delData || []);
             setIndents(indentsData || []);
+
+            const poIds = (posData || []).map(p => p.id);
+            if (poIds.length > 0) {
+                try {
+                    const trackings = await fetchTatTracking('delivery', poIds);
+                    const trackingMap = {};
+                    trackings.forEach(t => {
+                        trackingMap[t.entity_id] = t;
+                    });
+                    setTatTracking(trackingMap);
+                } catch (tatErr) {
+                    console.error('Failed to load TAT tracking:', tatErr);
+                }
+            }
         } catch (err) {
             setError(err.message || 'Failed to load delivery data.');
         } finally {
@@ -99,6 +121,7 @@ export default function DeliveryView() {
                     pos={pos}
                     deliveries={deliveries}
                     indents={indents}
+                    tatTracking={tatTracking}
                     onLogDelivery={(po) => setSelectedPo(po)}
                 />
             ) : (
@@ -121,7 +144,7 @@ export default function DeliveryView() {
     );
 }
 
-function PendingDeliveryPanel({ pos, deliveries, indents, onLogDelivery }) {
+function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, onLogDelivery }) {
     const [search, setSearch] = useState('');
     const [vendor, setVendor] = useState('');
 
@@ -185,7 +208,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, onLogDelivery }) {
                     <table className="w-full text-[12.6px]">
                         <thead>
                             <tr className="bg-gray-50 text-gray-500">
-                               {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay'].map((h) => (
+                               {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
                                     <th
                                         key={h}
                                         className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
@@ -196,10 +219,10 @@ function PendingDeliveryPanel({ pos, deliveries, indents, onLogDelivery }) {
                             </tr>
                         </thead>
                         <tbody>
-                           {pendingPOs.length === 0 ? (
-                                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
+                            {pendingPOs.length === 0 ? (
+                                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
                             ) : filteredRows.length === 0 ? (
-                                <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
+                                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
                             ) : filteredRows.map((po) => (
                                 <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="whitespace-nowrap px-3 py-2.5">
@@ -235,6 +258,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, onLogDelivery }) {
   return <span className={d > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{d}</span>;
 })() : '—'}
                                     </td>
+                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id])}</td>
                                 </tr>
                             ))}
                        </tbody>

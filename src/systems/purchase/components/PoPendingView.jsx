@@ -4,22 +4,45 @@ import Modal from './Modal';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, fixIndentVendor, deleteIndents } from '../services/purchaseService';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 export default function PoPendingView({ onCreatePO }) {
   const [indents, setIndents] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [vendor, setVendor] = useState('');
- const [checkedByVendor, setCheckedByVendor] = useState({});
+  const [checkedByVendor, setCheckedByVendor] = useState({});
   const [expanded, setExpanded] = useState({});
   const [fixingVendorGroup, setFixingVendorGroup] = useState(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   function reload() {
     setLoading(true);
     fetchIndents()
-      .then((rows) => setIndents(rows))
+      .then(async (rows) => {
+        setIndents(rows);
+        const dbIds = rows.map(r => r.dbId);
+        if (dbIds.length > 0) {
+          try {
+            const trackings = await fetchTatTracking('purchase_order', dbIds);
+            const trackingMap = {};
+            trackings.forEach(t => {
+              trackingMap[t.entity_id] = t;
+            });
+            setTatTracking(trackingMap);
+          } catch (tatErr) {
+            console.error('Failed to load TAT tracking:', tatErr);
+          }
+        }
+      })
       .catch((err) => setError(err.message || 'Failed to load indent data.'))
       .finally(() => setLoading(false));
   }
@@ -54,8 +77,23 @@ function DiffCell({ orderQty, approvedQty }) {
     let cancelled = false;
     setLoading(true);
     fetchIndents()
-      .then((rows) => {
-        if (!cancelled) setIndents(rows);
+      .then(async (rows) => {
+        if (cancelled) return;
+        setIndents(rows);
+
+        const dbIds = rows.map(r => r.dbId);
+        if (dbIds.length > 0) {
+          try {
+            const trackings = await fetchTatTracking('purchase_order', dbIds);
+            const trackingMap = {};
+            trackings.forEach(t => {
+              trackingMap[t.entity_id] = t;
+            });
+            if (!cancelled) setTatTracking(trackingMap);
+          } catch (tatErr) {
+            console.error('Failed to load TAT tracking:', tatErr);
+          }
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || 'Failed to load indent data.');
@@ -143,7 +181,7 @@ function DiffCell({ orderQty, approvedQty }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['', 'Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference'].map((h) => (
+                {['', 'Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -151,7 +189,7 @@ function DiffCell({ orderQty, approvedQty }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={8} className="px-2.5 py-10 text-center text-gray-500">No approved items waiting for a Purchase Order.</td></tr>
+              <tr><td colSpan={9} className="px-2.5 py-10 text-center text-gray-500">No approved items waiting for a Purchase Order.</td></tr>
             </tbody>
           </table>
         </div>
@@ -160,7 +198,7 @@ function DiffCell({ orderQty, approvedQty }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['', 'Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference'].map((h) => (
+                {['', 'Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -168,7 +206,7 @@ function DiffCell({ orderQty, approvedQty }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={8} className="px-2.5 py-10 text-center text-gray-500">No items match the current filters.</td></tr>
+              <tr><td colSpan={9} className="px-2.5 py-10 text-center text-gray-500">No items match the current filters.</td></tr>
             </tbody>
           </table>
         </div>
@@ -229,7 +267,7 @@ function DiffCell({ orderQty, approvedQty }) {
                       <th className="px-2.5 py-2">
                         <input type="checkbox" checked={allChecked} onChange={(e) => toggleAllForVendor(v, items, e.target.checked)} />
                       </th>
-                     {['Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference'].map((h) => (
+                     {['Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
                         <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                           {h}
                         </th>
@@ -251,6 +289,7 @@ function DiffCell({ orderQty, approvedQty }) {
                         <td className="px-2.5 py-2">
                           <DiffCell orderQty={i.orderFormula} approvedQty={i.approvedQty} />
                         </td>
+                        <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId])}</td>
                       </tr>
                     ))}
                  </tbody>

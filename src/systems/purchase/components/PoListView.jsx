@@ -5,23 +5,46 @@ import PreviewModal from './PreviewModal';
 import { CardPanel, EmptyState, FilterBar, RevisionChip } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
 import { fetchPOs, fetchPoRevisions } from '../services/purchaseService';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 
 export default function PoListView({ onRevise }) {
   const [pos, setPos] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [vendor, setVendor] = useState('');
   const [versionsPO, setVersionsPO] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     fetchPOs()
-      .then((rows) => {
-        if (!cancelled) setPos(rows);
+      .then(async (rows) => {
+        if (cancelled) return;
+        setPos(rows);
+
+        const poIds = rows.map(r => r.id);
+        if (poIds.length > 0) {
+          try {
+            const trackings = await fetchTatTracking('delivery', poIds);
+            const trackingMap = {};
+            trackings.forEach(t => {
+              trackingMap[t.entity_id] = t;
+            });
+            if (!cancelled) setTatTracking(trackingMap);
+          } catch (tatErr) {
+            console.error('Failed to load TAT tracking:', tatErr);
+          }
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || 'Failed to load purchase orders.');
@@ -82,7 +105,7 @@ export default function PoListView({ onRevise }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', ''].map((h) => (
+                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date', ''].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -90,7 +113,7 @@ export default function PoListView({ onRevise }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={7} className="px-2.5 py-10 text-center text-gray-500">No Purchase Orders created yet.</td></tr>
+               <tr><td colSpan={8} className="px-2.5 py-10 text-center text-gray-500">No Purchase Orders created yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -99,7 +122,7 @@ export default function PoListView({ onRevise }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', ''].map((h) => (
+                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date', ''].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -107,7 +130,7 @@ export default function PoListView({ onRevise }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={7} className="px-2.5 py-10 text-center text-gray-500">No POs match the current filters.</td></tr>
+               <tr><td colSpan={8} className="px-2.5 py-10 text-center text-gray-500">No POs match the current filters.</td></tr>
             </tbody>
           </table>
         </div>
@@ -116,7 +139,7 @@ export default function PoListView({ onRevise }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', ''].map((h) => (
+                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date', ''].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -134,6 +157,7 @@ export default function PoListView({ onRevise }) {
                   <td className="px-2.5 py-2">
                     <RevisionChip revision={po.revision} />
                   </td>
+                  <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[po.id])}</td>
                   <td className="whitespace-nowrap px-2.5 py-2">
                     <button
                       className="mr-1 rounded-lg border border-[#173254] px-2.5 py-1 text-xs font-semibold text-[#173254]"

@@ -3,17 +3,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving } from '../services/purchaseService';
 import Modal from './Modal';
+import { fetchTatTracking, renderPlannedDateCell } from '../../../core/services/tatService';
 
 export default function ReceivingView() {
     const [tab, setTab] = useState('pending');
     const [deliveries, setDeliveries] = useState([]);
     const [pos, setPos] = useState([]);
     const [receivings, setReceivings] = useState([]);
+    const [tatTracking, setTatTracking] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
     const [selectedDelivery, setSelectedDelivery] = useState(null);
+    const [, setTick] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => setTick(t => t + 1), 10000);
+        return () => clearInterval(timer);
+    }, []);
 
     async function loadData() {
         setLoading(true);
@@ -23,6 +31,20 @@ export default function ReceivingView() {
             setDeliveries(delData || []);
             setPos(posData || []);
             setReceivings(recData || []);
+
+            const delIds = (delData || []).map(d => d.id);
+            if (delIds.length > 0) {
+                try {
+                    const trackings = await fetchTatTracking('receiving', delIds);
+                    const trackingMap = {};
+                    trackings.forEach(t => {
+                        trackingMap[t.entity_id] = t;
+                    });
+                    setTatTracking(trackingMap);
+                } catch (tatErr) {
+                    console.error('Failed to load TAT tracking:', tatErr);
+                }
+            }
         } catch (err) {
             setError(err.message || 'Failed to load receiving data.');
         } finally {
@@ -75,7 +97,7 @@ export default function ReceivingView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading receiving data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingReceivingPanel deliveries={deliveries} poMap={poMap} onUpdate={(d) => setSelectedDelivery(d)} />
+                <PendingReceivingPanel deliveries={deliveries} poMap={poMap} tatTracking={tatTracking} onUpdate={(d) => setSelectedDelivery(d)} />
             ) : (
                 <ReceivingHistoryPanel receivings={receivings} deliveries={deliveries} poMap={poMap} />
             )}
@@ -98,7 +120,7 @@ export default function ReceivingView() {
     );
 }
 
-function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
+function PendingReceivingPanel({ deliveries, poMap, tatTracking, onUpdate }) {
     const [search, setSearch] = useState('');
 
     const pending = useMemo(() => deliveries.filter((d) => !d.received), [deliveries]);
@@ -140,14 +162,14 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                             <th className="px-3 py-2.5">Builty Image</th>
                             <th className="px-3 py-2.5">Arrived</th>
                             <th className="px-3 py-2.5">Delay</th>
-                            
+                            <th className="px-3 py-2.5">Planned Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pending.length === 0 ? (
-                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
+                            <tr><td colSpan={11} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                            <tr><td colSpan={11} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
                         ) : filtered.map((d) => {
                             const po = poMap.get(d.poId);
                             const poNo = po?.poNo || '—';
@@ -203,6 +225,7 @@ function PendingReceivingPanel({ deliveries, poMap, onUpdate }) {
                                     <td className="px-3 py-2.5 text-gray-500">
                                         {diffDays !== null ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}` : '—'}
                                     </td>
+                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[d.id])}</td>
                                 </tr>
                             );
                         })}
