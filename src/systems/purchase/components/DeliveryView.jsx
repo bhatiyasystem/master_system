@@ -503,8 +503,8 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         e.preventDefault();
         setError('');
 
-        if (!form.transportName || !form.builtyNumber) {
-            setError('Transport name and builty number are required.');
+        if (!form.transportName || !form.builtyNumber || !form.builtyDate) {
+            setError('Transport name, builty number and builty date are required.');
             return;
         }
 
@@ -560,20 +560,21 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     </div>
                 </Field>
 
-                <Field label="Contact Detail">
+                <Field label="Contact Detail" required>
                     <input
-    className="input"
-    type="tel"
-    value={form.contact}
-    maxLength={10}
-    inputMode="numeric"
-    pattern="[0-9]{10}"
-    onChange={(e) => {
-        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-        update('contact', value);
-    }}
-    placeholder="10-digit mobile"
-/>
+                        className="input"
+                        type="tel"
+                        required
+                        value={form.contact}
+                        maxLength={10}
+                        inputMode="numeric"
+                        pattern="[0-9]{10}"
+                        onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            update('contact', value);
+                        }}
+                        placeholder="10-digit mobile"
+                    />
 
                     {/* <input
                         className="input"
@@ -595,7 +596,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     />
                 </Field>
 
-                <Field label="Builty Date">
+                <Field label="Builty Date" required>
                     <input
                         type="date"
                         className="input"
