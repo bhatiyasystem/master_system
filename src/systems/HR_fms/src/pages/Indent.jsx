@@ -16,7 +16,7 @@ const parseTimestamp = (ts) => {
   const datePart = parts[0];
   const timePart = parts[1] || '00:00:00';
 
-  const dateSplit = datePart.split(/[\/\-]/);
+  const dateSplit = datePart.includes('/') ? datePart.split('/') : datePart.split('-');
   const timeSplit = timePart.split(':');
 
   if (dateSplit.length === 3) {
