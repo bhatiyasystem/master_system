@@ -2,6 +2,42 @@ import { Search, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../../core/services/tatService';
+
+// Helper to parse custom timestamp string formats to Date
+const parseTimestamp = (ts) => {
+  if (!ts) return null;
+  const parsed = new Date(ts);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  const str = String(ts).trim();
+  const parts = str.split(' ');
+  const datePart = parts[0];
+  const timePart = parts[1] || '00:00:00';
+
+  const dateSplit = datePart.split(/[\/\-]/);
+  const timeSplit = timePart.split(':');
+
+  if (dateSplit.length === 3) {
+    let day = parseInt(dateSplit[0], 10);
+    let month = parseInt(dateSplit[1], 10) - 1;
+    let year = parseInt(dateSplit[2], 10);
+    
+    // Support two-digit years if present
+    if (year < 100) year += 2000;
+
+    const hour = parseInt(timeSplit[0] || 0, 10);
+    const minute = parseInt(timeSplit[1] || 0, 10);
+    const second = parseInt(timeSplit[2] || 0, 10);
+
+    if (month > 11) {
+      // Swapped: MM/DD/YYYY format
+      return new Date(year, day - 1, month + 1, hour, minute, second);
+    }
+    return new Date(year, month, day, hour, minute, second);
+  }
+  return new Date(ts);
+};
 
 const AfterLeavingWork = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,10 +45,39 @@ const AfterLeavingWork = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingData, setPendingData] = useState([]);
   const [_historyData, setHistoryData] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(15);
+  const [, setTick] = useState(0);
   const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (pendingData.length > 0) {
+      const ids = pendingData.map(i => i.employeeId).filter(Boolean);
+      fetchTatTracking('hr_after_leaving_work', ids).then(trackings => {
+        const trackingMap = {};
+        trackings.forEach(t => {
+          trackingMap[t.entity_id] = t;
+        });
+        setTatTracking(trackingMap);
+      }).catch(err => console.error('Failed to fetch HR TAT tracking:', err));
+
+      fetchTatSettings().then(settingsData => {
+        const setting = settingsData.find(s => s.stage_key === 'hr_after_leaving_work');
+        if (setting && setting.is_active) {
+          setTatMins(setting.tat_minutes);
+        }
+      }).catch(err => console.error('Failed to fetch HR TAT settings:', err));
+    }
+  }, [pendingData]);
+
   const [formData, setFormData] = useState({
     resignationLetterReceived: false,
     resignationAcceptance: false,
@@ -62,15 +127,15 @@ const AfterLeavingWork = () => {
         salary: row[11] || '', 
         plannedDate: row[12] || '', 
         actual: row[13] || ''
-      }));
+      })).filter(item => item.employeeId && String(item.employeeId).trim() !== '');
 
       const pendingTasks = processedData.filter(
-        task => task.plannedDate && !task.actual
+        task => !task.actual
       );
       setPendingData(pendingTasks);
       
       const historyTasks = processedData.filter(
-        task => task.plannedDate && task.actual
+        task => task.actual
       );
       setHistoryData(historyTasks);
      
@@ -408,12 +473,13 @@ const AfterLeavingWork = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Of Leaving</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason Of Leaving</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planned Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white">
                 {tableLoading ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
+                    <td colSpan="8" className="px-6 py-12 text-center">
                       <div className="flex justify-center flex-col items-center">
                         <div className="w-6 h-6 border-4 border-indigo-500 border-dashed rounded-full animate-spin mb-2"></div>
                         <span className="text-gray-600 text-sm">Loading pending calls...</span>
@@ -422,7 +488,7 @@ const AfterLeavingWork = () => {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
+                    <td colSpan="8" className="px-6 py-12 text-center">
                       <p className="text-red-500">Error: {error}</p>
                       <button 
                         onClick={fetchLeavingData}
@@ -453,11 +519,14 @@ const AfterLeavingWork = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.designation}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.reasonOfLeaving}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {renderPlannedDateCell(tatTracking[item.employeeId], parseTimestamp(item.timestamp), tatMins)}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
+                    <td colSpan="8" className="px-6 py-12 text-center">
                       <p className="text-gray-500">No pending after leaving work found.</p>
                     </td>
                   </tr>

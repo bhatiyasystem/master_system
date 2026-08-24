@@ -2,6 +2,42 @@ import { Search, Clock, CheckCircle, X, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../../core/services/tatService';
+
+// Helper to parse custom timestamp string formats to Date
+const parseTimestamp = (ts) => {
+  if (!ts) return null;
+  const parsed = new Date(ts);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  const str = String(ts).trim();
+  const parts = str.split(' ');
+  const datePart = parts[0];
+  const timePart = parts[1] || '00:00:00';
+
+  const dateSplit = datePart.split(/[\/\-]/);
+  const timeSplit = timePart.split(':');
+
+  if (dateSplit.length === 3) {
+    let day = parseInt(dateSplit[0], 10);
+    let month = parseInt(dateSplit[1], 10) - 1;
+    let year = parseInt(dateSplit[2], 10);
+    
+    // Support two-digit years if present
+    if (year < 100) year += 2000;
+
+    const hour = parseInt(timeSplit[0] || 0, 10);
+    const minute = parseInt(timeSplit[1] || 0, 10);
+    const second = parseInt(timeSplit[2] || 0, 10);
+
+    if (month > 11) {
+      // Swapped: MM/DD/YYYY format
+      return new Date(year, day - 1, month + 1, hour, minute, second);
+    }
+    return new Date(year, month, day, hour, minute, second);
+  }
+  return new Date(ts);
+};
 
 const FindEnquiry = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -10,6 +46,9 @@ const FindEnquiry = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [indentData, setIndentData] = useState([]);
   const [enquiryData, setEnquiryData] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(30);
+  const [, setTick] = useState(0);
   const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -17,6 +56,31 @@ const FindEnquiry = () => {
   const [generatedCandidateNo, setGeneratedCandidateNo] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (indentData.length > 0) {
+      const ids = indentData.map(i => i.indentNo).filter(Boolean);
+      fetchTatTracking('hr_find_enquiry', ids).then(trackings => {
+        const trackingMap = {};
+        trackings.forEach(t => {
+          trackingMap[t.entity_id] = t;
+        });
+        setTatTracking(trackingMap);
+      }).catch(err => console.error('Failed to fetch HR TAT tracking:', err));
+
+      fetchTatSettings().then(settingsData => {
+        const setting = settingsData.find(s => s.stage_key === 'hr_find_enquiry');
+        if (setting && setting.is_active) {
+          setTatMins(setting.tat_minutes);
+        }
+      }).catch(err => console.error('Failed to fetch HR TAT settings:', err));
+    }
+  }, [indentData]);
 
 const [formData, setFormData] = useState({
   candidateName: '',
@@ -64,9 +128,10 @@ const [formData, setFormData] = useState({
             const status = row[getIndex('Status')];
             const planned2 = row[getIndex('Planned 2')];
             const actual2 = row[getIndex('Actual 2')];
+            const indentNo = row[getIndex('Indent Number')];
             
-            return status === 'NeedMore' && 
-                   planned2 && 
+            return indentNo && String(indentNo).trim() !== '' &&
+                   status === 'NeedMore' && 
                    (!actual2 || actual2 === '');
           })
           .map(row => ({
@@ -83,7 +148,7 @@ const [formData, setFormData] = useState({
             actual: row[getIndex('Actual 2')]
           }));
         const pendingTasks = processedData.filter(
-          task => task.plannedDate && !task.actual
+          task => !task.actual
         );
       
         setIndentData(pendingTasks);
@@ -98,15 +163,18 @@ const [formData, setFormData] = useState({
       
       const enquiryResult = await enquiryResponse.json();
       
-      if (enquiryResult.success && enquiryResult.data && enquiryResult.data.length > 0) {
+      if (enquiryResult.success && enquiryResult.data && enquiryResult.data.length >= 6) {
         // First row contains headers (row 6 in your sheet)
-        const headers = enquiryResult.data[5].map(h => h ? h.trim() : '');
-        const enquiryRows = enquiryResult.data.slice(6);
+        const headers = (enquiryResult.data[5] || []).map(h => h ? h.trim() : '');
+        const enquiryRows = enquiryResult.data.length > 6 ? enquiryResult.data.slice(6) : [];
         
         const getEnquiryIndex = (headerName) => headers.findIndex(h => h === headerName);
         
         const processedEnquiryData = enquiryRows
-          .filter(row => row[getEnquiryIndex('Timestamp')]) // Filter out empty rows
+          .filter(row => {
+            const enqNo = row[getEnquiryIndex('Candidate Enquiry Number')];
+            return enqNo && String(enqNo).trim() !== '';
+          })
           .map(row => ({
             id: row[getEnquiryIndex('Timestamp')],
             indentNo: row[getEnquiryIndex('Indent Number')],
@@ -133,7 +201,7 @@ const [formData, setFormData] = useState({
         setEnquiryData(processedEnquiryData);
        // addEnquiry(processedEnquiryData);
       } else {
-        throw new Error(enquiryResult.error || 'Not enough rows in ENQUIRY sheet data');
+        throw new Error(enquiryResult.error || 'Invalid ENQUIRY sheet structure');
       }
       
     } catch (error) {
@@ -511,12 +579,13 @@ const handleSubmit = async (e) => {
                     <th className="px-6 py-3 text-left text-xs font-medium  text-gray-500 uppercase tracking-wider">Prefer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium  text-gray-500 uppercase tracking-wider">Number Of Post</th>
                     <th className="px-6 py-3 text-left text-xs font-medium  text-gray-500 uppercase tracking-wider">Competition Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium  text-gray-500 uppercase tracking-wider">Planned Date</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {tableLoading ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan="8" className="px-6 py-12 text-center">
                         <div className="flex justify-center flex-col items-center">
                           <div className="w-6 h-6 border-4 border-indigo-500 border-dashed rounded-full animate-spin mb-2"></div>
                           <span className="text-gray-600 text-sm">Loading pending enquiries...</span>
@@ -525,7 +594,7 @@ const handleSubmit = async (e) => {
                     </tr>
                   ) : filteredPendingData.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan="8" className="px-6 py-12 text-center">
                         <p className="text-gray-500">No pending enquiries found.</p>
                       </td>
                     </tr>
@@ -547,6 +616,9 @@ const handleSubmit = async (e) => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.numberOfPost}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {item.competitionDate ? new Date(item.competitionDate).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {renderPlannedDateCell(tatTracking[item.indentNo], parseTimestamp(item.id), tatMins)}
                         </td>
                       </tr>
                     ))

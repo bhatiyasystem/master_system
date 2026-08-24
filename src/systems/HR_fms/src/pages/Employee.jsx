@@ -41,7 +41,7 @@ const EmployeeModal = ({ existing, onSave, onClose }) => {
     // Clean up optional fields for PostgreSQL DATE compatibility (convert "" to null)
     const cleanedForm = {
       ...form,
-      salary: parseFloat(form.salary || 0),
+      salary: typeof form.salary === 'number' ? form.salary : (parseFloat(String(form.salary || '').replace(/[^\d\.]/g, '')) || 0),
       puttha_status: form.puttha_status || 'Yes',
       date_of_leaving: form.status === 'left' && form.date_of_leaving ? form.date_of_leaving : null,
       reason_of_leaving: form.status === 'left' && form.reason_of_leaving ? form.reason_of_leaving : null,
@@ -221,9 +221,33 @@ const excelSerialToDate = (value) => {
     if (!d) return '';
     return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
   }
+  
+  const str = String(value || '').trim();
+  if (!str) return '';
+
+  const parts = str.split(/[\/\-]/);
+  if (parts.length === 3) {
+    let day = parseInt(parts[0], 10);
+    let month = parseInt(parts[1], 10) - 1;
+    let year = parseInt(parts[2], 10);
+
+    if (year < 100) year += 2000;
+
+    if (month > 11) {
+      const temp = day;
+      day = month + 1;
+      month = temp - 1;
+    }
+
+    const testDate = new Date(year, month, day);
+    if (!isNaN(testDate.getTime())) {
+      return `${testDate.getFullYear()}-${String(testDate.getMonth() + 1).padStart(2, '0')}-${String(testDate.getDate()).padStart(2, '0')}`;
+    }
+  }
+
   const parsed = new Date(value);
   if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  return String(value || '').trim();
+  return str;
 };
 
 const BulkImportModal = ({ onImport, onClose }) => {
@@ -297,7 +321,7 @@ const BulkImportModal = ({ onImport, onClose }) => {
           father_name: String(get('father_name') || '').trim(),
           work_location: String(get('work_location') || '').trim(),
           designation: String(get('designation') || '').trim(),
-          salary: parseFloat(get('salary') || 0) || 0,
+          salary: typeof get('salary') === 'number' ? get('salary') : (parseFloat(String(get('salary') || '').replace(/[^\d\.]/g, '')) || 0),
           status,
           date_of_leaving: status === 'left' && rawDol ? excelSerialToDate(rawDol) : null,
           reason_of_leaving: status === 'left' ? String(get('reason_of_leaving') || '').trim() || null : null,

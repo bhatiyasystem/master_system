@@ -2,6 +2,42 @@ import { Search, Clock, CheckCircle, X, Upload } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../../core/services/tatService';
+
+// Helper to parse custom timestamp string formats to Date
+const parseTimestamp = (ts) => {
+  if (!ts) return null;
+  const parsed = new Date(ts);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  const str = String(ts).trim();
+  const parts = str.split(' ');
+  const datePart = parts[0];
+  const timePart = parts[1] || '00:00:00';
+
+  const dateSplit = datePart.split(/[/-]/);
+  const timeSplit = timePart.split(':');
+
+  if (dateSplit.length === 3) {
+    let day = parseInt(dateSplit[0], 10);
+    let month = parseInt(dateSplit[1], 10) - 1;
+    let year = parseInt(dateSplit[2], 10);
+    
+    // Support two-digit years if present
+    if (year < 100) year += 2000;
+
+    const hour = parseInt(timeSplit[0] || 0, 10);
+    const minute = parseInt(timeSplit[1] || 0, 10);
+    const second = parseInt(timeSplit[2] || 0, 10);
+
+    if (month > 11) {
+      // Swapped: MM/DD/YYYY format
+      return new Date(year, day - 1, month + 1, hour, minute, second);
+    }
+    return new Date(year, month, day, hour, minute, second);
+  }
+  return new Date(ts);
+};
 
 const CallTracker = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -10,6 +46,10 @@ const CallTracker = () => {
   const [showJoiningModal, setShowJoiningModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [followUpData, setFollowUpData] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(60);
+  const [, setTick] = useState(0);
+  const [existingJoiningEnquiryNos, setExistingJoiningEnquiryNos] = useState(new Set());
 
     const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,6 +58,7 @@ const CallTracker = () => {
     nextDate: ''
   });
   const [joiningFormData, setJoiningFormData] = useState({
+    employeeId: '',
     nameAsPerAadhar: '',
     fatherName: '',
     dateOfJoining: '',
@@ -68,37 +109,37 @@ const CallTracker = () => {
     setError(null);
 
     try {
-      const [enquiryResponse, followUpResponse] = await Promise.all([
+      const [enquiryResponse, followUpResponse, joiningResponse] = await Promise.all([
         supabaseFetchSheet('ENQUIRY'),
-        supabaseFetchSheet('Follow - Up')
+        supabaseFetchSheet('Follow - Up'),
+        supabaseFetchSheet('JOINING')
       ]);
       
-      if (!enquiryResponse.ok || !followUpResponse.ok) {
-        throw new Error(`HTTP error! status: ${enquiryResponse.status} or ${followUpResponse.status}`);
+      if (!enquiryResponse.ok || !followUpResponse.ok || !joiningResponse.ok) {
+        throw new Error(`HTTP error! status: ${enquiryResponse.status}, ${followUpResponse.status}, or ${joiningResponse.status}`);
       }
       
-      const [enquiryResult, followUpResult] = await Promise.all([
+      const [enquiryResult, followUpResult, joiningResult] = await Promise.all([
         enquiryResponse.json(),
-        followUpResponse.json()
+        followUpResponse.json(),
+        joiningResponse.json()
       ]);
       
-      if (!enquiryResult.success || !enquiryResult.data || enquiryResult.data.length < 7) {
-        throw new Error(enquiryResult.error || 'Not enough rows in enquiry sheet data');
+      if (!enquiryResult.success || !enquiryResult.data || enquiryResult.data.length < 6) {
+        throw new Error(enquiryResult.error || 'Invalid ENQUIRY sheet structure');
       }
       
       // Process enquiry data
-      const enquiryHeaders = enquiryResult.data[5].map(h => h.trim());
-      const enquiryDataFromRow7 = enquiryResult.data.slice(6);
+      const enquiryHeaders = (enquiryResult.data[5] || []).map(h => String(h || '').trim());
+      const enquiryDataFromRow7 = enquiryResult.data.length > 6 ? enquiryResult.data.slice(6) : [];
       
       const getIndex = (headerName) => enquiryHeaders.findIndex(h => h === headerName);
       
       const processedEnquiryData = enquiryDataFromRow7
         .filter(row => {
-          const plannedIndex = getIndex('Planned');
-          const actualIndex = getIndex('Actual');
-          const planned = row[plannedIndex];
-          const actual = row[actualIndex];
-          return planned && (!actual || actual === '');
+          const enqNoIndex = getIndex('Candidate Enquiry Number');
+          const enqNo = row[enqNoIndex];
+          return enqNo && String(enqNo).trim() !== '';
         })
         .map(row => ({
           id: row[getIndex('Timestamp')],
@@ -137,6 +178,21 @@ const CallTracker = () => {
         
         setFollowUpData(processedFollowUpData);
       }
+
+      // Process joining data to find already completed joinings
+      if (joiningResult.success && joiningResult.data) {
+        const rawJoiningData = joiningResult.data;
+        const joiningHeaders = rawJoiningData[5] || [];
+        const enquiryNoIndex = joiningHeaders.findIndex(h => h && h.toString().trim().toLowerCase() === 'enquiry no');
+        const joiningRows = rawJoiningData.length > 6 ? rawJoiningData.slice(6) : [];
+        const existingEnquiryNos = new Set(
+          joiningRows
+            .map(row => row[enquiryNoIndex])
+            .filter(Boolean)
+            .map(val => String(val).trim())
+        );
+        setExistingJoiningEnquiryNos(existingEnquiryNos);
+      }
       
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -174,16 +230,18 @@ const fetchFollowUpData = async () => {
       throw new Error('Expected array data not received');
     }
 
-    // Process data - skip header row if present
-    const dataRows = rawData.length > 0 && Array.isArray(rawData[0]) ? rawData.slice(1) : rawData;
+    // Process data - skip prepended empty rows and header row (first 6 rows)
+    const dataRows = rawData.length > 6 ? rawData.slice(6) : [];
     
-    const processedData = dataRows.map(row => ({
-      timestamp: row[0] || '',       // Column A (index 0) - Timestamp
-      enquiryNo: row[1] || '',       // Column B (index 1) - Enquiry No
-      status: row[2] || '',          // Column C (index 2) - Status
-      candidateSays: row[3] || '',   // Column D (index 3) - Candidates Says
-      nextDate: row[4] || ''         // Column E (index 4) - Next Date
-    }));
+    const processedData = dataRows
+      .map(row => ({
+        timestamp: row[0] || '',       // Column A (index 0) - Timestamp
+        enquiryNo: row[1] || '',       // Column B (index 1) - Enquiry No
+        status: row[2] || '',          // Column C (index 2) - Status
+        candidateSays: row[3] || '',   // Column D (index 3) - Candidates Says
+        nextDate: row[4] || ''         // Column E (index 4) - Next Date
+      }))
+      .filter(row => row.enquiryNo && String(row.enquiryNo).trim() !== '');
 
     console.log('Processed follow-up data:', processedData);
     setHistoryData(processedData);
@@ -202,6 +260,26 @@ const fetchFollowUpData = async () => {
     fetchEnquiryData();
     fetchFollowUpData();
   }, []);
+
+  useEffect(() => {
+    if (enquiryData.length > 0) {
+      const ids = enquiryData.map(i => i.candidateEnquiryNo).filter(Boolean);
+      fetchTatTracking('hr_call_tracker', ids).then(trackings => {
+        const trackingMap = {};
+        trackings.forEach(t => {
+          trackingMap[t.entity_id] = t;
+        });
+        setTatTracking(trackingMap);
+      }).catch(err => console.error('Failed to fetch HR TAT tracking:', err));
+
+      fetchTatSettings().then(settingsData => {
+        const setting = settingsData.find(s => s.stage_key === 'hr_call_tracker');
+        if (setting && setting.is_active) {
+          setTatMins(setting.tat_minutes);
+        }
+      }).catch(err => console.error('Failed to fetch HR TAT settings:', err));
+    }
+  }, [enquiryData]);
 
  const pendingData = enquiryData.filter(item => {
     const hasFinalStatus = followUpData.some(followUp => 
@@ -330,6 +408,46 @@ const handleSubmit = async (e) => {
     
     // If status is Joining, show the joining modal after successful submission
     if (formData.status === 'Joining') {
+      setJoiningFormData({
+        employeeId: '',
+        nameAsPerAadhar: selectedItem.candidateName || '',
+        fatherName: '',
+        dateOfJoining: '',
+        joiningPlace: '',
+        designation: selectedItem.applyingForPost || '',
+        salary: selectedItem.lastSalary || '',
+        aadharFrontPhoto: null,
+        aadharBackPhoto: null,
+        panCard: null,
+        candidatePhoto: null,
+        currentAddress: selectedItem.presentAddress || '',
+        addressAsPerAadhar: '',
+        dobAsPerAadhar: selectedItem.candidateDOB ? new Date(selectedItem.candidateDOB).toISOString().split('T')[0] : '',
+        gender: '',
+        mobileNo: selectedItem.candidatePhone || '',
+        familyMobileNo: '',
+        relationshipWithFamily: '',
+        pastPfId: '',
+        currentBankAc: '',
+        ifscCode: '',
+        branchName: '',
+        bankPassbookPhoto: null,
+        personalEmail: selectedItem.candidateEmail || '',
+        esicNo: '',
+        highestQualification: '',
+        pfEligible: '',
+        esicEligible: '',
+        joiningCompanyName: '',
+        emailToBeIssue: '',
+        issueMobile: '',
+        issueLaptop: '',
+        aadharCardNo: selectedItem.aadharNo || '',
+        modeOfAttendance: '',
+        qualificationPhoto: null,
+        paymentMode: '',
+        salarySlip: null,
+        resumeCopy: null
+      });
       setShowModal(false);
       setShowJoiningModal(true);
     } else {
@@ -399,7 +517,7 @@ const handleSubmit = async (e) => {
       
       // Assign values directly to array indices
       rowData[0] = formattedTimestamp;           // Timestamp
-      // rowData[1] = "employee no";                // Employee No (placeholder)
+      rowData[1] = joiningFormData.employeeId || ''; // Employee No
       rowData[2] = selectedItem.indentNo;        // Indent No
       rowData[3] = selectedItem.candidateEnquiryNo || ''; // Candidate Enquiry No
       rowData[4] = selectedItem.candidateName;   // Candidate Name
@@ -432,7 +550,7 @@ const handleSubmit = async (e) => {
       rowData[31] = joiningFormData.emailToBeIssue; // Email to be Issued
       rowData[32] = joiningFormData.issueMobile;   // Issue Mobile
       rowData[33] = joiningFormData.issueLaptop;   // Issue Laptop
-      rowData[34] = selectedItem.aadharNo;        // Aadhar No
+      rowData[34] = joiningFormData.aadharCardNo || ''; // Aadhar No
       rowData[35] = joiningFormData.modeOfAttendance; // Mode of Attendance
       rowData[36] = fileUrls.qualificationPhoto;  // Qualification Photo (Column AK)
       rowData[37] = joiningFormData.paymentMode;   // Payment Mode
@@ -534,12 +652,13 @@ const handleSubmit = async (e) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Photo</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resume</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Planned Date</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {tableLoading ? (
                     <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center">
+                      <td colSpan="10" className="px-6 py-12 text-center">
                         <div className="flex justify-center flex-col items-center">
                           <div className="w-6 h-6 border-4 border-indigo-500 border-dashed rounded-full animate-spin mb-2"></div>
                           <span className="text-gray-600 text-sm">Loading pending calls...</span>
@@ -548,7 +667,7 @@ const handleSubmit = async (e) => {
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center">
+                      <td colSpan="10" className="px-6 py-12 text-center">
                         <p className="text-red-500">Error: {error}</p>
                         <button 
                           onClick={fetchEnquiryData}
@@ -560,7 +679,7 @@ const handleSubmit = async (e) => {
                     </tr>
                   ) : filteredPendingData.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center">
+                      <td colSpan="10" className="px-6 py-12 text-center">
                         <p className="text-gray-500">No pending calls found.</p>
                       </td>
                     </tr>
@@ -594,26 +713,27 @@ const handleSubmit = async (e) => {
                           ) : '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-  {item.candidateResume ? (
-    <a 
-      href={item.candidateResume} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="text-indigo-600 hover:text-indigo-800"
-    >
-      View
-    </a>
-  ) : '-'}
-</td>
+                          {item.candidateResume ? (
+                            <a 
+                              href={item.candidateResume} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-indigo-600 hover:text-indigo-800"
+                            >
+                              View
+                            </a>
+                          ) : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {renderPlannedDateCell(tatTracking[item.candidateEnquiryNo], parseTimestamp(item.id), tatMins)}
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-          )}
-
-         {activeTab === 'history' && (
+          )}          {activeTab === 'history' && (
   <div className="overflow-x-auto">
     <table className="min-w-full divide-y divide-gray-200">
       <thead className="bg-gray-50">
@@ -623,12 +743,13 @@ const handleSubmit = async (e) => {
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate Says</th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Date</th>
           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
         </tr>
       </thead>
       <tbody className="bg-white divide-y divide-gray-200">
         {tableLoading ? (
           <tr>
-            <td colSpan="5" className="px-6 py-12 text-center">
+            <td colSpan="6" className="px-6 py-12 text-center">
               <div className="flex justify-center flex-col items-center">
                 <div className="w-6 h-6 border-4 border-indigo-500 border-dashed rounded-full animate-spin mb-2"></div>
                 <span className="text-gray-600 text-sm">Loading call history...</span>
@@ -637,7 +758,7 @@ const handleSubmit = async (e) => {
           </tr>
         ) : filteredHistoryData.length === 0 ? (
           <tr>
-            <td colSpan="5" className="px-6 py-12 text-center">
+            <td colSpan="6" className="px-6 py-12 text-center">
               <p className="text-gray-500">No call history found.</p>
             </td>
           </tr>
@@ -660,6 +781,68 @@ const handleSubmit = async (e) => {
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.nextDate || '-'}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {item.timestamp || '-'}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {item.status === 'Joining' && !existingJoiningEnquiryNos.has(String(item.enquiryNo).trim()) ? (
+                  <button
+                    onClick={() => {
+                      const enq = enquiryData.find(e => String(e.candidateEnquiryNo).trim() === String(item.enquiryNo).trim());
+                      if (enq) {
+                        setSelectedItem(enq);
+                        setJoiningFormData({
+                          employeeId: '',
+                          nameAsPerAadhar: enq.candidateName || '',
+                          fatherName: '',
+                          dateOfJoining: '',
+                          joiningPlace: '',
+                          designation: enq.applyingForPost || '',
+                          salary: enq.lastSalary || '',
+                          aadharFrontPhoto: null,
+                          aadharBackPhoto: null,
+                          panCard: null,
+                          candidatePhoto: null,
+                          currentAddress: enq.presentAddress || '',
+                          addressAsPerAadhar: '',
+                          dobAsPerAadhar: enq.candidateDOB ? new Date(enq.candidateDOB).toISOString().split('T')[0] : '',
+                          gender: '',
+                          mobileNo: enq.candidatePhone || '',
+                          familyMobileNo: '',
+                          relationshipWithFamily: '',
+                          pastPfId: '',
+                          currentBankAc: '',
+                          ifscCode: '',
+                          branchName: '',
+                          bankPassbookPhoto: null,
+                          personalEmail: enq.candidateEmail || '',
+                          esicNo: '',
+                          highestQualification: '',
+                          pfEligible: '',
+                          esicEligible: '',
+                          joiningCompanyName: '',
+                          emailToBeIssue: '',
+                          issueMobile: '',
+                          issueLaptop: '',
+                          aadharCardNo: enq.aadharNo || '',
+                          modeOfAttendance: '',
+                          qualificationPhoto: null,
+                          paymentMode: '',
+                          salarySlip: null,
+                          resumeCopy: null
+                        });
+                        setShowJoiningModal(true);
+                      } else {
+                        toast.error('Enquiry details not found for this candidate.');
+                      }
+                    }}
+                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold"
+                  >
+                    Fill Joining Form
+                  </button>
+                ) : item.status === 'Joining' ? (
+                  <span className="text-xs text-green-600 font-semibold">Submitted</span>
+                ) : (
+                  '-'
+                )}
               </td>
             </tr>
           ))
@@ -804,12 +987,14 @@ const handleSubmit = async (e) => {
   {/* Section 1: Basic Information */}
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID *</label>
       <input
         type="text"
-        value={selectedItem.candidateEnquiryNo}
-        disabled
-        className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-700"
+        name="employeeId"
+        value={joiningFormData.employeeId}
+        onChange={handleJoiningInputChange}
+        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700"
+        required
       />
     </div>
     <div>
@@ -1012,9 +1197,9 @@ const handleSubmit = async (e) => {
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar Number *</label>
       <input
-       
-     disabled
-        value={selectedItem.aadharNo}
+        type="text"
+        name="aadharCardNo"
+        value={joiningFormData.aadharCardNo}
         onChange={handleJoiningInputChange}
         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700"
       />

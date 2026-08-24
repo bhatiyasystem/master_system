@@ -31,6 +31,11 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
   const [activeTab, setActiveTab] = useState(defaultTab); // checklist, maintenance, repair, ea, delegation
   const [showHistory, setShowHistory] = useState(false);
 
+  useEffect(() => {
+    setActiveTab(defaultTab);
+    setShowHistory(false);
+  }, [defaultTab]);
+
   // Data states
   const [tasks, setTasks] = useState([]);
   const [historyData, setHistoryData] = useState([]);
@@ -935,7 +940,8 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
 
     try {
       const tableName = activeTab === "checklist" ? "checklist" :
-        activeTab === "delegation" ? "delegation" :
+        activeTab === "delegation" ?
+         "delegation" :
           activeTab === "maintenance" ? "maintenance_tasks" :
             activeTab === "ea" ? "ea_tasks" :
               "repair_tasks";

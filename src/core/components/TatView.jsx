@@ -41,6 +41,22 @@ function TatView() {
       payment: { title: "Payment" },
     },
   };
+  
+  const Hr_fms_Pages = {
+    Hr_fms: {
+      hr_indent: { title: "Indent" },
+      hr_find_enquiry: { title: "Find Enquiry" },
+      hr_call_tracker: { title: "Call Tracker" },
+      hr_after_joining_work: { title: "After Joining Work" },
+      hr_after_leaving_work: { title: "After Leaving Work" },
+      hr_payment: { title: "Payment" },
+    },
+  };
+
+  const AllSections = {
+    ...PurchasePages,
+    ...Hr_fms_Pages,
+  };
 
   const loadSettings = async () => {
     setLoading(true);
@@ -124,7 +140,7 @@ function TatView() {
     }
   };
 
-  const pages = section ? PurchasePages[section] : {};
+  const pages = section ? AllSections[section] : {};
 
   return (
     <div className="bg-white rounded-3xl border border-blue-100 overflow-hidden shadow-sm p-6 max-w-2xl mx-auto">
@@ -147,19 +163,8 @@ function TatView() {
             {error}
           </div>
           {error.includes("row-level security") && (
-            <div className="bg-white/50 p-3 rounded-xl border border-red-200 mt-2 font-mono text-[10px] whitespace-pre-wrap select-all">
-              {`-- Run this SQL in your Supabase SQL Editor to seed the table & allow inserts:
-
-create policy "Allow insert for everyone" on purchase_tat_settings for insert with check (true);
-
-insert into purchase_tat_settings (stage_key, stage_name, tat_minutes, is_active) values
-('indent_approval', 'Indent Approval', 20, true),
-('purchase_order', 'Purchase Order', 30, true),
-('delivery', 'Delivery', 60, true),
-('receiving', 'Receiving', 20, true),
-('payment_approval', 'Payment Approval', 15, true),
-('payment', 'Payment', 10, true)
-on conflict (stage_key) do nothing;`}
+            <div className="bg-white/50 p-3 rounded-xl border border-red-200 mt-2 font-mono text-[10px] whitespace-pre-wrap select-all">Internal Server Error
+              
             </div>
           )}
         </div>
@@ -191,7 +196,7 @@ on conflict (stage_key) do nothing;`}
                 className="bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               >
                 <option value="" disabled>Select Section</option>
-                {Object.keys(PurchasePages).map((sectionName) => (
+                {Object.keys(AllSections).map((sectionName) => (
                   <option key={sectionName} value={sectionName}>
                     {sectionName}
                   </option>

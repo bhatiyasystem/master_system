@@ -69,9 +69,9 @@ const Leaving = () => {
         actual: row[getIndex('Actual')] || '',
       }));
 
-      // Filter for completed joining tasks
+      // Filter for completed joining tasks (where Employee ID exists)
       const completedTasks = processedData.filter(
-        (task) => task.plannedDate && task.actual
+        (task) => task.employeeNo && String(task.employeeNo).trim() !== ''
       );
       
       setPendingData(completedTasks);

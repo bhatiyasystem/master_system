@@ -25,6 +25,25 @@ const TRANSPORTER_FIELDS = [
 const CONFIG = {
     vendor: { table: 'vendors', fields: VENDOR_FIELDS, label: 'Vendor', pluralLabel: 'Vendors' },
     transporter: { table: 'transporters', fields: TRANSPORTER_FIELDS, label: 'Transporter', pluralLabel: 'Transporters' },
+    indent: { 
+        table: 'purchase_indents', 
+        fields: [
+            { key: 'vendor', label: 'Vendor Name', placeholder: 'Enter vendor name', comboTable: 'vendors', comboColumn: 'name' },
+            { key: 'category', label: 'Category', placeholder: 'Enter category', comboTable: 'purchase_indents', comboColumn: 'category' },
+            { key: 'unit', label: 'Unit', placeholder: 'Enter unit', comboTable: 'purchase_indents', comboColumn: 'unit' },
+            { key: 'parent_group', label: 'Parent Group', placeholder: 'Enter parent group', comboTable: 'purchase_indents', comboColumn: 'parent_group' },
+            // { key: 'alt_unit', label: 'Alt Unit', placeholder: 'Enter alt unit' },
+            // { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
+            // { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
+            // { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
+            // { key: 'cl_qty', label: 'CL Qty', placeholder: 'Enter CL qty' },
+            { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit' },
+            { key: 'order_formula', label: 'Order Formula', placeholder: 'Enter order formula' },
+            { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
+        ], 
+        label: 'Indent', 
+        pluralLabel: 'Indents' 
+    },
 };
 
 export default function MasterDataView() {
@@ -54,6 +73,14 @@ export default function MasterDataView() {
                         <Lucide.Truck size={14} />
                         Transporter Details
                     </button>
+                    <button
+                        onClick={() => setType('indent')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${type === 'indent' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                    >
+                        <Lucide.ClipboardList size={14} />
+                        Indent Details
+                    </button>
                 </div>
             </div>
 
@@ -75,7 +102,7 @@ function MasterDataPanel({ type }) {
     const fileInputRef = useRef(null);
 
     const filteredRows = searchTerm.trim()
-        ? rows.filter((r) => String(r.name || '').toLowerCase().includes(searchTerm.trim().toLowerCase()))
+        ? rows.filter((r) => String(r.name || r.item_details || '').toLowerCase().includes(searchTerm.trim().toLowerCase()))
         : rows;
 
     async function handleDelete(row) {
@@ -107,9 +134,29 @@ function MasterDataPanel({ type }) {
         setLoading(true);
         setError('');
         try {
-            const { data, error } = await supabase.from(config.table).select('*').order('name', { ascending: true });
+            let query = supabase.from(config.table).select('*');
+            if (type === 'indent') {
+                query = query.order('item_details', { ascending: true });
+            } else {
+                query = query.order('name', { ascending: true });
+            }
+            const { data, error } = await query;
             if (error) throw error;
-            setRows(data || []);
+
+            if (type === 'indent') {
+                const seen = new Set();
+                const distinctData = [];
+                (data || []).forEach(row => {
+                    const norm = String(row.item_details || '').trim().toLowerCase();
+                    if (norm && !seen.has(norm)) {
+                        seen.add(norm);
+                        distinctData.push(row);
+                    }
+                });
+                setRows(distinctData);
+            } else {
+                setRows(data || []);
+            }
         } catch (err) {
             setError(err.message || `Failed to load ${config.pluralLabel.toLowerCase()}.`);
         } finally {
@@ -463,7 +510,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                 ? await supabase.from(config.table).update(payload).eq('id', record.id)
                 : await supabase.from(config.table).insert(payload);
             if (error) throw error;
-            onSaved(payload.name);
+             onSaved(payload.name || payload.item_details);
         } catch (err) {
             setError(err.message || 'Failed to save.');
         } finally {
@@ -541,6 +588,15 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                             value={form[f.key]}
                                             onChange={(val) => update(f.key, val)}
                                             parentConfig={config}
+                                        />
+                                    ) : f.comboTable ? (
+                                        <ComboSelect
+                                            table={f.comboTable}
+                                            column={f.comboColumn}
+                                            value={form[f.key]}
+                                            onChange={(val) => update(f.key, val)}
+                                            label={f.label}
+                                            placeholder={f.placeholder}
                                         />
                                     ) : f.key === 'address' ? (
                                         <textarea
@@ -666,5 +722,84 @@ function TransporterComboField({ table, value, onChange }) {
                 />
             )}
         </>
+    );
+}
+
+function ComboSelect({ table, column, value, onChange, label, placeholder }) {
+    const [options, setOptions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showCustomInput, setShowCustomInput] = useState(false);
+    const [customValue, setCustomValue] = useState(value || '');
+
+    useEffect(() => {
+        let isMounted = true;
+        async function fetchOptions() {
+            try {
+                const targetColumn = table === 'vendors' ? 'name' : column;
+                const { data, error } = await supabase
+                    .from(table)
+                    .select(targetColumn);
+                if (error) throw error;
+                const vals = Array.from(
+                    new Set((data || []).map((r) => r[targetColumn]).filter(Boolean))
+                ).sort();
+                if (isMounted) {
+                    setOptions(vals);
+                    setLoading(false);
+                    if (value && !vals.includes(value)) {
+                        setShowCustomInput(true);
+                        setCustomValue(value);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                if (isMounted) setLoading(false);
+            }
+        }
+        fetchOptions();
+        return () => { isMounted = false; };
+    }, [table, column, value]);
+
+    if (loading) {
+        return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-150 rounded-2xl">Loading {label || column}...</div>;
+    }
+
+    return (
+        <div className="space-y-2">
+            <select
+                value={showCustomInput ? '__custom__' : value || ''}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__custom__') {
+                        setShowCustomInput(true);
+                        onChange(customValue);
+                    } else {
+                        setShowCustomInput(false);
+                        onChange(val);
+                    }
+                }}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+            >
+                <option value="">Select {label || column}</option>
+                {options.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                ))}
+                <option value="__custom__">➕ Type Custom Value...</option>
+            </select>
+
+            {showCustomInput && (
+                <input
+                    type="text"
+                    value={customValue}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomValue(val);
+                        onChange(val);
+                    }}
+                    placeholder={placeholder || `Enter custom ${label || column}`}
+                    className="w-full px-4 py-3 bg-white border border-blue-400 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+            )}
+        </div>
     );
 }

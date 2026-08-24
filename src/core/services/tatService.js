@@ -7,31 +7,10 @@ export async function fetchTatSettings() {
     .select('*');
   if (error) throw error;
 
-  if (!data || data.length === 0) {
-    const defaultStages = [
-      { id: 'mock_indent_approval', stage_key: 'indent_approval', stage_name: 'Indent Approval', tat_minutes: 20, is_active: true },
-      { id: 'mock_purchase_order', stage_key: 'purchase_order', stage_name: 'Purchase Order', tat_minutes: 30, is_active: true },
-      { id: 'mock_delivery', stage_key: 'delivery', stage_name: 'Delivery', tat_minutes: 60, is_active: true },
-      { id: 'mock_receiving', stage_key: 'receiving', stage_name: 'Receiving', tat_minutes: 20, is_active: true },
-      { id: 'mock_payment_approval', stage_key: 'payment_approval', stage_name: 'Payment Approval', tat_minutes: 15, is_active: true },
-      { id: 'mock_payment', stage_key: 'payment', stage_name: 'Payment', tat_minutes: 10, is_active: true },
-    ];
-    try {
-      const { data: inserted, error: insertError } = await supabase
-        .from('purchase_tat_settings')
-        .insert(defaultStages.map(({ id, ...rest }) => rest))
-        .select();
-      if (!insertError && inserted && inserted.length > 0) {
-        data = inserted;
-      } else {
-        data = defaultStages;
-      }
-    } catch (e) {
-      data = defaultStages;
-    }
-  }
-
-  const logicalOrder = ['indent_approval', 'purchase_order', 'delivery', 'receiving', 'payment_approval', 'payment'];
+  const logicalOrder = [
+    'indent_approval', 'purchase_order', 'delivery', 'receiving', 'payment_approval', 'payment',
+    'hr_indent', 'hr_find_enquiry', 'hr_call_tracker', 'hr_after_joining_work', 'hr_after_leaving_work', 'hr_payment'
+  ];
   return (data || []).sort((a, b) => {
     return logicalOrder.indexOf(a.stage_key) - logicalOrder.indexOf(b.stage_key);
   });
@@ -164,6 +143,8 @@ export function renderPlannedDateCell(tracking, fallbackStartDate, configuredMin
   let plannedAtStr = null;
   let isPending = true;
 
+  const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
+
   if (tracking) {
     if (tracking.status === 'Completed') {
       plannedAtStr = tracking.planned_at;
@@ -171,8 +152,12 @@ export function renderPlannedDateCell(tracking, fallbackStartDate, configuredMin
     } else {
       if (configuredMinutes !== undefined && configuredMinutes !== null) {
         const start = new Date(tracking.started_at || fallbackStartDate);
-        const planned = new Date(start.getTime() + configuredMinutes * 60000);
-        plannedAtStr = planned.toISOString();
+        if (isValidDate(start)) {
+          const planned = new Date(start.getTime() + configuredMinutes * 60000);
+          plannedAtStr = planned.toISOString();
+        } else {
+          plannedAtStr = tracking.planned_at;
+        }
       } else {
         plannedAtStr = tracking.planned_at;
       }
@@ -180,13 +165,16 @@ export function renderPlannedDateCell(tracking, fallbackStartDate, configuredMin
   } else if (fallbackStartDate) {
     const mins = (configuredMinutes !== undefined && configuredMinutes !== null) ? configuredMinutes : 20;
     const start = new Date(fallbackStartDate);
-    const planned = new Date(start.getTime() + mins * 60000);
-    plannedAtStr = planned.toISOString();
+    if (isValidDate(start)) {
+      const planned = new Date(start.getTime() + mins * 60000);
+      plannedAtStr = planned.toISOString();
+    }
   }
 
   if (!plannedAtStr) return '—';
 
   const plannedDate = new Date(plannedAtStr);
+  if (!isValidDate(plannedDate)) return '—';
   const plannedText = plannedDate.toLocaleString('en-IN');
   const isOverdue = isPending && Date.now() > plannedDate.getTime();
 

@@ -2,12 +2,12 @@ import masterSupabase from '../SupabaseClient';
 import hrSupabase from '../systems/HR_fms/src/services/supabaseHRClient';
 
 const SHEET_TABLE_MAP = {
-  'JOINING': { client: hrSupabase, table: 'employees', altTable: 'hr_joining' },
-  'LEAVING': { client: hrSupabase, table: 'employees', altTable: 'leaving_requests' },
-  'INDENT': { client: hrSupabase, table: 'employees', altTable: 'indents' },
-  'ENQUIRY': { client: hrSupabase, table: 'employees', altTable: 'enquiries' },
-  'Follow - Up': { client: hrSupabase, table: 'employees', altTable: 'follow_ups' },
-  'Leave Management': { client: hrSupabase, table: 'employees', altTable: 'leave_requests' },
+  'JOINING': { client: hrSupabase, table: 'hr_sheets' },
+  'LEAVING': { client: hrSupabase, table: 'hr_sheets' },
+  'INDENT': { client: hrSupabase, table: 'hr_sheets' },
+  'ENQUIRY': { client: hrSupabase, table: 'hr_sheets' },
+  'Follow - Up': { client: hrSupabase, table: 'hr_sheets' },
+  'Leave Management': { client: hrSupabase, table: 'hr_sheets' },
   'CompanyCalendar': { client: hrSupabase, table: 'company_calendar', altTable: 'employees' },
   'Report Daily': { client: hrSupabase, table: 'attendance_monthly', altTable: 'employees' },
   'Data': { client: hrSupabase, table: 'attendance_monthly', altTable: 'employees' },
@@ -39,10 +39,59 @@ const SHEET_HEADERS = {
     'Candidate Resume', 'Reference By', 'Present Address', 'Aadhar No'
   ],
   'JOINING': [
-    'Timestamp', 'Employee ID', 'Name', 'Father Name', 'Mobile No.',
-    'Family Mobile No.', 'Personal Email-Id', 'Current Address', 'Permanent Address',
-    'Aadhar Card No.', 'PAN Card No.', 'Bank Name', 'Account No.', 'IFSC Code',
-    'Branch', 'DOB', 'Designation', 'Department', 'Date of Joining', 'Status', 'Photo'
+    'Timestamp',
+    'Employee ID',
+    'Indent No',
+    'Enquiry No',
+    'Name As Per Aadhar',
+    'Father Name',
+    'Date Of Joining',
+    'Joining Place',
+    'Designation',
+    'Salary',
+    'Aadhar Frontside Photo',
+    'Pan card',
+    "Candidate's Photo",
+    'Current Address',
+    'Address As Per Aadhar Card',
+    'Date Of Birth As Per Aadhar Card',
+    'Gender',
+    'Mobile No.',
+    'Family Mobile No.',
+    'Relationship With Family Person',
+    'Past Pf Id No. (If Any)',
+    'Current Bank A.C No.',
+    'Ifsc Code',
+    'Branch Name',
+    'Photo Of Front Bank Passbook',
+    'Personal Email-Id',
+    'ESIC No (IF Any)',
+    'Highest Qualification',
+    'PF Eligible',
+    'ESIC Eligible',
+    'Joining Company Name',
+    'Email ID To Be Issue',
+    'Issue Mobile',
+    'Issue Laptop',
+    'Aadhar Card No',
+    'Mode Of Attendance',
+    'Quafication Photo',
+    'Payment Mode',
+    'Salary Slip',
+    'Resume Copy',
+    'Status',
+    'Planned Date',
+    'Actual',
+    'Unused',
+    'Actual Date',
+    'Check Salary Slip Resume',
+    'Offer Letter Received',
+    'Welcome Meeting',
+    'Biometric Access',
+    'Official Email ID',
+    'Assign Assets',
+    'PF ESIC',
+    'Company Directory'
   ],
   'LEAVING': [
     'Timestamp', 'Employee ID', 'Name', 'Department', 'Designation',
@@ -115,14 +164,42 @@ function formatAsSheet2DMatrix(sheetName, rawData) {
   return matrix;
 }
 
-/**
- * Fetch sheet records from Supabase, returning a fetch-compatible response object.
- */
 export async function supabaseFetchSheet(sheetName, params = {}) {
   const config = SHEET_TABLE_MAP[sheetName] || { client: masterSupabase, table: 'checklist' };
   const client = config.client;
 
   try {
+    if (config.table === 'hr_sheets') {
+      const { data, error } = await client
+        .from('hr_sheets')
+        .select('*')
+        .eq('sheet_name', sheetName)
+        .order('row_index', { ascending: true });
+
+      if (error) throw error;
+
+      const headers = SHEET_HEADERS[sheetName] || [];
+      const formattedRows = (data || []).map(record => {
+        const rowArr = Array.isArray(record.row_data) ? record.row_data : JSON.parse(record.row_data || '[]');
+        const obj = { id: record.id, row_index: record.row_index };
+        headers.forEach((hdr, idx) => {
+          obj[hdr] = rowArr[idx] !== undefined ? rowArr[idx] : '';
+        });
+        return obj;
+      });
+
+      const formattedData = formatAsSheet2DMatrix(sheetName, formattedRows);
+      const payload = { success: true, data: formattedData };
+      return {
+        ok: true,
+        status: 200,
+        success: true,
+        data: formattedData,
+        json: async () => payload,
+        text: async () => JSON.stringify(payload),
+      };
+    }
+
     let query = client.from(config.table).select('*');
     if (params.limit) query = query.limit(params.limit);
 
@@ -170,6 +247,100 @@ export async function supabaseMutateSheet(sheetName, action, payloadData = {}) {
   const client = config.client;
 
   try {
+    if (config.table === 'hr_sheets') {
+      let resultData = [];
+
+      if (action === 'insert' || action === 'add') {
+        const rawRowData = payloadData.rowData;
+        const rowArr = Array.isArray(rawRowData)
+          ? rawRowData
+          : JSON.parse(rawRowData || '[]');
+
+        // Count to find next row_index
+        const { count } = await client
+          .from('hr_sheets')
+          .select('*', { count: 'exact', head: true })
+          .eq('sheet_name', sheetName);
+
+        const nextRowIndex = (count || 0) + 7;
+
+        const { data, error } = await client
+          .from('hr_sheets')
+          .insert({
+            sheet_name: sheetName,
+            row_index: nextRowIndex,
+            row_data: rowArr
+          })
+          .select();
+
+        if (error) throw error;
+        resultData = data || [];
+      } else if (action === 'update') {
+        const rawRowData = payloadData.rowData;
+        const rowArr = Array.isArray(rawRowData)
+          ? rawRowData
+          : JSON.parse(rawRowData || '[]');
+
+        const rowIndex = parseInt(payloadData.rowIndex, 10);
+
+        const { data, error } = await client
+          .from('hr_sheets')
+          .update({ row_data: rowArr })
+          .eq('sheet_name', sheetName)
+          .eq('row_index', rowIndex)
+          .select();
+
+        if (error) throw error;
+        resultData = data || [];
+      } else if (action === 'updateCell') {
+        const rowIndex = parseInt(payloadData.rowIndex, 10);
+        const columnIndex = parseInt(payloadData.columnIndex, 10);
+        const val = payloadData.value;
+
+        // Fetch existing rowData
+        const { data: existing, error: fetchErr } = await client
+          .from('hr_sheets')
+          .select('*')
+          .eq('sheet_name', sheetName)
+          .eq('row_index', rowIndex)
+          .maybeSingle();
+
+        if (fetchErr) throw fetchErr;
+
+        if (existing) {
+          const rowArr = Array.isArray(existing.row_data)
+            ? existing.row_data
+            : JSON.parse(existing.row_data || '[]');
+
+          // Pad array if columnIndex exceeds array length
+          while (rowArr.length < columnIndex) {
+            rowArr.push('');
+          }
+
+          rowArr[columnIndex - 1] = val;
+
+          const { data: updated, error: updateErr } = await client
+            .from('hr_sheets')
+            .update({ row_data: rowArr })
+            .eq('id', existing.id)
+            .select();
+
+          if (updateErr) throw updateErr;
+          resultData = updated || [];
+        }
+      }
+
+      const resPayload = { success: true, data: resultData };
+      return {
+        ok: true,
+        status: 200,
+        success: true,
+        data: resultData,
+        json: async () => resPayload,
+        text: async () => JSON.stringify(resPayload),
+      };
+    }
+
     let resultData = [];
     if (action === 'insert' || action === 'add') {
       const { data } = await client.from(config.table).insert(payloadData).select();
@@ -196,12 +367,12 @@ export async function supabaseMutateSheet(sheetName, action, payloadData = {}) {
     };
   } catch (err) {
     console.warn(`[Supabase API] Error mutating sheet ${sheetName}:`, err);
-    const resPayload = { success: true, data: [] };
+    const resPayload = { success: false, error: err.message || String(err) };
     return {
-      ok: true,
-      status: 200,
-      success: true,
-      data: [],
+      ok: false,
+      status: 500,
+      success: false,
+      error: err.message || String(err),
       json: async () => resPayload,
       text: async () => JSON.stringify(resPayload),
     };

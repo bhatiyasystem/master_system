@@ -230,66 +230,66 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                 </select>
             </FilterBar>
 
-           <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full text-[12.6px]">
-                        <thead>
-                            <tr className="bg-gray-50 text-gray-500">
-                               {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
-                                    <th
-                                        key={h}
-                                        className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
-                                    >
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pendingPOs.length === 0 ? (
-                                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
-                            ) : filteredRows.length === 0 ? (
-                                <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
-                            ) : filteredRows.map((po) => (
-                                <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="whitespace-nowrap px-3 py-2.5">
-                                        <button
-                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
-                                            onClick={() => onLogDelivery(po)}
-                                        >
-                                            <Truck size={14} /> Update
-                                        </button>
-                                    </td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">
-                                        <div className="font-semibold text-gray-900">{po.vendor?.name || '—'}</div>
-                                        {po.vendor && (
-                                            <div className="text-[11px] text-gray-500 mt-0.5">
-                                                {po.vendor.city && <span>{po.vendor.city}</span>}
-                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
-                                                {po.vendor.paymentTerms && (
-                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
-                                                        {po.vendor.paymentTerms}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'category')}</td>
-                                    <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'unit')}</td>
-                                   <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'parentGroup')}</td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">
-                                        {po.poDate ? (() => {
-  const d = Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000));
-  return <span className={d > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{d}</span>;
-})() : '—'}
-                                    </td>
-                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
-                                </tr>
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full text-[12.6px]">
+                    <thead>
+                        <tr className="bg-gray-50 text-gray-500">
+                            {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
+                                <th
+                                    key={h}
+                                    className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
+                                >
+                                    {h}
+                                </th>
                             ))}
-                       </tbody>
-                    </table>
-                </div>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pendingPOs.length === 0 ? (
+                            <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
+                        ) : filteredRows.length === 0 ? (
+                            <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
+                        ) : filteredRows.map((po) => (
+                            <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                <td className="whitespace-nowrap px-3 py-2.5">
+                                    <button
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
+                                        onClick={() => onLogDelivery(po)}
+                                    >
+                                        <Truck size={14} /> Update
+                                    </button>
+                                </td>
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
+                                <td className="px-3 py-2.5 text-gray-800">
+                                    <div className="font-semibold text-gray-900">{po.vendor?.name || '—'}</div>
+                                    {po.vendor && (
+                                        <div className="text-[11px] text-gray-500 mt-0.5">
+                                            {po.vendor.city && <span>{po.vendor.city}</span>}
+                                            {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                            {po.vendor.paymentTerms && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                    {po.vendor.paymentTerms}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'category')}</td>
+                                <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'unit')}</td>
+                                <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'parentGroup')}</td>
+                                <td className="px-3 py-2.5 font-semibold text-gray-900">
+                                    {po.poDate ? (() => {
+                                        const d = Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000));
+                                        return <span className={d > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{d}</span>;
+                                    })() : '—'}
+                                </td>
+                                <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -314,7 +314,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
         if (!term) return deliveries;
         return deliveries.filter((d) => {
             const poNo = poMap.get(d.poId)?.poNo || '';
-            return `${poNo} ${d.transportName} ${d.billNumber} ${d.builtyNumber}`.toLowerCase().includes(term);
+            return `${poNo} ${d.transportName} ${poMap.get(d.poId)?.vendor?.name} ${d.billNumber} ${d.builtyNumber}`.toLowerCase().includes(term);
         });
     }, [deliveries, search, poMap]);
 
@@ -403,7 +403,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                                     <td className="px-3 py-2.5 text-gray-600">{d.daggCount ?? '—'}</td>
                                     <td className="px-3 py-2.5">
                                         {d.builtyImageUrl ? (
-                                           <a 
+                                            <a
                                                 href={d.builtyImageUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
@@ -417,7 +417,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                                     </td>
                                     <td className="px-3 py-2.5">
                                         {d.billImageUrl ? (
-                                           <a 
+                                            <a
                                                 href={d.billImageUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
@@ -508,7 +508,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
             return;
         }
 
-       setSubmitting(true);
+        setSubmitting(true);
         try {
             if (deliveryToEdit) {
                 await updateDelivery({
@@ -538,7 +538,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     Delivery against <span className="font-bold text-gray-900">{po.poNo}</span> ({po.vendor?.name})
                 </div>
 
-               <Field label="Transport Name" required>
+                <Field label="Transport Name" required>
                     <div className="flex items-center gap-2">
                         <select
                             className="input"
@@ -582,6 +582,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     <input
                         type="date"
                         className="input"
+                        required
                         value={form.builtyDate}
                         onChange={(e) => update('builtyDate', e.target.value)}
                     />
@@ -648,7 +649,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                 </div>
             </form>
 
-          <style>{`
+            <style>{`
         .input { height: 42px; border-radius: 0.75rem; border: 1px solid #e5e7eb; padding: 0 0.75rem; font-size: 13px; width: 100%; }
         .input:focus { outline: none; border-color: #173254; }
       `}</style>

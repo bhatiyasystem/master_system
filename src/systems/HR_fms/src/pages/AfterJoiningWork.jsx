@@ -2,6 +2,42 @@ import { Search, Clock, CheckCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';  
 import { supabaseFetchSheet, supabaseMutateSheet } from '../../../../services/supabaseApiAdapter';  
+import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../../core/services/tatService';
+
+// Helper to parse custom timestamp string formats to Date
+const parseTimestamp = (ts) => {
+  if (!ts) return null;
+  const parsed = new Date(ts);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  const str = String(ts).trim();
+  const parts = str.split(' ');
+  const datePart = parts[0];
+  const timePart = parts[1] || '00:00:00';
+
+  const dateSplit = datePart.split(/[\/\-]/);
+  const timeSplit = timePart.split(':');
+
+  if (dateSplit.length === 3) {
+    let day = parseInt(dateSplit[0], 10);
+    let month = parseInt(dateSplit[1], 10) - 1;
+    let year = parseInt(dateSplit[2], 10);
+    
+    // Support two-digit years if present
+    if (year < 100) year += 2000;
+
+    const hour = parseInt(timeSplit[0] || 0, 10);
+    const minute = parseInt(timeSplit[1] || 0, 10);
+    const second = parseInt(timeSplit[2] || 0, 10);
+
+    if (month > 11) {
+      // Swapped: MM/DD/YYYY format
+      return new Date(year, day - 1, month + 1, hour, minute, second);
+    }
+    return new Date(year, month, day, hour, minute, second);
+  }
+  return new Date(ts);
+};
 
 const AfterJoiningWork = () => {
   const [activeTab, setActiveTab] = useState("pending");
@@ -10,10 +46,39 @@ const AfterJoiningWork = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [pendingData, setPendingData] = useState([]);
   const [historyData, setHistoryData] = useState([]);
+  const [tatTracking, setTatTracking] = useState({});
+  const [tatMins, setTatMins] = useState(20);
+  const [, setTick] = useState(0);
   const [_loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [employeeId, setEmployeeId] = useState("");
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (pendingData.length > 0) {
+      const ids = pendingData.map(i => i.enquiryNo).filter(Boolean);
+      fetchTatTracking('hr_after_joining_work', ids).then(trackings => {
+        const trackingMap = {};
+        trackings.forEach(t => {
+          trackingMap[t.entity_id] = t;
+        });
+        setTatTracking(trackingMap);
+      }).catch(err => console.error('Failed to fetch HR TAT tracking:', err));
+
+      fetchTatSettings().then(settingsData => {
+        const setting = settingsData.find(s => s.stage_key === 'hr_after_joining_work');
+        if (setting && setting.is_active) {
+          setTatMins(setting.tat_minutes);
+        }
+      }).catch(err => console.error('Failed to fetch HR TAT settings:', err));
+    }
+  }, [pendingData]);
 
   const [formData, setFormData] = useState({
     checkSalarySlipResume: false,
@@ -112,16 +177,16 @@ const AfterJoiningWork = () => {
         resumeCopy: row[getIndex("Resume Copy")] || "",
         plannedDate: row[getIndex("Planned Date")] || "",
         actual: row[getIndex("Actual")] || "",
-      }));
+      })).filter(item => item.candidateName && String(item.candidateName).trim() !== '');
 
       const pendingTasks = processedData.filter(
-        (task) => task.plannedDate && !task.actual
+        (task) => !task.actual
       );
       console.log("Processed joining data:", processedData);
       setPendingData(pendingTasks);
 
       const historyTasks = processedData.filter(
-        (task) => task.plannedDate && task.actual
+        (task) => task.actual
       );
       setHistoryData(historyTasks);
     } catch (error) {
@@ -153,6 +218,7 @@ const AfterJoiningWork = () => {
     });
     
     setSelectedItem(item);
+    setEmployeeId(item.joiningNo || "");
     setShowModal(true);
     setLoading(true);
 
@@ -182,15 +248,19 @@ const AfterJoiningWork = () => {
         throw new Error("Could not find 'Employee ID' column");
       }
 
-      const rowIndex = allData.findIndex(
-        (row, idx) =>
-          idx > headerRowIndex &&
-          row[employeeIdIndex]?.toString().trim() ===
-            item.joiningNo?.toString().trim()
+      const enquiryNoIndex = headers.findIndex(
+        (h) => h?.toLowerCase() === "enquiry no"
       );
 
+      const rowIndex = allData.findIndex((row, idx) => {
+        if (idx <= headerRowIndex) return false;
+        const matchEmployeeId = item.joiningNo && row[employeeIdIndex]?.toString().trim() === item.joiningNo?.toString().trim();
+        const matchEnquiryNo = item.enquiryNo && row[enquiryNoIndex]?.toString().trim() === item.enquiryNo?.toString().trim();
+        return matchEmployeeId || matchEnquiryNo;
+      });
+
       if (rowIndex === -1)
-        throw new Error(`Employee ${item.joiningNo} not found`);
+        throw new Error(`Employee matching ID or Enquiry not found`);
 
       const startColumnIndex = 43;
 
@@ -259,7 +329,7 @@ const AfterJoiningWork = () => {
     setLoading(true);
     setSubmitting(true);
 
-    if (!selectedItem.joiningNo || !selectedItem.candidateName) {
+    if ((!selectedItem.joiningNo && !selectedItem.enquiryNo) || !selectedItem.candidateName) {
       toast.error("Please fill all required fields");
       setSubmitting(false);
       return;
@@ -290,14 +360,18 @@ const AfterJoiningWork = () => {
         throw new Error("Could not find 'Employee ID' column");
       }
 
-      const rowIndex = allData.findIndex(
-        (row, idx) =>
-          idx > headerRowIndex &&
-          row[employeeIdIndex]?.toString().trim() ===
-            selectedItem.joiningNo?.toString().trim()
+      const enquiryNoIndex = headers.findIndex(
+        (h) => h?.toLowerCase() === "enquiry no"
       );
+
+      const rowIndex = allData.findIndex((row, idx) => {
+        if (idx <= headerRowIndex) return false;
+        const matchEmployeeId = selectedItem.joiningNo && row[employeeIdIndex]?.toString().trim() === selectedItem.joiningNo?.toString().trim();
+        const matchEnquiryNo = selectedItem.enquiryNo && row[enquiryNoIndex]?.toString().trim() === selectedItem.enquiryNo?.toString().trim();
+        return matchEmployeeId || matchEnquiryNo;
+      });
       if (rowIndex === -1)
-        throw new Error(`Employee ${selectedItem.joiningNo} not found`);
+        throw new Error(`Employee not found`);
 
       const now = new Date();
       const formattedTimestamp = `${now.getDate()}/${
@@ -318,15 +392,29 @@ const AfterJoiningWork = () => {
 
       const updatePromises = [];
 
-      if (allFieldsYes) {
-        updatePromises.push(
-          supabaseMutateSheet("JOINING", "updateCell", {
-            rowIndex: (rowIndex + 1).toString(),
-            columnIndex: (startColumnIndex + 1).toString(),
-            value: formattedTimestamp,
-          })
-        );
-      }
+      updatePromises.push(
+        supabaseMutateSheet("JOINING", "updateCell", {
+          rowIndex: (rowIndex + 1).toString(),
+          columnIndex: (employeeIdIndex + 1).toString(),
+          value: employeeId,
+        })
+      );
+
+      // If all fields are checked, update both Actual (col 43) and Actual Date (col 44) columns with timestamp; otherwise, clear them.
+      updatePromises.push(
+        supabaseMutateSheet("JOINING", "updateCell", {
+          rowIndex: (rowIndex + 1).toString(),
+          columnIndex: "43",
+          value: allFieldsYes ? formattedTimestamp : "",
+        })
+      );
+      updatePromises.push(
+        supabaseMutateSheet("JOINING", "updateCell", {
+          rowIndex: (rowIndex + 1).toString(),
+          columnIndex: (startColumnIndex + 1).toString(),
+          value: allFieldsYes ? formattedTimestamp : "",
+        })
+      );
 
       const fields = [
         { value: formData.checkSalarySlipResume ? "Yes" : "No", offset: 2 },
@@ -485,12 +573,15 @@ const AfterJoiningWork = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Salary
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Planned Date
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white">
                   {tableLoading ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan="8" className="px-6 py-12 text-center">
                         <div className="flex justify-center flex-col items-center">
                           <div className="w-6 h-6 border-4 border-indigo-500 border-dashed rounded-full animate-spin mb-2"></div>
                           <span className="text-gray-600 text-sm">
@@ -501,7 +592,7 @@ const AfterJoiningWork = () => {
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan="8" className="px-6 py-12 text-center">
                         <p className="text-red-500">Error: {error}</p>
                         <button
                           onClick={fetchJoiningData}
@@ -540,11 +631,14 @@ const AfterJoiningWork = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.salary}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {renderPlannedDateCell(tatTracking[item.enquiryNo], parseTimestamp(item.timestamp), tatMins)}
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="px-6 py-12 text-center">
+                      <td colSpan="8" className="px-6 py-12 text-center">
                         <p className="text-gray-500">
                           No pending after joining work found.
                         </p>
@@ -656,8 +750,8 @@ const AfterJoiningWork = () => {
                   </label>
                   <input
                     type="text"
-                    value={selectedItem.joiningNo}
-                    disabled
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
                     className="w-full border border-gray-300   rounded-md px-3 py-2 bg-white    text-gray-500"
                   />
                 </div>

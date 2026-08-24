@@ -727,7 +727,6 @@ export async function updateDelivery({ id, transportName, contact, builtyDate, b
       bill_number: billNumber || '',
       bill_image_url: billImageUrl,
       builty_image_url: builtyImageUrl,
-      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
     .select()
@@ -965,4 +964,47 @@ export async function submitPayment({ paymentApprovalId, poId, proofFile, remark
   }
 
   return mapPaymentRow(data);
+}
+
+export async function createIndentManual(item) {
+  const year = new Date().getFullYear();
+  const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
+    p_year: year,
+    p_count: 1,
+  });
+  if (reserveError) throw reserveError;
+
+  const createdBy = localStorage.getItem('user-id') || null;
+
+  const payload = {
+    unique_no: reserved[0].unique_no,
+    created_by: createdBy,
+    item_details: item.item_details,
+    category: item.category || 'Uncategorized',
+    vendor: item.vendor || '',
+    unit: item.unit || 'Pcs.',
+    alt_unit: item.alt_unit || '',
+    parent_group: item.parent_group || '',
+    shelf_capacity: item.shelf_capacity || '',
+    max_level_qty: Number(item.max_level_qty) || 0,
+    rol_qty: Number(item.rol_qty) || 0,
+    cl_qty: Number(item.cl_qty) || 0,
+    conversion_unit: item.conversion_unit || '',
+    order_formula: Number(item.order_formula) || 0,
+    status: item.status || 'Pending',
+    remarks: item.remarks || '',
+    approved_qty: Number(item.approved_qty) || 0,
+  };
+
+  const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
+  if (error) throw error;
+
+  try {
+    const insertedRow = data[0];
+    await startOrUpdateStage(insertedRow.id, 'indent_approval', insertedRow.created_at);
+  } catch (tatErr) {
+    console.error('Error logging manual Indent TAT:', tatErr);
+  }
+
+  return data[0];
 }
