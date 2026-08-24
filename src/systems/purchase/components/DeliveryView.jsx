@@ -562,16 +562,33 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
 
                 <Field label="Contact Detail">
                     <input
+    className="input"
+    type="tel"
+    value={form.contact}
+    maxLength={10}
+    inputMode="numeric"
+    pattern="[0-9]{10}"
+    onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+        update('contact', value);
+    }}
+    placeholder="10-digit mobile"
+/>
+
+                    {/* <input
                         className="input"
+                        type='tel'
                         value={form.contact}
+                        pattern="[0-9]{10}"
                         onChange={(e) => update('contact', e.target.value)}
                         placeholder="10-digit mobile"
-                    />
+                    /> */}
                 </Field>
 
                 <Field label="Builty Number" required>
                     <input
                         className="input"
+                        required
                         value={form.builtyNumber}
                         onChange={(e) => update('builtyNumber', e.target.value)}
                         placeholder="e.g. BLT-00123"

@@ -140,48 +140,22 @@ export async function fetchIndentHistory(indentId) {
 export async function importIndentRows(parsedRows) {
   if (!parsedRows || parsedRows.length === 0) return { rows: [], firstNo: null, lastNo: null, matchedCount: 0, insertedCount: 0 };
 
-  // Fetch active/pending items across the workflow
-  const [{ data: indents, error: indentErr }, { data: deliveries, error: delErr }] = await Promise.all([
-    supabase.from('purchase_indents').select('*').in('status', ['Pending', 'Approved']),
-    supabase.from('purchase_deliveries').select('po_id, received'),
-  ]);
+  // Fetch items currently in approval stage (Pending status)
+  const { data: indents, error: indentErr } = await supabase
+    .from('purchase_indents')
+    .select('*')
+    .eq('status', 'Pending');
   if (indentErr) throw indentErr;
-  if (delErr) throw delErr;
-
-  const deliveriesByPo = {};
-  (deliveries || []).forEach((d) => {
-    if (!d.po_id) return;
-    if (!deliveriesByPo[d.po_id]) {
-      deliveriesByPo[d.po_id] = [];
-    }
-    deliveriesByPo[d.po_id].push(d);
-  });
 
   const normalizeName = (name) => (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
   const activePool = {};
   (indents || []).forEach((row) => {
-    let isActive = false;
-    if (row.status === 'Pending') {
-      isActive = true;
-    } else if (row.status === 'Approved') {
-      if (!row.po_id) {
-        isActive = true;
-      } else {
-        const dels = deliveriesByPo[row.po_id] || [];
-        if (dels.length === 0 || dels.some((d) => !d.received)) {
-          isActive = true;
-        }
-      }
+    const norm = normalizeName(row.item_details);
+    if (!activePool[norm]) {
+      activePool[norm] = [];
     }
-
-    if (isActive) {
-      const norm = normalizeName(row.item_details);
-      if (!activePool[norm]) {
-        activePool[norm] = [];
-      }
-      activePool[norm].push(row);
-    }
+    activePool[norm].push(row);
   });
 
   const newRowsToInsert = [];
@@ -966,22 +940,43 @@ export async function submitPayment({ paymentApprovalId, poId, proofFile, remark
   return mapPaymentRow(data);
 }
 
-export async function createIndentManual(item) {
+export async function createIndentsManualBulk(vendor, items) {
+  if (!items || items.length === 0) return [];
+
+  // Query existing Pending indents to prevent duplicates during approval stage
+  const { data: existingIndents, error: fetchError } = await supabase
+    .from('purchase_indents')
+    .select('item_details')
+    .eq('status', 'Pending');
+  if (fetchError) throw fetchError;
+
+  const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const existingNames = new Set(
+    (existingIndents || []).map((i) => normalize(i.item_details))
+  );
+
+  for (const item of items) {
+    const norm = normalize(item.item_details);
+    if (existingNames.has(norm)) {
+      throw new Error(`An indent for item "${item.item_details}" is already in approval stage (Pending).`);
+    }
+  }
+
   const year = new Date().getFullYear();
   const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
     p_year: year,
-    p_count: 1,
+    p_count: items.length,
   });
   if (reserveError) throw reserveError;
 
   const createdBy = localStorage.getItem('user-id') || null;
 
-  const payload = {
-    unique_no: reserved[0].unique_no,
+  const payload = items.map((item, idx) => ({
+    unique_no: reserved[idx].unique_no,
     created_by: createdBy,
     item_details: item.item_details,
     category: item.category || 'Uncategorized',
-    vendor: item.vendor || '',
+    vendor: vendor || '',
     unit: item.unit || 'Pcs.',
     alt_unit: item.alt_unit || '',
     parent_group: item.parent_group || '',
@@ -990,21 +985,18 @@ export async function createIndentManual(item) {
     rol_qty: Number(item.rol_qty) || 0,
     cl_qty: Number(item.cl_qty) || 0,
     conversion_unit: item.conversion_unit || '',
-    order_formula: Number(item.order_formula) || 0,
-    status: item.status || 'Pending',
-    remarks: item.remarks || '',
-    approved_qty: Number(item.approved_qty) || 0,
-  };
+    order_formula: Number(item.order_formula) || Number(item.qty) || 0,
+    status: 'Pending',
+  }));
 
   const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
   if (error) throw error;
 
   try {
-    const insertedRow = data[0];
-    await startOrUpdateStage(insertedRow.id, 'indent_approval', insertedRow.created_at);
+    await Promise.all((data || []).map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
   } catch (tatErr) {
     console.error('Error logging manual Indent TAT:', tatErr);
   }
 
-  return data[0];
+  return data;
 }

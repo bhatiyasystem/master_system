@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import * as Lucide from 'lucide-react';
 import supabase from '../../SupabaseClient';
+import CreateIndentFormModal from '../../systems/purchase/components/CreateIndentFormModal';
 
 const VENDOR_FIELDS = [
     { key: 'name', label: 'Vendor Name', placeholder: 'Enter vendor name', required: true },
@@ -22,6 +23,17 @@ const TRANSPORTER_FIELDS = [
     { key: 'address', label: 'Address', placeholder: 'Enter transporter address' },
 ];
 
+function getTableFields(config) {
+    if (config.table === 'purchase_indents') {
+        const itemDetailsField = config.fields.find(f => f.key === 'item_details');
+        const otherFields = config.fields.filter(f => f.key !== 'item_details');
+        if (itemDetailsField) {
+            return [itemDetailsField, ...otherFields];
+        }
+    }
+    return config.fields;
+}
+
 const CONFIG = {
     vendor: { table: 'vendors', fields: VENDOR_FIELDS, label: 'Vendor', pluralLabel: 'Vendors' },
     transporter: { table: 'transporters', fields: TRANSPORTER_FIELDS, label: 'Transporter', pluralLabel: 'Transporters' },
@@ -37,7 +49,7 @@ const CONFIG = {
             // { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
             // { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
             // { key: 'cl_qty', label: 'CL Qty', placeholder: 'Enter CL qty' },
-            { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit' },
+            { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit', comboTable: 'purchase_indents', comboColumn: 'conversion_unit' },
             { key: 'order_formula', label: 'Order Formula', placeholder: 'Enter order formula' },
             { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
         ], 
@@ -298,7 +310,7 @@ function MasterDataPanel({ type }) {
                                 <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">
                                     Action
                                 </th>
-                                {config.fields.map((f) => (
+                                {getTableFields(config).map((f) => (
                                     <th key={f.key} className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">
                                         {f.label}
                                     </th>
@@ -324,7 +336,7 @@ function MasterDataPanel({ type }) {
                                             <Lucide.Trash2 size={12} /> Delete
                                         </button>
                                     </td>
-                                    {config.fields.map((f) => (
+                                    {getTableFields(config).map((f) => (
                                         <td key={f.key} className="px-3 py-2.5 text-gray-800">
                                             {Array.isArray(r[f.key])
                                                 ? (r[f.key].length ? r[f.key].join(', ') : '—')
@@ -351,14 +363,24 @@ function MasterDataPanel({ type }) {
             )}
 
             {showForm && (
-                <AddRecordModal
-                    config={config}
-                    onClose={() => setShowForm(false)}
-                    onSaved={() => {
-                        setShowForm(false);
-                        load();
-                    }}
-                />
+                type === 'indent' ? (
+                    <CreateIndentFormModal
+                        onClose={() => setShowForm(false)}
+                        onSaved={() => {
+                            setShowForm(false);
+                            load();
+                        }}
+                    />
+                ) : (
+                    <AddRecordModal
+                        config={config}
+                        onClose={() => setShowForm(false)}
+                        onSaved={() => {
+                            setShowForm(false);
+                            load();
+                        }}
+                    />
+                )
             )}
 
             {editingRecord && (
