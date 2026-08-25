@@ -233,11 +233,11 @@ export async function importIndentRows(parsedRows) {
       alt_unit: r.altUnit || '',
       parent_group: r.parentGroup || '',
       shelf_capacity: r.shelfCapacity || '',
-      max_level_qty: Number(r.maxLevelQty) || 0,
-      rol_qty: Number(r.rolQty) || 0,
-      cl_qty: Number(r.clQty) || 0,
+      max_level_qty: (r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '') ? Number(r.maxLevelQty) : 0,
+      rol_qty: (r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0,
+      cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '') ? Number(r.clQty) : 0,
       conversion_unit: r.conversionUnit || '',
-      order_formula: String(r.orderFormula || '').trim(),
+      order_formula: (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '') ? String(r.orderFormula).trim() : null,
     }));
 
     const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
@@ -1217,11 +1217,11 @@ export async function createIndentsManualBulk(vendor, items) {
     alt_unit: item.alt_unit || '',
     parent_group: item.parent_group || '',
     shelf_capacity: item.shelf_capacity || '',
-    max_level_qty: Number(item.max_level_qty) || 0,
-    rol_qty: Number(item.rol_qty) || 0,
-    cl_qty: Number(item.cl_qty) || 0,
+    max_level_qty: (item.max_level_qty !== undefined && item.max_level_qty !== null && item.max_level_qty !== '') ? Number(item.max_level_qty) : 0,
+    rol_qty: (item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '') ? Number(item.rol_qty) : 0,
+    cl_qty: (item.cl_qty !== undefined && item.cl_qty !== null && item.cl_qty !== '') ? Number(item.cl_qty) : 0,
     conversion_unit: item.conversion_unit || '',
-    order_formula: String(item.order_formula || item.qty || '').trim(),
+    order_formula: (item.order_formula !== undefined && item.order_formula !== null && item.order_formula !== '') ? String(item.order_formula).trim() : null,
     status: 'Pending',
   }));
 
