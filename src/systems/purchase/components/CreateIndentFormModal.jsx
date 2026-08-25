@@ -85,21 +85,22 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     async function handleSubmit(e) {
         e.preventDefault();
         setError('');
-        const missingVendor = items.find(it => !it.vendor || !it.vendor.trim());
-        if (missingVendor) {
-            setError('Vendor Name is required for all items.');
-            return;
-        }
-        const invalidItem = items.find(it => !it.item_details.trim());
-        if (invalidItem) {
-            setError('Item Name is required for all items.');
-            return;
-        }
-        setSaving(true);
         try {
+            const missingVendor = items.find(it => !it.vendor || !it.vendor.trim());
+            if (missingVendor) {
+                setError('Vendor Name is required for all items.');
+                return;
+            }
+            const invalidItem = items.find(it => !it.item_details || !it.item_details.trim());
+            if (invalidItem) {
+                setError('Item Name is required for all items.');
+                return;
+            }
+            setSaving(true);
             await createIndentsManualBulk(null, items);
             onSaved();
         } catch (err) {
+            console.error("Error submitting manual indents:", err);
             setError(err.message || 'Failed to save indents.');
         } finally {
             setSaving(false);
