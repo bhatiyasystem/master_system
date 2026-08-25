@@ -51,7 +51,7 @@ const CONFIG = {
             // { key: 'cl_qty', label: 'CL Qty', placeholder: 'Enter CL qty' },
             // { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit', comboTable: 'purchase_indents', comboColumn: 'conversion_unit' },
             // { key: 'order_formula', label: 'Order Formula', placeholder: 'Enter order formula' },
-            // { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
+            { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
         ],
         label: 'Indent',
         pluralLabel: 'Indents'
