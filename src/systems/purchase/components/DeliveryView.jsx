@@ -13,6 +13,7 @@ const emptyForm = {
     builtyNumber: '',
     daggCount: '',
     billNumber: '',
+    billDate: '',
 };
 
 function distinctIndentValues(po, indentMap, field) {
@@ -339,6 +340,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                             <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Transport Name</th>
                             <th className="px-3 py-2.5">Bill No.</th>
+                            <th className="px-3 py-2.5">Bill Date</th>
                             <th className="px-3 py-2.5">Contact</th>
                             <th className="px-3 py-2.5">Category</th>
                             <th className="px-3 py-2.5">Unit</th>
@@ -385,9 +387,10 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
-                                    <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
+                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
+                                     <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
+                                     <td className="px-3 py-2.5 text-gray-700">{d.billDate || '—'}</td>
+                                     <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'category') : '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'unit') : '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'parentGroup') : '—'}</td>
@@ -456,6 +459,13 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         builtyNumber: deliveryToEdit.builtyNumber || '',
         daggCount: deliveryToEdit.daggCount || '',
         billNumber: deliveryToEdit.billNumber || '',
+        billDate: deliveryToEdit.billDate ? (() => {
+            try {
+                return new Date(deliveryToEdit.billDate).toISOString().split('T')[0];
+            } catch (e) {
+                return deliveryToEdit.billDate;
+            }
+        })() : '',
     } : emptyForm);
     const [transporters, setTransporters] = useState([]);
     const [showAddTransporter, setShowAddTransporter] = useState(false);
@@ -503,8 +513,8 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         e.preventDefault();
         setError('');
 
-        if (!form.transportName || !form.builtyNumber || !form.builtyDate || !form.daggCount) {
-            setError('Transport name, builty number, builty date and number of dagg are required.');
+        if (!form.transportName || !form.builtyNumber || !form.builtyDate || !form.daggCount || !form.billDate) {
+            setError('Transport name, builty number, builty date, bill date and number of dagg are required.');
             return;
         }
 
@@ -623,6 +633,16 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                         value={form.billNumber}
                         onChange={(e) => update('billNumber', e.target.value)}
                         placeholder="e.g. BILL-00123"
+                    />
+                </Field>
+
+                <Field label="Bill Date" required>
+                    <input
+                        type="date"
+                        className="input"
+                        required
+                        value={form.billDate}
+                        onChange={(e) => update('billDate', e.target.value)}
                     />
                 </Field>
 

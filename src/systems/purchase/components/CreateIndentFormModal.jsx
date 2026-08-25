@@ -8,6 +8,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     ]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [showErrorPopup, setShowErrorPopup] = useState(false);
 
     const [existingItemsDB, setExistingItemsDB] = useState([]);
 
@@ -88,12 +89,16 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
         try {
             const missingVendor = items.find(it => !it.vendor || !it.vendor.trim());
             if (missingVendor) {
-                setError('Vendor Name is required for all items.');
+                const errMsg = 'Vendor Name is required for all items.';
+                setError(errMsg);
+                setShowErrorPopup(true);
                 return;
             }
             const invalidItem = items.find(it => !it.item_details || !it.item_details.trim());
             if (invalidItem) {
-                setError('Item Name is required for all items.');
+                const errMsg = 'Item Name is required for all items.';
+                setError(errMsg);
+                setShowErrorPopup(true);
                 return;
             }
             setSaving(true);
@@ -101,7 +106,9 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
             onSaved();
         } catch (err) {
             console.error("Error submitting manual indents:", err);
-            setError(err.message || 'Failed to save indents.');
+            const errMsg = err.message || 'Failed to save indents.';
+            setError(errMsg);
+            setShowErrorPopup(true);
         } finally {
             setSaving(false);
         }
@@ -281,8 +288,31 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                             {saving ? 'Saving…' : 'Save'}
                         </button>
                     </div>
-                </form>
+                 </form>
             </div>
+
+            {/* Error Alert Modal Popup */}
+            {showErrorPopup && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowErrorPopup(false)}></div>
+                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md border border-rose-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 text-center space-y-4">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                                <span className="text-xl font-bold">⚠️</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Submission Error</h3>
+                            <p className="text-xs text-gray-600 leading-relaxed font-semibold">{error}</p>
+                            <button
+                                type="button"
+                                onClick={() => setShowErrorPopup(false)}
+                                className="w-full rounded-2xl bg-rose-600 hover:bg-rose-700 py-3 text-xs font-bold text-white transition shadow-lg shadow-rose-200"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

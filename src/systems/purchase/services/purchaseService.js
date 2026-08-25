@@ -1,6 +1,24 @@
 import supabase from '../../../SupabaseClient';
 import { startOrUpdateStage, completeStage, handleDeliveryReceived } from '../../../core/services/tatService';
 
+export function evaluateFormula(formulaStr) {
+  if (formulaStr === undefined || formulaStr === null) return 0;
+  const str = String(formulaStr).trim();
+  if (!str) return 0;
+  const num = Number(str);
+  if (!isNaN(num)) return num;
+  try {
+    const sanitized = str.replace(/[^0-9+\-*/().]/g, '');
+    if (!sanitized) return 0;
+    const res = new Function(`return ${sanitized}`)();
+    const evaluatedNum = Number(res);
+    return isNaN(evaluatedNum) ? 0 : evaluatedNum;
+  } catch (err) {
+    console.error("Failed to evaluate formula:", formulaStr, err);
+    return 0;
+  }
+}
+
 function mapIndentRow(row) {
   return {
     dbId: row.id,
@@ -16,7 +34,7 @@ function mapIndentRow(row) {
     rolQty: row.rol_qty,
     clQty: row.cl_qty,
     conversionUnit: row.conversion_unit,
-    orderFormula: row.order_formula,
+    orderFormula: evaluateFormula(row.order_formula),
     status: row.status,
     remarks: row.remarks,
     approvedQty: row.approved_qty,
@@ -140,17 +158,35 @@ export async function fetchIndentHistory(indentId) {
 export async function importIndentRows(parsedRows) {
   if (!parsedRows || parsedRows.length === 0) return { rows: [], firstNo: null, lastNo: null, matchedCount: 0, insertedCount: 0 };
 
-  // Fetch items currently in approval stage (Pending status)
+  // Fetch all pending/approved indents to check against payment approval completion status
   const { data: indents, error: indentErr } = await supabase
     .from('purchase_indents')
     .select('*')
-    .eq('status', 'Pending');
+    .in('status', ['Pending', 'Approved']);
   if (indentErr) throw indentErr;
+
+  const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
+  const approvedPoIds = new Set();
+  if (poIds.length > 0) {
+    const { data: approvals, error: appErr } = await supabase
+      .from('purchase_payment_approvals')
+      .select('po_id')
+      .eq('status', 'Approved')
+      .in('po_id', poIds);
+    if (appErr) throw appErr;
+    (approvals || []).forEach(a => approvedPoIds.add(a.po_id));
+  }
+
+  const incompleteIndents = (indents || []).filter(row => {
+    const isPending = row.status === 'Pending';
+    const isApprovedButNotPaid = row.status === 'Approved' && (!row.po_id || !approvedPoIds.has(row.po_id));
+    return isPending || isApprovedButNotPaid;
+  });
 
   const normalizeName = (name) => (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
   const activePool = {};
-  (indents || []).forEach((row) => {
+  (incompleteIndents || []).forEach((row) => {
     const norm = normalizeName(row.item_details);
     if (!activePool[norm]) {
       activePool[norm] = [];
@@ -202,7 +238,7 @@ export async function importIndentRows(parsedRows) {
       rol_qty: Number(r.rolQty) || 0,
       cl_qty: Number(r.clQty) || 0,
       conversion_unit: r.conversionUnit || '',
-      order_formula: Number(r.orderFormula) || 0,
+      order_formula: String(r.orderFormula || '').trim(),
     }));
 
     const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
@@ -472,6 +508,7 @@ function mapDeliveryRow(row) {
     daggCount: row.dagg_count,
     billNumber: billNumber,
     billImageUrl: billImageUrl,
+    billDate: row.bill_date,
     received: row.received,
     receivedAt: row.received_at,
     createdAt: row.created_at,
@@ -517,7 +554,7 @@ export async function uploadBuiltyImage(file) {
   return data.publicUrl;
 }
 
-export async function createDelivery({ poId, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, builtyImageFile, billImageFile }) {
+export async function createDelivery({ poId, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, billDate, builtyImageFile, billImageFile }) {
   let builtyImageUrl = null;
   if (builtyImageFile) {
     builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
@@ -546,6 +583,7 @@ export async function createDelivery({ poId, transportName, contact, builtyDate,
       builty_number: builtyNumber,
       dagg_count: Number(daggCount) || 0,
       bill_number: billNumber || '',
+      bill_date: billDate || null,
       bill_image_url: billImageUrl,
       builty_image_url: builtyImageUrl,
       created_by: createdBy,
@@ -592,12 +630,16 @@ export async function markDeliveryReceived(deliveryId, received) {
 
   return mapDeliveryRow(data);
 }
+
 function mapReceivingRow(row, itemRows) {
   return {
     id: row.id,
     deliveryId: row.delivery_id,
     receivedAt: row.received_at,
     receivedBy: row.received_by,
+    receiptDate: row.receipt_date,
+    receiptTime: row.receipt_time,
+    receivedDagg: row.received_dagg,
     items: (itemRows || []).map((i) => ({
       productCode: i.product_code,
       productName: i.product_name,
@@ -629,16 +671,47 @@ export async function fetchReceivings() {
   return (receivingRows || []).map((row) => mapReceivingRow(row, itemsByReceiving[row.id]));
 }
 
-export async function submitReceiving({ deliveryId, items, fullyReceived }) {
-  const receivedBy = localStorage.getItem('user-id') || null;
+export async function submitReceiving({ deliveryId, items, fullyReceived, receiptDate, receiptTime, receivedDagg, receivedBy }) {
+  const activeReceivedBy = receivedBy || localStorage.getItem('user-id') || null;
 
+  // 1. Fetch assigned dagg count from delivery
+  const { data: delivery, error: delErr } = await supabase
+    .from('purchase_deliveries')
+    .select('dagg_count')
+    .eq('id', deliveryId)
+    .single();
+  if (delErr) throw delErr;
+
+  // 2. Fetch existing receivings to recalculate remaining daggs
+  const { data: existingRecs, error: recsErr } = await supabase
+    .from('purchase_receivings')
+    .select('received_dagg')
+    .eq('delivery_id', deliveryId);
+  if (recsErr) throw recsErr;
+
+  const totalReceived = (existingRecs || []).reduce((sum, r) => sum + (Number(r.received_dagg) || 0), 0);
+  const remaining = (delivery.dagg_count || 0) - totalReceived;
+  const inputDagg = Number(receivedDagg) || 0;
+
+  if (inputDagg > remaining) {
+    throw new Error(`Cannot receive more daggs than remaining (${remaining}).`);
+  }
+
+  // 3. Insert receiving row
   const { data: receivingRow, error: recErr } = await supabase
     .from('purchase_receivings')
-    .insert({ delivery_id: deliveryId, received_by: receivedBy })
+    .insert({ 
+      delivery_id: deliveryId, 
+      received_by: activeReceivedBy,
+      receipt_date: receiptDate || null,
+      receipt_time: receiptTime || null,
+      received_dagg: inputDagg
+    })
     .select()
     .single();
   if (recErr) throw recErr;
 
+  // 4. Insert items
   const itemPayload = items
     .filter((it) => Number(it.receivedQty) > 0)
     .map((it) => ({
@@ -649,16 +722,22 @@ export async function submitReceiving({ deliveryId, items, fullyReceived }) {
       received_qty: Number(it.receivedQty) || 0,
     }));
 
-  const { data: itemRows, error: itemErr } = await supabase
-    .from('purchase_receiving_items')
-    .insert(itemPayload)
-    .select();
-  if (itemErr) throw itemErr;
+  if (itemPayload.length > 0) {
+    const { data: itemRows, error: itemErr } = await supabase
+      .from('purchase_receiving_items')
+      .insert(itemPayload)
+      .select();
+    if (itemErr) throw itemErr;
+  }
 
-  if (fullyReceived) {
+  // 5. Update delivery as received if all daggs are received
+  const newTotalReceived = totalReceived + inputDagg;
+  const newFullyReceived = fullyReceived || (newTotalReceived >= (delivery.dagg_count || 0));
+
+  if (newFullyReceived) {
     const { error: updErr } = await supabase
       .from('purchase_deliveries')
-      .update({ received: true, received_at: new Date().toISOString(), received_by: receivedBy })
+      .update({ received: true, received_at: new Date().toISOString(), received_by: activeReceivedBy })
       .eq('id', deliveryId);
     if (updErr) throw updErr;
 
@@ -670,10 +749,17 @@ export async function submitReceiving({ deliveryId, items, fullyReceived }) {
     }
   }
 
-  return mapReceivingRow(receivingRow, itemRows);
+  // Fetch items again for mapping
+  const { data: finalItems, error: finalItemsErr } = await supabase
+    .from('purchase_receiving_items')
+    .select('*')
+    .eq('receiving_id', receivingRow.id);
+  if (finalItemsErr) throw finalItemsErr;
+
+  return mapReceivingRow(receivingRow, finalItems);
 }
 
-export async function updateDelivery({ id, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, builtyImageFile, billImageFile, existingBuiltyUrl, existingBillUrl }) {
+export async function updateDelivery({ id, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, billDate, builtyImageFile, billImageFile, existingBuiltyUrl, existingBillUrl }) {
   let builtyImageUrl = existingBuiltyUrl;
   if (builtyImageFile) {
     builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
@@ -699,6 +785,7 @@ export async function updateDelivery({ id, transportName, contact, builtyDate, b
       builty_number: builtyNumber,
       dagg_count: Number(daggCount) || 0,
       bill_number: billNumber || '',
+      bill_date: billDate || null,
       bill_image_url: billImageUrl,
       builty_image_url: builtyImageUrl,
     })
@@ -709,12 +796,54 @@ export async function updateDelivery({ id, transportName, contact, builtyDate, b
   return mapDeliveryRow(data);
 }
 
-export async function reviseReceiving({ receivingId, items, fullyReceived }) {
+export async function reviseReceiving({ receivingId, items, fullyReceived, receiptDate, receiptTime, receivedDagg, receivedBy }) {
   const { data: exRec, error: exRecErr } = await supabase.from('purchase_receivings').select('*').eq('id', receivingId).single();
   if (exRecErr) throw exRecErr;
 
-  const { error: delErr } = await supabase.from('purchase_receiving_items').delete().eq('receiving_id', receivingId);
+  const activeReceivedBy = receivedBy || localStorage.getItem('user-id') || null;
+
+  // 1. Fetch assigned dagg count from delivery
+  const { data: delivery, error: delErr } = await supabase
+    .from('purchase_deliveries')
+    .select('dagg_count')
+    .eq('id', exRec.delivery_id)
+    .single();
   if (delErr) throw delErr;
+
+  // 2. Fetch existing receivings (except the one being edited) to recalculate remaining daggs
+  const { data: existingRecs, error: recsErr } = await supabase
+    .from('purchase_receivings')
+    .select('received_dagg')
+    .eq('delivery_id', exRec.delivery_id)
+    .neq('id', receivingId);
+  if (recsErr) throw recsErr;
+
+  const totalReceived = (existingRecs || []).reduce((sum, r) => sum + (Number(r.received_dagg) || 0), 0);
+  const remaining = (delivery.dagg_count || 0) - totalReceived;
+  const inputDagg = Number(receivedDagg) || 0;
+
+  if (inputDagg > remaining) {
+    throw new Error(`Cannot receive more daggs than remaining (${remaining}).`);
+  }
+
+  // 3. Update receiving row with new date, time, and dagg
+  const { data: updatedRecRow, error: updateRecErr } = await supabase
+    .from('purchase_receivings')
+    .update({
+      received_by: activeReceivedBy,
+      receipt_date: receiptDate || null,
+      receipt_time: receiptTime || null,
+      received_dagg: inputDagg,
+      received_at: new Date().toISOString()
+    })
+    .eq('id', receivingId)
+    .select()
+    .single();
+  if (updateRecErr) throw updateRecErr;
+
+  // Delete and recreate items
+  const { error: delItemsErr } = await supabase.from('purchase_receiving_items').delete().eq('receiving_id', receivingId);
+  if (delItemsErr) throw delItemsErr;
 
   const itemPayload = items
     .filter((it) => Number(it.receivedQty) > 0)
@@ -732,26 +861,30 @@ export async function reviseReceiving({ receivingId, items, fullyReceived }) {
     .select();
   if (itemErr) throw itemErr;
 
-  const receivedBy = localStorage.getItem('user-id') || null;
+  // Update delivery
+  const newTotalReceived = totalReceived + inputDagg;
+  const newFullyReceived = fullyReceived || (newTotalReceived >= (delivery.dagg_count || 0));
+
   const { error: updErr } = await supabase
     .from('purchase_deliveries')
-    .update({ received: fullyReceived, received_at: fullyReceived ? new Date().toISOString() : null, received_by: receivedBy })
+    .update({ received: newFullyReceived, received_at: newFullyReceived ? new Date().toISOString() : null, received_by: activeReceivedBy })
     .eq('id', exRec.delivery_id);
   if (updErr) throw updErr;
 
-  return mapReceivingRow(exRec, itemRows);
+  return mapReceivingRow(updatedRecRow, itemRows);
 }
 // ── Sidebar badge counts ────────────────────────────────────────────────
 // Lightweight, column-limited queries (no joins) so this can be polled
 // from the sidebar without the cost of the full fetch* functions above.
 export async function fetchPurchasePendingCounts() {
-  const [indentsRes, posRes, deliveriesRes, payablePOsRaw, approvalsRes, paymentsRes] = await Promise.all([
+  const [indentsRes, posRes, deliveriesRes, payablePOsRaw, approvalsRes, paymentsRes, receivingsRes] = await Promise.all([
     supabase.from('purchase_indents').select('id, status, order_formula, po_id'),
     supabase.from('purchase_pos').select('id'),
-    supabase.from('purchase_deliveries').select('id, po_id, received'),
+    supabase.from('purchase_deliveries').select('id, po_id, received, dagg_count'),
     fetchPayablePOs(),
     supabase.from('purchase_payment_approvals').select('id, po_id, status'),
     supabase.from('purchase_payments').select('id, payment_approval_id'),
+    supabase.from('purchase_receivings').select('delivery_id, received_dagg'),
   ]);
 
   if (indentsRes.error) throw indentsRes.error;
@@ -759,16 +892,18 @@ export async function fetchPurchasePendingCounts() {
   if (deliveriesRes.error) throw deliveriesRes.error;
   if (approvalsRes.error) throw approvalsRes.error;
   if (paymentsRes.error) throw paymentsRes.error;
+  if (receivingsRes.error) throw receivingsRes.error;
 
   const indents = indentsRes.data || [];
   const pos = posRes.data || [];
   const deliveries = deliveriesRes.data || [];
   const approvals = approvalsRes.data || [];
   const payments = paymentsRes.data || [];
+  const receivings = receivingsRes.data || [];
 
   // Indents awaiting an approve/reject decision
   const approvalPending = indents.filter(
-    (i) => i.status === 'Pending' && Number(i.order_formula) > 0
+    (i) => i.status === 'Pending' && evaluateFormula(i.order_formula) > 0
   ).length;
 
   // Indents approved but not yet attached to a PO
@@ -778,8 +913,17 @@ export async function fetchPurchasePendingCounts() {
   const deliveredPoIds = new Set(deliveries.filter((d) => d.po_id).map((d) => d.po_id));
   const deliveryPending = pos.filter((p) => !deliveredPoIds.has(p.id)).length;
 
-  // Deliveries logged but not yet marked received
-  const receivingPending = deliveries.filter((d) => !d.received).length;
+  // Deliveries logged but not yet fully received (remaining daggs > 0)
+  const daggReceivedMap = {};
+  receivings.forEach(r => {
+    daggReceivedMap[r.delivery_id] = (daggReceivedMap[r.delivery_id] || 0) + (Number(r.received_dagg) || 0);
+  });
+
+  const receivingPending = deliveries.filter((d) => {
+    const assigned = Number(d.dagg_count) || 0;
+    const received = daggReceivedMap[d.id] || 0;
+    return received < assigned;
+  }).length;
 
   // Fully-received POs with no payment-approval decision yet
   const decidedPoIds = new Set(approvals.map((a) => a.po_id));
@@ -943,17 +1087,34 @@ export async function submitPayment({ paymentApprovalId, poId, proofFile, remark
 export async function createIndentsManualBulk(vendor, items) {
   if (!items || items.length === 0) return [];
 
-  // Query existing Pending indents to prevent duplicates during approval stage
-  const { data: existingIndents, error: fetchError } = await supabase
+  // Query existing pending or approved indents
+  const { data: indents, error: fetchError } = await supabase
     .from('purchase_indents')
-    .select('item_details')
-    .eq('status', 'Pending');
+    .select('item_details, status, po_id')
+    .in('status', ['Pending', 'Approved']);
   if (fetchError) throw fetchError;
 
+  const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
+  const approvedPoIds = new Set();
+  if (poIds.length > 0) {
+    const { data: approvals, error: appErr } = await supabase
+      .from('purchase_payment_approvals')
+      .select('po_id')
+      .eq('status', 'Approved')
+      .in('po_id', poIds);
+    if (appErr) throw appErr;
+    (approvals || []).forEach(a => approvedPoIds.add(a.po_id));
+  }
+
   const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const existingNames = new Set(
-    (existingIndents || []).map((i) => normalize(i.item_details))
-  );
+  const existingNames = new Set();
+  (indents || []).forEach(row => {
+    const isPending = row.status === 'Pending';
+    const isApprovedButNotPaid = row.status === 'Approved' && (!row.po_id || !approvedPoIds.has(row.po_id));
+    if (isPending || isApprovedButNotPaid) {
+      existingNames.add(normalize(row.item_details));
+    }
+  });
 
   for (const item of items) {
     const norm = normalize(item.item_details);
@@ -985,7 +1146,7 @@ export async function createIndentsManualBulk(vendor, items) {
     rol_qty: Number(item.rol_qty) || 0,
     cl_qty: Number(item.cl_qty) || 0,
     conversion_unit: item.conversion_unit || '',
-    order_formula: Number(item.order_formula) || Number(item.qty) || 0,
+    order_formula: String(item.order_formula || item.qty || '').trim(),
     status: 'Pending',
   }));
 

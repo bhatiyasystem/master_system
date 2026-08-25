@@ -88,8 +88,31 @@ export default function ReceivingView() {
         return map;
     }, [pos]);
 
-    const receivedDeliveryIds = useMemo(() => new Set((receivings || []).map((r) => r.deliveryId)), [receivings]);
-    const pendingCount = useMemo(() => (deliveries || []).filter((d) => !receivedDeliveryIds.has(d.id)).length, [deliveries, receivedDeliveryIds]);
+    const deliveryDaggStatus = useMemo(() => {
+        const statusMap = {};
+        (deliveries || []).forEach(d => {
+            statusMap[d.id] = {
+                assigned: Number(d.daggCount) || 0,
+                received: 0,
+            };
+        });
+        (receivings || []).forEach(r => {
+            if (statusMap[r.deliveryId]) {
+                statusMap[r.deliveryId].received += Number(r.receivedDagg) || 0;
+            }
+        });
+        return statusMap;
+    }, [deliveries, receivings]);
+
+    const pendingDeliveries = useMemo(() => {
+        return (deliveries || []).filter((d) => {
+            const dStatus = deliveryDaggStatus[d.id];
+            if (!dStatus) return true;
+            return dStatus.received < dStatus.assigned;
+        });
+    }, [deliveries, deliveryDaggStatus]);
+
+    const pendingCount = pendingDeliveries.length;
 
     return (
         <CardPanel title="Receiving" desc="Confirm goods received against each delivery, product by product.">
@@ -123,7 +146,7 @@ export default function ReceivingView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading receiving data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingReceivingPanel deliveries={deliveries} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onUpdate={(d) => setSelectedDelivery(d)} />
+                <PendingReceivingPanel deliveries={pendingDeliveries} deliveryDaggStatus={deliveryDaggStatus} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onUpdate={(d) => setSelectedDelivery(d)} />
             ) : (
                 <ReceivingHistoryPanel
                     receivings={receivings}
@@ -159,10 +182,10 @@ export default function ReceivingView() {
     );
 }
 
-function PendingReceivingPanel({ deliveries, poMap, tatTracking, tatMins, onUpdate }) {
+function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTracking, tatMins, onUpdate }) {
     const [search, setSearch] = useState('');
 
-    const pending = useMemo(() => deliveries.filter((d) => !d.received), [deliveries]);
+    const pending = deliveries;
 
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -198,6 +221,9 @@ function PendingReceivingPanel({ deliveries, poMap, tatTracking, tatMins, onUpda
                             <th className="px-3 py-2.5">Contact</th>
                             <th className="px-3 py-2.5">Builty No.</th>
                             <th className="px-3 py-2.5">Builty Date</th>
+                            <th className="px-3 py-2.5">Bill Date</th>
+                            <th className="px-3 py-2.5">Assigned Dagg</th>
+                            <th className="px-3 py-2.5">Remaining Dagg</th>
                             <th className="px-3 py-2.5">Builty Image</th>
                             <th className="px-3 py-2.5">Arrived</th>
                             <th className="px-3 py-2.5">Delay</th>
@@ -206,14 +232,15 @@ function PendingReceivingPanel({ deliveries, poMap, tatTracking, tatMins, onUpda
                     </thead>
                     <tbody>
                         {pending.length === 0 ? (
-                            <tr><td colSpan={11} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
+                            <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={11} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                            <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
                         ) : filtered.map((d) => {
                             const po = poMap.get(d.poId);
                             const poNo = po?.poNo || '—';
                             const diffDays = d.builtyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.builtyDate).getTime()) / 86400000)) : null;
                             const isDelayed = diffDays !== null && diffDays >= 1;
+                            const dStatus = deliveryDaggStatus[d.id];
                             return (
                                 <tr key={d.id} className={`border-t border-gray-100 transition-colors ${isDelayed ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
                                     <td className="px-3 py-2.5">
@@ -249,6 +276,9 @@ function PendingReceivingPanel({ deliveries, poMap, tatTracking, tatMins, onUpda
                                             </span>
                                         ) : '—'}
                                     </td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.billDate || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{dStatus ? dStatus.assigned : d.daggCount}</td>
+                                    <td className="px-3 py-2.5 text-gray-600 font-bold">{dStatus ? (dStatus.assigned - dStatus.received) : d.daggCount}</td>
                                     <td className="px-3 py-2.5">
                                         {d.builtyImageUrl ? (
                                             <a href={d.builtyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
@@ -304,6 +334,10 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
                     orderedQty: item.orderedQty,
                     receivedQty: item.receivedQty,
                     receivedAt: r.receivedAt,
+                    receiptDate: r.receiptDate,
+                    receiptTime: r.receiptTime,
+                    receivedDagg: r.receivedDagg,
+                    receivedBy: r.receivedBy,
                 });
             });
         });
@@ -342,14 +376,17 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
                             <th className="px-3 py-2.5">Product</th>
                             <th className="px-3 py-2.5">Ordered Qty</th>
                             <th className="px-3 py-2.5">Received Qty</th>
-                            <th className="px-3 py-2.5">Received At</th>
+                            <th className="px-3 py-2.5">Received Dagg</th>
+                            <th className="px-3 py-2.5">Receipt Date</th>
+                            <th className="px-3 py-2.5">Receipt Time</th>
+                            <th className="px-3 py-2.5">Received By</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.length === 0 ? (
-                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
+                            <tr><td colSpan={11} className="px-3 py-10 text-center text-gray-500">No receivings submitted yet.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
+                            <tr><td colSpan={11} className="px-3 py-10 text-center text-gray-500">No receivings match the search.</td></tr>
                         ) : filtered.map((r, idx) => (
                             <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
                                 <td className="px-3 py-2.5">
@@ -379,9 +416,10 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
                                 <td className="px-3 py-2.5 text-gray-800">{r.productName || '—'}</td>
                                 <td className="px-3 py-2.5 text-gray-700">{r.orderedQty}</td>
                                 <td className="px-3 py-2.5 font-semibold text-gray-900">{r.receivedQty}</td>
-                                <td className="px-3 py-2.5 text-gray-500">
-                                    {r.receivedAt ? new Date(r.receivedAt).toLocaleString('en-IN') : '—'}
-                                </td>
+                                <td className="px-3 py-2.5 text-gray-700 font-semibold">{r.receivedDagg ?? '—'}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{r.receiptDate || (r.receivedAt ? new Date(r.receivedAt).toISOString().split('T')[0] : '—')}</td>
+                                <td className="px-3 py-2.5 text-gray-600">{r.receiptTime || '—'}</td>
+                                <td className="px-3 py-2.5 text-[11.5px] text-gray-500 truncate max-w-[120px]" title={r.receivedBy}>{r.receivedBy || '—'}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -404,17 +442,25 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
         return map;
     }, [receivings, delivery, receivingToEdit]);
 
+    const totalReceivedDagg = useMemo(() => {
+        return (receivings || [])
+            .filter((r) => r.deliveryId === delivery.id && (!receivingToEdit || r.id !== receivingToEdit.id))
+            .reduce((sum, r) => sum + (Number(r.receivedDagg) || 0), 0);
+    }, [receivings, delivery, receivingToEdit]);
+
+    const remainingDagg = Math.max((Number(delivery.daggCount) || 0) - totalReceivedDagg, 0);
+
     const initialItems = (po?.items || [])
         .map((it) => {
             const already = alreadyReceivedMap[it.productName] || 0;
             const remaining = Math.max(Number(it.qty) - already, 0);
-            
+
             let curReceived = 0;
             if (receivingToEdit) {
                 const foundItem = (receivingToEdit.items || []).find(x => x.productName === it.productName);
                 if (foundItem) curReceived = Number(foundItem.receivedQty) || 0;
             }
-            
+
             return {
                 productCode: it.productCode,
                 productName: it.productName,
@@ -427,6 +473,10 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
         .filter((it) => it.remaining > 0 || (receivingToEdit && it.alreadyReceived > 0));
 
     const [items, setItems] = useState(initialItems);
+    const [receiptDate, setReceiptDate] = useState(receivingToEdit ? (receivingToEdit.receiptDate ? new Date(receivingToEdit.receiptDate).toISOString().split('T')[0] : '') : new Date().toISOString().split('T')[0]);
+    const [receiptTime, setReceiptTime] = useState(receivingToEdit ? (receivingToEdit.receiptTime || '') : new Date().toLocaleTimeString('en-US', { hour12: false }).slice(0, 5));
+    const [receivedDagg, setReceivedDagg] = useState(receivingToEdit ? (receivingToEdit.receivedDagg || '') : remainingDagg);
+    const [receivedBy, setReceivedBy] = useState(receivingToEdit ? (receivingToEdit.receivedBy || '') : '');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
@@ -444,15 +494,30 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
             return;
         }
 
+        const inputDagg = Number(receivedDagg);
+        if (isNaN(inputDagg) || inputDagg < 0) {
+            setError('Received Dagg must be a non-negative number.');
+            return;
+        }
+        if (inputDagg > remainingDagg) {
+            setError(`Received Dagg cannot exceed the remaining ${remainingDagg} daggs.`);
+            return;
+        }
+
+        if (!receivedBy || !receivedBy.trim()) {
+            setError('Received By is required.');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const fullyReceived = items.every(
                 (it) => it.alreadyReceived + Number(it.receivedQty || 0) >= Number(it.orderedQty)
             );
             if (receivingToEdit) {
-                await reviseReceiving({ receivingId: receivingToEdit.id, items, fullyReceived });
+                await reviseReceiving({ receivingId: receivingToEdit.id, items, fullyReceived, receiptDate, receiptTime, receivedDagg: inputDagg, receivedBy });
             } else {
-                await submitReceiving({ deliveryId: delivery.id, items, fullyReceived });
+                await submitReceiving({ deliveryId: delivery.id, items, fullyReceived, receiptDate, receiptTime, receivedDagg: inputDagg, receivedBy });
             }
             onSuccess();
         } catch (err) {
@@ -465,8 +530,65 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
     return (
         <Modal open={true} onClose={onClose} title={receivingToEdit ? `Revise Receiving — ${po?.poNo || delivery.transportName}` : `Receive — ${po?.poNo || delivery.transportName}`} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
-                    Delivery by <span className="font-bold text-gray-900">{delivery.transportName}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl bg-gray-50 px-4 py-3 text-[12.5px] text-gray-600">
+                    <div>
+                        <span className="font-semibold text-gray-500">Transporter:</span> <span className="font-bold text-gray-900">{delivery.transportName}</span>
+                    </div>
+                    <div>
+                        <span className="font-semibold text-gray-500">Bill Date:</span> <span className="font-bold text-gray-900">{delivery.billDate || '—'}</span>
+                    </div>
+                    <div>
+                        <span className="font-semibold text-gray-500">Assigned Dagg:</span> <span className="font-bold text-gray-900">{delivery.daggCount || '0'}</span>
+                    </div>
+                    <div>
+                        <span className="font-semibold text-gray-500">Remaining Dagg:</span> <span className="font-bold text-gray-900">{remainingDagg}</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-150 p-4 rounded-xl bg-white shadow-sm">
+                    <div>
+                        <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-gray-500">Received By</label>
+                        <input
+                            type="text"
+                            required
+                            className="input border-gray-300 font-bold"
+                            value={receivedBy}
+                            onChange={(e) => setReceivedBy(e.target.value)}
+                            placeholder="Received by"
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-gray-500">Received Dagg</label>
+                        <input
+                            type="number"
+                            required
+                            min="0"
+                            max={remainingDagg}
+                            className="input border-gray-300 font-bold"
+                            value={receivedDagg}
+                            onChange={(e) => setReceivedDagg(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-gray-500">Receipt Date</label>
+                        <input
+                            type="date"
+                            required
+                            className="input border-gray-300"
+                            value={receiptDate}
+                            onChange={(e) => setReceiptDate(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-gray-500">Receipt Time</label>
+                        <input
+                            type="time"
+                            required
+                            className="input border-gray-300"
+                            value={receiptTime}
+                            onChange={(e) => setReceiptTime(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 {items.length === 0 ? (
