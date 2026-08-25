@@ -1241,30 +1241,64 @@ export async function previewIndentsManualBulk(vendor, items) {
   if (!items || items.length === 0) return { toCreate: [], toSkip: [] };
 
   // Query existing pending or approved indents
-  const { data: indents, error: fetchError } = await supabase
-    .from('purchase_indents')
-    .select('item_details, status, po_id, unique_no')
-    .in('status', ['Pending', 'Approved']);
-  if (fetchError) throw fetchError;
+  const [indentsRes, deliveriesRes, approvalsRes] = await Promise.all([
+    supabase.from('purchase_indents').select('id, item_details, status, po_id, unique_no').in('status', ['Pending', 'Approved']),
+    supabase.from('purchase_deliveries').select('id, po_id, received'),
+    supabase.from('purchase_payment_approvals').select('po_id'),
+  ]);
 
-  const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
-  const decidedPoIds = new Set();
-  if (poIds.length > 0) {
-    const { data: approvals, error: appErr } = await supabase
-      .from('purchase_payment_approvals')
-      .select('po_id')
-      .in('po_id', poIds);
-    if (appErr) throw appErr;
-    (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
-  }
+  if (indentsRes.error) throw indentsRes.error;
+  if (deliveriesRes.error) throw deliveriesRes.error;
+  if (approvalsRes.error) throw approvalsRes.error;
+
+  const indents = indentsRes.data || [];
+  const deliveries = deliveriesRes.data || [];
+  const approvals = approvalsRes.data || [];
+
+  // Group deliveries by PO
+  const delsByPo = {};
+  deliveries.forEach(d => {
+    (delsByPo[d.po_id] = delsByPo[d.po_id] || []).push(d);
+  });
+
+  const decidedPoIds = new Set(approvals.map(a => a.po_id));
+
+  // Determine stage of each indent
+  const getIndentStage = (row) => {
+    if (row.status === 'Pending') {
+      return 'Approvals';
+    }
+    if (row.status === 'Approved') {
+      if (!row.po_id) {
+        return 'Purchase Order';
+      }
+      // If decided in payment approval, it is in history
+      if (decidedPoIds.has(row.po_id)) {
+        return 'History';
+      }
+      // Otherwise, it is in Delivery, Receiving, or Payment Approval stage
+      const dels = delsByPo[row.po_id] || [];
+      if (dels.length === 0) {
+        return 'Delivery';
+      }
+      if (dels.every(d => d.received)) {
+        return 'Payment Approval';
+      }
+      return 'Receiving';
+    }
+    return 'Unknown';
+  };
 
   const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
   const activePool = {};
-  (indents || []).forEach(row => {
-    const isPending = row.status === 'Pending';
-    const isApprovedButNotDecided = row.status === 'Approved' && (!row.po_id || !decidedPoIds.has(row.po_id));
-    if (isPending || isApprovedButNotDecided) {
-      activePool[normalize(row.item_details)] = row.unique_no;
+
+  indents.forEach(row => {
+    const stage = getIndentStage(row);
+    if (stage !== 'History' && stage !== 'Unknown') {
+      activePool[normalize(row.item_details)] = {
+        uniqueNo: row.unique_no,
+        stage: stage
+      };
     }
   });
 
@@ -1274,7 +1308,7 @@ export async function previewIndentsManualBulk(vendor, items) {
   for (const item of items) {
     const norm = normalize(item.item_details);
     if (activePool[norm]) {
-      toSkip.push({ ...item, uniqueNo: activePool[norm] });
+      toSkip.push({ ...item, uniqueNo: activePool[norm].uniqueNo, stage: activePool[norm].stage });
     } else {
       toCreate.push(item);
     }

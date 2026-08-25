@@ -231,6 +231,7 @@ export default function ImportView({ onImported }) {
                               <th className="px-3 py-2 bg-rose-50">Item Name</th>
                               <th className="px-3 py-2 bg-rose-50">Vendor</th>
                               <th className="px-3 py-2 bg-rose-50">Existing Indent No.</th>
+                              <th className="px-3 py-2 bg-rose-50">Current Stage</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -239,6 +240,7 @@ export default function ImportView({ onImported }) {
                                 <td className="px-3 py-2">{it.itemDetails}</td>
                                 <td className="px-3 py-2 text-rose-700/80">{it.vendor}</td>
                                 <td className="px-3 py-2 font-bold text-rose-600">{it.uniqueNo}</td>
+                                <td className="px-3 py-2"><span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10.5px] font-bold text-rose-800">{it.stage}</span></td>
                               </tr>
                             ))}
                           </tbody>

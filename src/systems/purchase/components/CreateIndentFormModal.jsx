@@ -348,6 +348,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                     <th className="px-3 py-2">Item Name</th>
                                                     <th className="px-3 py-2">Vendor</th>
                                                     <th className="px-3 py-2">Existing Indent No.</th>
+                                                    <th className="px-3 py-2">Current Stage</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -356,6 +357,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         <td className="px-3 py-2">{it.item_details}</td>
                                                         <td className="px-3 py-2 text-rose-700/80">{it.vendor}</td>
                                                         <td className="px-3 py-2 font-bold text-rose-600">{it.uniqueNo}</td>
+                                                        <td className="px-3 py-2"><span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10.5px] font-bold text-rose-800">{it.stage}</span></td>
                                                     </tr>
                                                 ))}
                                             </tbody>
