@@ -154,9 +154,9 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
         <EmptyState icon={<FileText size={36} />}>{error}</EmptyState>
       ) : indents.length === 0 ? (
         <EmptyState icon={<FileText size={36} />} action={
-          <button className="mt-3 rounded-lg bg-[#173254] px-4 py-2 text-sm font-semibold text-white" onClick={() => onTabChange('import')}>
-            Import Indent
-          </button>
+          <div className="mt-3">
+            <ImportView onImported={onImported} />
+          </div>
         }>
           No indent data yet. Import an Excel file to get started.
         </EmptyState>
