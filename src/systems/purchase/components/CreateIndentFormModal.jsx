@@ -3,9 +3,8 @@ import supabase from '../../../SupabaseClient';
 import { createIndentsManualBulk } from '../services/purchaseService';
 
 export default function CreateIndentFormModal({ onClose, onSaved }) {
-    const [vendor, setVendor] = useState('');
     const [items, setItems] = useState([
-        { category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
+        { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
     ]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -18,7 +17,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
             try {
                 const { data, error } = await supabase
                     .from('purchase_indents')
-                    .select('item_details, category, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula')
+                    .select('item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula')
                     .order('created_at', { ascending: false });
                 if (error) throw error;
                 const uniqueMap = {};
@@ -55,6 +54,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 const copy = [...prev];
                 copy[index] = {
                     ...copy[index],
+                    vendor: matched.vendor || copy[index].vendor,
                     category: matched.category || copy[index].category,
                     unit: matched.unit || copy[index].unit,
                     alt_unit: matched.alt_unit || copy[index].alt_unit,
@@ -74,7 +74,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     const addItem = () => {
         setItems((prev) => [
             ...prev,
-            { category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
+            { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
         ]);
     };
 
@@ -85,8 +85,9 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     async function handleSubmit(e) {
         e.preventDefault();
         setError('');
-        if (!vendor) {
-            setError('Vendor Name is required.');
+        const missingVendor = items.find(it => !it.vendor || !it.vendor.trim());
+        if (missingVendor) {
+            setError('Vendor Name is required for all items.');
             return;
         }
         const invalidItem = items.find(it => !it.item_details.trim());
@@ -96,7 +97,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
         }
         setSaving(true);
         try {
-            await createIndentsManualBulk(vendor, items);
+            await createIndentsManualBulk(null, items);
             onSaved();
         } catch (err) {
             setError(err.message || 'Failed to save indents.');
@@ -119,21 +120,6 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
                     {/* Scrollable fields */}
                     <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
-                        {/* Vendor Select at very top */}
-                        <div className="bg-blue-50/40 p-5 rounded-2xl border border-blue-100/50 space-y-2">
-                            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
-                                Vendor Name <span className="text-rose-500">*</span>
-                            </label>
-                            <ComboSelect
-                                table="vendors"
-                                column="name"
-                                value={vendor}
-                                onChange={(val) => setVendor(val)}
-                                label="Vendor"
-                                placeholder="Enter vendor name"
-                            />
-                        </div>
-
                         {/* List of items */}
                         <div className="space-y-4">
                             {items.map((item, index) => (
@@ -151,143 +137,127 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                         )}
                                     </div>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {/* Row 1: Item Name (Full Width) */}
-                                        <div className="col-span-2 md:col-span-4 space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                Item Name <span className="text-rose-500">*</span>
-                                            </label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="item_details"
-                                                value={item.item_details}
-                                                onChange={(val) => handleItemNameChange(index, val)}
-                                                label="Item Name"
-                                                placeholder="Select or enter item name"
-                                            />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Left half UI section */}
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                    Item Name <span className="text-rose-500">*</span>
+                                                </label>
+                                                <ComboSelect
+                                                    table="purchase_indents"
+                                                    column="item_details"
+                                                    value={item.item_details}
+                                                    onChange={(val) => handleItemNameChange(index, val)}
+                                                    label="Item Name"
+                                                    placeholder="Select or enter item name"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
+                                                <ComboSelect
+                                                    table="purchase_indents"
+                                                    column="category"
+                                                    value={item.category}
+                                                    onChange={(val) => updateItem(index, 'category', val)}
+                                                    label="Category"
+                                                    disableCustom={true}
+                                                />
+                                            </div><div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                    Vendor Name <span className="text-rose-500">*</span>
+                                                </label>
+                                                <ComboSelect
+                                                    table="vendors"
+                                                    column="name"
+                                                    value={item.vendor}
+                                                    onChange={(val) => updateItem(index, 'vendor', val)}
+                                                    label="Vendor"
+                                                    placeholder="Select vendor name"
+                                                    disableCustom={true}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
+                                                <ComboSelect
+                                                    table="purchase_indents"
+                                                    column="parent_group"
+                                                    value={item.parent_group}
+                                                    onChange={(val) => updateItem(index, 'parent_group', val)}
+                                                    label="Parent Group"
+                                                    disableCustom={true}
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
+                                                <ComboSelect
+                                                    table="purchase_indents"
+                                                    column="unit"
+                                                    value={item.unit}
+                                                    onChange={(val) => updateItem(index, 'unit', val)}
+                                                    label="Unit"
+                                                />
+                                            </div>
                                         </div>
 
-                                        {/* Row 2: Category, Parent Group */}
-                                        <div className="col-span-2 space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="category"
-                                                value={item.category}
-                                                onChange={(val) => updateItem(index, 'category', val)}
-                                                label="Category"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="parent_group"
-                                                value={item.parent_group}
-                                                onChange={(val) => updateItem(index, 'parent_group', val)}
-                                                label="Parent Group"
-                                            />
-                                        </div>
-
-                                        {/* Row 3: Unit, Alt Unit, Conversion Unit */}
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="unit"
-                                                value={item.unit}
-                                                onChange={(val) => updateItem(index, 'unit', val)}
-                                                label="Unit"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Alt Unit</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="alt_unit"
-                                                value={item.alt_unit}
-                                                onChange={(val) => updateItem(index, 'alt_unit', val)}
-                                                label="Alt Unit"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Conversion Unit</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="conversion_unit"
-                                                value={item.conversion_unit}
-                                                onChange={(val) => updateItem(index, 'conversion_unit', val)}
-                                                label="Conversion Unit"
-                                            />
-                                        </div>
-
-                                        {/* Row 4: Shelf Capacity, Max Level Qty, ROL Qty, CL Qty */}
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="shelf_capacity"
-                                                value={item.shelf_capacity}
-                                                onChange={(val) => updateItem(index, 'shelf_capacity', val)}
-                                                label="Shelf Capacity"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="max_level_qty"
-                                                value={item.max_level_qty}
-                                                onChange={(val) => updateItem(index, 'max_level_qty', val)}
-                                                label="Max Level Qty"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="rol_qty"
-                                                value={item.rol_qty}
-                                                onChange={(val) => updateItem(index, 'rol_qty', val)}
-                                                label="ROL Qty"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">CL Qty</label>
-                                            <ComboSelect
-                                                table="purchase_indents"
-                                                column="cl_qty"
-                                                value={item.cl_qty}
-                                                onChange={(val) => updateItem(index, 'cl_qty', val)}
-                                                label="CL Qty"
-                                            />
-                                        </div>
-
-                                        {/* Row 5: Order Formula (Full Width) */}
-                                        <div className="col-span-2 md:col-span-4 space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Order Formula</label>
-                                            <input
-                                                type="text"
-                                                value={item.order_formula}
-                                                onChange={(e) => updateItem(index, 'order_formula', e.target.value)}
-                                                placeholder="Order formula"
-                                                className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                            />
+                                        {/* Right half UI section */}
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.shelf_capacity || ''}
+                                                    onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
+                                                    placeholder="Shelf Capacity"
+                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.max_level_qty || ''}
+                                                    onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
+                                                    placeholder="Max Level Qty"
+                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.rol_qty || ''}
+                                                    onChange={(e) => updateItem(index, 'rol_qty', e.target.value)}
+                                                    placeholder="ROL Qty"
+                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-1 text-gray-800">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Order Qty</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.order_formula}
+                                                    onChange={(e) => updateItem(index, 'order_formula', e.target.value)}
+                                                    placeholder="Order Qty"
+                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
+                                    {index === items.length - 1 && (
+                                        <div className="flex justify-end pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={addItem}
+                                                className="rounded-2xl bg-blue-600 hover:bg-blue-700 px-5 py-3 text-xs font-bold text-white transition flex items-center gap-1 shadow-md shadow-blue-200"
+                                            >
+                                                ➕ Add Another Item
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
-                        </div>
-
-                        {/* Plus Option in last */}
-                        <div className="flex justify-center pt-2">
-                            <button
-                                type="button"
-                                onClick={addItem}
-                                className="inline-flex items-center gap-2 rounded-xl border border-dashed border-blue-300 px-6 py-3 text-xs font-bold text-blue-600 hover:bg-blue-50 transition"
-                            >
-                                ➕ Add Another Item (Same Vendor)
-                            </button>
                         </div>
 
                         {error && <div className="mt-3 text-xs font-semibold text-rose-600 text-center">{error}</div>}
@@ -315,8 +285,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
         </div>
     );
 }
-
-function ComboSelect({ table, column, value, onChange, label, placeholder }) {
+function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom }) {
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCustomInput, setShowCustomInput] = useState(false);
@@ -363,7 +332,8 @@ function ComboSelect({ table, column, value, onChange, label, placeholder }) {
                     const val = e.target.value;
                     if (val === '__custom__') {
                         setShowCustomInput(true);
-                        onChange(customValue);
+                        setCustomValue('');
+                        onChange('');
                     } else {
                         setShowCustomInput(false);
                         onChange(val);
@@ -375,10 +345,10 @@ function ComboSelect({ table, column, value, onChange, label, placeholder }) {
                 {options.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                 ))}
-                <option value="__custom__">➕ Type Custom Value...</option>
+                {!disableCustom && <option value="__custom__">➕ Type Custom Value...</option>}
             </select>
 
-            {showCustomInput && (
+            {!disableCustom && showCustomInput && (
                 <input
                     type="text"
                     value={customValue}

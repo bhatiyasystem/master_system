@@ -976,7 +976,7 @@ export async function createIndentsManualBulk(vendor, items) {
     created_by: createdBy,
     item_details: item.item_details,
     category: item.category || 'Uncategorized',
-    vendor: vendor || '',
+    vendor: item.vendor || vendor || '',
     unit: item.unit || 'Pcs.',
     alt_unit: item.alt_unit || '',
     parent_group: item.parent_group || '',

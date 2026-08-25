@@ -37,24 +37,24 @@ function getTableFields(config) {
 const CONFIG = {
     vendor: { table: 'vendors', fields: VENDOR_FIELDS, label: 'Vendor', pluralLabel: 'Vendors' },
     transporter: { table: 'transporters', fields: TRANSPORTER_FIELDS, label: 'Transporter', pluralLabel: 'Transporters' },
-    indent: { 
-        table: 'purchase_indents', 
+    indent: {
+        table: 'purchase_indents',
         fields: [
             { key: 'vendor', label: 'Vendor Name', placeholder: 'Enter vendor name', comboTable: 'vendors', comboColumn: 'name' },
             { key: 'category', label: 'Category', placeholder: 'Enter category', comboTable: 'purchase_indents', comboColumn: 'category' },
             { key: 'unit', label: 'Unit', placeholder: 'Enter unit', comboTable: 'purchase_indents', comboColumn: 'unit' },
             { key: 'parent_group', label: 'Parent Group', placeholder: 'Enter parent group', comboTable: 'purchase_indents', comboColumn: 'parent_group' },
-            { key: 'alt_unit', label: 'Alt Unit', placeholder: 'Enter alt unit' },
-            { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
-            { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
-            { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
-            { key: 'cl_qty', label: 'CL Qty', placeholder: 'Enter CL qty' },
-            { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit', comboTable: 'purchase_indents', comboColumn: 'conversion_unit' },
-            { key: 'order_formula', label: 'Order Formula', placeholder: 'Enter order formula' },
-            { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
-        ], 
-        label: 'Indent', 
-        pluralLabel: 'Indents' 
+            // { key: 'alt_unit', label: 'Alt Unit', placeholder: 'Enter alt unit' },
+            // { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
+            // { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
+            // { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
+            // { key: 'cl_qty', label: 'CL Qty', placeholder: 'Enter CL qty' },
+            // { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit', comboTable: 'purchase_indents', comboColumn: 'conversion_unit' },
+            // { key: 'order_formula', label: 'Order Formula', placeholder: 'Enter order formula' },
+            // { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
+        ],
+        label: 'Indent',
+        pluralLabel: 'Indents'
     },
 };
 
@@ -91,7 +91,7 @@ export default function MasterDataView() {
                             }`}
                     >
                         <Lucide.ClipboardList size={14} />
-                        Indent Details
+                        Master Item
                     </button>
                 </div>
             </div>
@@ -120,11 +120,24 @@ function MasterDataPanel({ type }) {
     async function handleDelete(row) {
         if (!window.confirm(`Delete this ${config.label.toLowerCase()}?`)) return;
         try {
-            const { data, error } = await supabase.from(config.table).delete().eq('id', row.id).select();
-            if (error) throw error;
-            if (!data || data.length === 0) {
-                setError('Delete blocked — no row was removed. This is usually a Supabase Row Level Security policy preventing deletes on this table.');
-                return;
+            if (type === 'indent') {
+                const { data, error } = await supabase
+                    .from('purchase_indents')
+                    .update({ hide_in_master: true })
+                    .eq('item_details', row.item_details)
+                    .select();
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    setError('Delete blocked — no row was updated.');
+                    return;
+                }
+            } else {
+                const { data, error } = await supabase.from(config.table).delete().eq('id', row.id).select();
+                if (error) throw error;
+                if (!data || data.length === 0) {
+                    setError('Delete blocked — no row was removed. This is usually a Supabase Row Level Security policy preventing deletes on this table.');
+                    return;
+                }
             }
             load();
         } catch (err) {
@@ -148,7 +161,7 @@ function MasterDataPanel({ type }) {
         try {
             let query = supabase.from(config.table).select('*');
             if (type === 'indent') {
-                query = query.order('item_details', { ascending: true });
+                query = query.or('hide_in_master.eq.false,hide_in_master.is.null').order('item_details', { ascending: true });
             } else {
                 query = query.order('name', { ascending: true });
             }
@@ -241,35 +254,39 @@ function MasterDataPanel({ type }) {
     return (
         <div>
             <div className="mb-4 flex flex-wrap items-center gap-3">
-                <button
-                    type="button"
-                    disabled={importing}
-                    onClick={() => setShowFieldFormat(true)}
-                    className={`inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-bold text-white transition ${importing ? 'cursor-wait opacity-60' : 'hover:bg-gray-800'
-                        }`}
-                >
-                    <Lucide.UploadCloud size={15} />
-                    {importing ? 'Importing…' : `Import ${config.pluralLabel} (Excel/CSV)`}
-                </button>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    className="hidden"
-                    disabled={importing}
-                    onChange={(e) => {
-                        handleFile(e.target.files[0]);
-                        e.target.value = '';
-                    }}
-                />
-                <button
-                    type="button"
-                    onClick={() => setShowForm(true)}
-                    className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
-                >
-                    <Lucide.Plus size={15} />
-                    Add {config.label} Manually
-                </button>
+                {type !== 'indent' && (
+                    <>
+                        <button
+                            type="button"
+                            disabled={importing}
+                            onClick={() => setShowFieldFormat(true)}
+                            className={`inline-flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-xs font-bold text-white transition ${importing ? 'cursor-wait opacity-60' : 'hover:bg-gray-800'
+                                }`}
+                        >
+                            <Lucide.UploadCloud size={15} />
+                            {importing ? 'Importing…' : `Import ${config.pluralLabel} (Excel/CSV)`}
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            className="hidden"
+                            disabled={importing}
+                            onChange={(e) => {
+                                handleFile(e.target.files[0]);
+                                e.target.value = '';
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowForm(true)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                        >
+                            <Lucide.Plus size={15} />
+                            Add {config.label} Manually
+                        </button>
+                    </>
+                )}
                 {/* <span className="text-[11px] text-gray-400">
                     Expected columns: {config.fields.map((f) => f.label).join(', ')}
                 </span> */}
@@ -321,13 +338,15 @@ function MasterDataPanel({ type }) {
                             {filteredRows.map((r) => (
                                 <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="whitespace-nowrap px-3 py-2.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditingRecord(r)}
-                                            className="mr-1.5 inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-50"
-                                        >
-                                            <Lucide.Pencil size={12} /> Edit
-                                        </button>
+                                        {type !== 'indent' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingRecord(r)}
+                                                className="mr-1.5 inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-50"
+                                            >
+                                                <Lucide.Pencil size={12} /> Edit
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() => handleDelete(r)}
@@ -532,7 +551,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                 ? await supabase.from(config.table).update(payload).eq('id', record.id)
                 : await supabase.from(config.table).insert(payload);
             if (error) throw error;
-             onSaved(payload.name || payload.item_details);
+            onSaved(payload.name || payload.item_details);
         } catch (err) {
             setError(err.message || 'Failed to save.');
         } finally {
@@ -569,7 +588,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                                         type="text"
                                                         value={val}
                                                         onChange={(e) => updateMulti(f.key, i, e.target.value)}
-                                                        placeholder={f.label} 
+                                                        placeholder={f.label}
                                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                                                     />
                                                     {form[f.key].length > 1 && (
