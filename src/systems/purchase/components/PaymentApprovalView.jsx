@@ -247,31 +247,32 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
                         ) : filtered.map((a) => {
                             const po = poMap.get(a.poId);
                             return (
-                            <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
-                                <td className="px-3 py-2.5 text-gray-800">
-                                    <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
-                                    {po?.vendor && (
-                                        <div className="text-[11px] text-gray-500 mt-0.5">
-                                            {po.vendor.city && <span>{po.vendor.city}</span>}
-                                            {po.vendor.contact && <span> • {po.vendor.contact}</span>}
-                                            {po.vendor.paymentTerms && (
-                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
-                                                    {po.vendor.paymentTerms}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-3 py-2.5">
-                                    <StatusPill status={a.status} />
-                                </td>
-                                <td className="px-3 py-2.5 text-gray-600">{a.remarks || '—'}</td>
-                                <td className="px-3 py-2.5 text-gray-500">
-                                    {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
-                                </td>
-                            </tr>
-                        )})}
+                                <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-800">
+                                        <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                        {po?.vendor && (
+                                            <div className="text-[11px] text-gray-500 mt-0.5">
+                                                {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                {po.vendor.paymentTerms && (
+                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                        {po.vendor.paymentTerms}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                        <StatusPill status={a.status} />
+                                    </td>
+                                    <td className="px-3 py-2.5 text-gray-600">{a.remarks || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-500">
+                                        {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
+                                    </td>
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -300,12 +301,72 @@ function DecideModal({ po, onClose, onSuccess }) {
     const [error, setError] = useState('');
     const isAdvanceVendor = po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Saman aatey saath';
 
+    // Editable Field Values
+    const [billDate, setBillDate] = useState(po.deliveries?.[0]?.billDate ? (() => {
+        try {
+            return new Date(po.deliveries[0].billDate).toISOString().split('T')[0];
+        } catch (e) {
+            return po.deliveries[0].billDate;
+        }
+    })() : '');
+    const [vchNo, setVchNo] = useState(po.deliveries?.[0]?.billNumber || '');
+    const [partyName, setPartyName] = useState(po.vendor?.name || '');
+    const [ourName, setOurName] = useState('Bhatia Enterprises');
+    const [ourGstNo, setOurGstNo] = useState(po.shipTo?.gstin || '');
+    const [taxableAmount, setTaxableAmount] = useState(po.total || '');
+    const [gstAmount, setGstAmount] = useState(po.taxAmount || '');
+    const [billAmount, setBillAmount] = useState(po.grandTotal || '');
+    const [seal, setSeal] = useState('Available');
+
+    // Verification Checkbox States
+    const [chkBillDate, setChkBillDate] = useState(false);
+    const [chkVchNo, setChkVchNo] = useState(false);
+    const [chkPartyName, setChkPartyName] = useState(false);
+    const [chkOurName, setChkOurName] = useState(false);
+    const [chkOurGstNo, setChkOurGstNo] = useState(false);
+    const [chkTaxableAmount, setChkTaxableAmount] = useState(false);
+    const [chkGstAmount, setChkGstAmount] = useState(false);
+    const [chkBillAmount, setChkBillAmount] = useState(false);
+    const [chkSeal, setChkSeal] = useState(false);
+
     async function handleSubmit(e) {
         e.preventDefault();
         setError('');
+
+        // Enforce that selecting/checking all 9 checkboxes in the modal is mandatory
+        if (!chkBillDate) { setError('Please verify and check Bill Date.'); return; }
+        if (!chkVchNo) { setError('Please verify and check Vch No.'); return; }
+        if (!chkPartyName) { setError('Please verify and check Party Name.'); return; }
+        if (!chkOurName) { setError('Please verify and check Our Name.'); return; }
+        if (!chkOurGstNo) { setError('Please verify and check Our GST No.'); return; }
+        if (!chkTaxableAmount) { setError('Please verify and check Taxable Amount.'); return; }
+        if (!chkGstAmount) { setError('Please verify and check GST Amount.'); return; }
+        if (!chkBillAmount) { setError('Please verify and check Bill Amount.'); return; }
+        if (!chkSeal) { setError('Please verify and check Seal.'); return; }
+
         setSubmitting(true);
         try {
-            await submitPaymentApproval({ poId: po.id, status, remarks, advanceAmount: isAdvanceVendor ? advanceAmount : null });
+            await submitPaymentApproval({
+                poId: po.id,
+                status,
+                remarks,
+                advanceAmount: isAdvanceVendor ? advanceAmount : null,
+                checkBillDate: chkBillDate,
+                checkVchNo: chkVchNo,
+                checkPartyName: chkPartyName,
+                checkOurName: chkOurName,
+                checkOurGstNo: chkOurGstNo,
+                checkTaxableAmount: chkTaxableAmount,
+                checkGstAmount: chkGstAmount,
+                checkBillAmount: chkBillAmount,
+                checkSeal: chkSeal,
+                editedBillDate: billDate,
+                editedVchNo: vchNo,
+                editedPartyName: partyName,
+                editedTaxableAmount: taxableAmount,
+                editedGstAmount: gstAmount,
+                editedBillAmount: billAmount,
+            });
             onSuccess();
         } catch (err) {
             setError(err.message || 'Failed to save decision.');
@@ -315,7 +376,7 @@ function DecideModal({ po, onClose, onSuccess }) {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={`Payment Decision — ${po.poNo}`} size="md">
+        <Modal open={true} onClose={onClose} title={`Payment Decision — ${po.poNo}`} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
                     PO <span className="font-bold text-gray-900">{po.poNo}</span> ({po.vendor?.name}) — ₹ {fmt(po.grandTotal)}
@@ -344,8 +405,18 @@ function DecideModal({ po, onClose, onSuccess }) {
                     </div>
                 )}
 
-                <div>
-                    {/* i have to work here */}
+                <div className="border border-gray-150 p-4 rounded-xl bg-white space-y-3 shadow-sm">
+                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-1">Bill Verification Checklist</h4>
+
+                    <CheckRow label="Bill Date" val={billDate} setVal={setBillDate} checked={chkBillDate} setChecked={setChkBillDate} type="date" />
+                    <CheckRow label="Vch No." val={vchNo} setVal={setVchNo} checked={chkVchNo} setChecked={setChkVchNo} />
+                    <CheckRow label="Party Name" val={partyName} setVal={setPartyName} checked={chkPartyName} setChecked={setChkPartyName} />
+                    <CheckRow label="Our Name" val={ourName} setVal={setOurName} checked={chkOurName} setChecked={setChkOurName} readOnly />
+                    <CheckRow label="Our GST No." val={ourGstNo} setVal={setOurGstNo} checked={chkOurGstNo} setChecked={setChkOurGstNo} />
+                    <CheckRow label="Taxable Amount" val={taxableAmount} setVal={setTaxableAmount} checked={chkTaxableAmount} setChecked={setChkTaxableAmount} type="number" />
+                    <CheckRow label="GST Amount" val={gstAmount} setVal={setGstAmount} checked={chkGstAmount} setChecked={setChkGstAmount} type="number" />
+                    <CheckRow label="Bill Amount" val={billAmount} setVal={setBillAmount} checked={chkBillAmount} setChecked={setChkBillAmount} type="number" />
+                    <CheckRow label="Seal" val={seal} setVal={setSeal} checked={chkSeal} setChecked={setChkSeal} />
                 </div>
 
                 <div>
@@ -371,5 +442,29 @@ function DecideModal({ po, onClose, onSuccess }) {
         .input:focus { outline: none; border-color: #173254; }
       `}</style>
         </Modal>
+    );
+}
+
+function CheckRow({ label, val, setVal, checked, setChecked, type = 'text', readOnly = false }) {
+    return (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between py-1 text-[12.5px] border-b border-gray-50 last:border-0 pb-2">
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700 min-w-[140px]">
+                <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    checked={checked}
+                    onChange={(e) => setChecked(e.target.checked)}
+                />
+                <span>{label}</span>
+            </label>
+            <input
+                type={type}
+                className="input py-1 px-3 h-[36px] border border-gray-300 rounded-lg text-xs font-semibold max-w-sm"
+                value={val}
+                onChange={(e) => setVal(e.target.value)}
+                readOnly={readOnly}
+                placeholder={readOnly ? '' : `Enter ${label}`}
+            />
+        </div>
     );
 }

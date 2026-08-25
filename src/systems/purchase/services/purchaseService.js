@@ -166,21 +166,20 @@ export async function importIndentRows(parsedRows) {
   if (indentErr) throw indentErr;
 
   const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
-  const approvedPoIds = new Set();
+  const decidedPoIds = new Set();
   if (poIds.length > 0) {
     const { data: approvals, error: appErr } = await supabase
       .from('purchase_payment_approvals')
       .select('po_id')
-      .eq('status', 'Approved')
       .in('po_id', poIds);
     if (appErr) throw appErr;
-    (approvals || []).forEach(a => approvedPoIds.add(a.po_id));
+    (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
   }
 
   const incompleteIndents = (indents || []).filter(row => {
     const isPending = row.status === 'Pending';
-    const isApprovedButNotPaid = row.status === 'Approved' && (!row.po_id || !approvedPoIds.has(row.po_id));
-    return isPending || isApprovedButNotPaid;
+    const isApprovedButNotDecided = row.status === 'Approved' && (!row.po_id || !decidedPoIds.has(row.po_id));
+    return isPending || isApprovedButNotDecided;
   });
 
   const normalizeName = (name) => (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -267,6 +266,7 @@ export async function importIndentRows(parsedRows) {
     lastNo,
     matchedCount: matchedRows.length,
     insertedCount: insertedRows.length,
+    skipped: matchedRows.map(r => r.unique_no).filter(Boolean),
   };
 }
 
@@ -961,6 +961,15 @@ function mapPaymentApprovalRow(row) {
     decidedBy: row.decided_by,
     decidedAt: row.decided_at,
     createdAt: row.created_at,
+    checkBillDate: row.check_bill_date,
+    checkVchNo: row.check_vch_no,
+    checkPartyName: row.check_party_name,
+    checkOurName: row.check_our_name,
+    checkOurGstNo: row.check_our_gst_no,
+    checkTaxableAmount: row.check_taxable_amount,
+    checkGstAmount: row.check_gst_amount,
+    checkBillAmount: row.check_bill_amount,
+    checkSeal: row.check_seal,
   };
 }
 
@@ -976,7 +985,7 @@ export async function fetchPaymentApprovals() {
 export async function fetchPayablePOs() {
   const [posRes, deliveriesRes, itemsRes] = await Promise.all([
     supabase.from('purchase_pos').select('*'),
-    supabase.from('purchase_deliveries').select('id, po_id, received'),
+    supabase.from('purchase_deliveries').select('*'), // Select all columns (including bill_date, bill_number)
     supabase.from('purchase_po_items').select('*'),
   ]);
   if (posRes.error) throw posRes.error;
@@ -997,14 +1006,75 @@ export async function fetchPayablePOs() {
       const dels = deliveriesByPo[row.id] || [];
       return dels.length > 0 && dels.every((d) => d.received);
     })
-    .map((row) => mapPoRow(row, itemsByPo[row.id]));
+    .map((row) => {
+      const poObj = mapPoRow(row, itemsByPo[row.id]);
+      poObj.deliveries = (deliveriesByPo[row.id] || []).map(mapDeliveryRow);
+      return poObj;
+    });
 }
 
-export async function submitPaymentApproval({ poId, status, remarks, advanceAmount }) {
+export async function submitPaymentApproval({
+  poId,
+  status,
+  remarks,
+  advanceAmount,
+  checkBillDate,
+  checkVchNo,
+  checkPartyName,
+  checkOurName,
+  checkOurGstNo,
+  checkTaxableAmount,
+  checkGstAmount,
+  checkBillAmount,
+  checkSeal,
+  editedBillDate,
+  editedVchNo,
+  editedPartyName,
+  editedTaxableAmount,
+  editedGstAmount,
+  editedBillAmount,
+}) {
+  // Update PO details
+  const { error: poUpdErr } = await supabase
+    .from('purchase_pos')
+    .update({
+      vendor_name: editedPartyName,
+      total: Number(editedTaxableAmount) || 0,
+      tax_amount: Number(editedGstAmount) || 0,
+      grand_total: Number(editedBillAmount) || 0,
+    })
+    .eq('id', poId);
+  if (poUpdErr) throw poUpdErr;
+
+  // Update associated Delivery details
+  const { error: delUpdErr } = await supabase
+    .from('purchase_deliveries')
+    .update({
+      bill_date: editedBillDate || null,
+      bill_number: editedVchNo || '',
+    })
+    .eq('po_id', poId);
+  if (delUpdErr) throw delUpdErr;
+
   const decidedBy = localStorage.getItem('user-id') || null;
   const { data, error } = await supabase
     .from('purchase_payment_approvals')
-    .insert({ po_id: poId, status, remarks, decided_by: decidedBy, advance_amount: advanceAmount != null && advanceAmount !== '' ? Number(advanceAmount) || 0 : null })
+    .insert({
+      po_id: poId,
+      status,
+      remarks,
+      decided_by: decidedBy,
+      advance_amount: advanceAmount != null && advanceAmount !== '' ? Number(advanceAmount) || 0 : null,
+      check_bill_date: !!checkBillDate,
+      check_vch_no: !!checkVchNo,
+      check_party_name: !!checkPartyName,
+      check_our_name: !!checkOurName,
+      check_our_gst_no: !!checkOurGstNo,
+      check_taxable_amount: !!checkTaxableAmount,
+      check_gst_amount: !!checkGstAmount,
+      check_bill_amount: !!checkBillAmount,
+      check_seal: !!checkSeal,
+    })
     .select()
     .single();
   if (error) throw error;
@@ -1095,44 +1165,49 @@ export async function createIndentsManualBulk(vendor, items) {
   if (fetchError) throw fetchError;
 
   const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
-  const approvedPoIds = new Set();
+  const decidedPoIds = new Set();
   if (poIds.length > 0) {
     const { data: approvals, error: appErr } = await supabase
       .from('purchase_payment_approvals')
       .select('po_id')
-      .eq('status', 'Approved')
       .in('po_id', poIds);
     if (appErr) throw appErr;
-    (approvals || []).forEach(a => approvedPoIds.add(a.po_id));
+    (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
   }
 
   const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
   const existingNames = new Set();
   (indents || []).forEach(row => {
     const isPending = row.status === 'Pending';
-    const isApprovedButNotPaid = row.status === 'Approved' && (!row.po_id || !approvedPoIds.has(row.po_id));
-    if (isPending || isApprovedButNotPaid) {
+    const isApprovedButNotDecided = row.status === 'Approved' && (!row.po_id || !decidedPoIds.has(row.po_id));
+    if (isPending || isApprovedButNotDecided) {
       existingNames.add(normalize(row.item_details));
     }
   });
 
+  // Filter items to create, skipping those that already exist
+  const itemsToCreate = [];
   for (const item of items) {
     const norm = normalize(item.item_details);
-    if (existingNames.has(norm)) {
-      throw new Error(`An indent for item "${item.item_details}" is already in approval stage (Pending).`);
+    if (!existingNames.has(norm)) {
+      itemsToCreate.push(item);
     }
+  }
+
+  if (itemsToCreate.length === 0) {
+    return [];
   }
 
   const year = new Date().getFullYear();
   const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
     p_year: year,
-    p_count: items.length,
+    p_count: itemsToCreate.length,
   });
   if (reserveError) throw reserveError;
 
   const createdBy = localStorage.getItem('user-id') || null;
 
-  const payload = items.map((item, idx) => ({
+  const payload = itemsToCreate.map((item, idx) => ({
     unique_no: reserved[idx].unique_no,
     created_by: createdBy,
     item_details: item.item_details,

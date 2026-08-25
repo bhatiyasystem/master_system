@@ -16,14 +16,14 @@ envFile.split('\n').forEach(line => {
 const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
 async function check() {
-  const tables = ['purchase_pos', 'purchase_po_items', 'purchase_deliveries', 'purchase_payments', 'purchase_payment_approvals'];
-  for (const table of tables) {
-    console.log(`Checking table ${table}...`);
-    const { data: rows, error: rowErr } = await supabase.from(table).select('*').limit(1);
-    if (rowErr) {
-      console.log(`Error reading ${table}:`, rowErr.message);
+  console.log("Checking schema...");
+  const tables = ['purchase_pos', 'purchase_payment_approvals', 'purchase_deliveries', 'purchase_receivings'];
+  for (const t of tables) {
+    const { data, error } = await supabase.from(t).select('*').limit(1);
+    if (error) {
+      console.log(`Table '${t}' error:`, error.message);
     } else {
-      console.log(`Columns of ${table}:`, Object.keys(rows[0] || {}));
+      console.log(`Table '${t}' columns:`, Object.keys(data[0] || {}));
     }
   }
 }

@@ -102,7 +102,27 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 return;
             }
             setSaving(true);
-            await createIndentsManualBulk(null, items);
+            const saved = await createIndentsManualBulk(null, items);
+            const createdCount = saved?.length || 0;
+            const requestedCount = items.length;
+
+            if (createdCount === 0) {
+                const errMsg = requestedCount === 1
+                  ? `Indent "${items[0].item_details}" already exists in the pending Purchase workflow. It was not created again.`
+                  : 'All entered indents already exist in the pending Purchase workflow. They were not created again.';
+                setError(errMsg);
+                setShowErrorPopup(true);
+                return;
+            }
+
+            if (createdCount < requestedCount) {
+                const skippedNames = items
+                  .filter(it => !saved.some(s => String(s.item_details).toLowerCase() === String(it.item_details).toLowerCase()))
+                  .map(it => it.item_details);
+                
+                alert(`Some indents already exist in the pending Purchase workflow and were skipped:\n\n${skippedNames.join('\n')}`);
+            }
+
             onSaved();
         } catch (err) {
             console.error("Error submitting manual indents:", err);

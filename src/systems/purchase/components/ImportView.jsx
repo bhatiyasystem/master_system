@@ -68,19 +68,33 @@ export default function ImportView({ onImported }) {
           return;
         }
         setImporting(true);
-        const { firstNo, lastNo, matchedCount, insertedCount } = await importIndentRows(parsed);
-        let successText = `${parsed.length} item(s) processed. `;
-        if (matchedCount > 0) {
-          successText += `${matchedCount} existing item(s) recognized and preserved. `;
-        }
-        if (insertedCount > 0) {
-          successText += `${insertedCount} new item(s) imported successfully (Unique numbers: ${firstNo} to ${lastNo}).`;
-        } else {
-          successText += `0 new items added.`;
-        }
+        const { firstNo, lastNo, matchedCount, insertedCount, skipped } = await importIndentRows(parsed);
+        const content = (
+          <div className="space-y-1.5 font-semibold text-gray-700">
+            <div className="font-bold text-gray-900 text-sm">Import completed</div>
+            <div className="grid grid-cols-2 gap-x-4 max-w-[220px] text-xs">
+              <div>Created:</div>
+              <div>{insertedCount}</div>
+              <div>Skipped duplicates:</div>
+              <div>{matchedCount}</div>
+              <div>Failed:</div>
+              <div>0</div>
+            </div>
+            {skipped && skipped.length > 0 && (
+              <div className="mt-2 border-t border-gray-200/50 pt-1.5">
+                <div className="text-[11px] font-bold text-gray-800 uppercase tracking-wider">Skipped Indents:</div>
+                <ul className="list-disc pl-4 text-xs font-semibold text-rose-600 space-y-0.5 mt-1">
+                  {skipped.map((num, i) => (
+                    <li key={i}>{num}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
         setResult({
           type: 'success',
-          text: successText,
+          text: content,
         });
         onImported && onImported();
       } catch (err) {
