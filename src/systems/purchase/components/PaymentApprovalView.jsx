@@ -336,12 +336,17 @@ function DecideModal({ po, onClose, onSuccess }) {
                         <input
                             type="number"
                             className="input"
+                            min={0}
                             value={advanceAmount}
                             onChange={(e) => setAdvanceAmount(e.target.value)}
                             placeholder="Enter advance amount"
                         />
                     </div>
                 )}
+
+                <div>
+                    {/* i have to work here */}
+                </div>
 
                 <div>
                     <label className="mb-1 block text-[12px] font-bold text-gray-600">Remark</label>

@@ -503,8 +503,8 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         e.preventDefault();
         setError('');
 
-        if (!form.transportName || !form.builtyNumber || !form.builtyDate) {
-            setError('Transport name, builty number and builty date are required.');
+        if (!form.transportName || !form.builtyNumber || !form.builtyDate || !form.daggCount) {
+            setError('Transport name, builty number, builty date and number of dagg are required.');
             return;
         }
 
@@ -606,10 +606,11 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     />
                 </Field>
 
-                <Field label="Number of Dagg">
+                <Field label="Number of Dagg" required>
                     <input
                         type="number"
-                        className="input"
+                        required
+                        min={0} className="input"
                         value={form.daggCount}
                         onChange={(e) => update('daggCount', e.target.value)}
                         placeholder="0"

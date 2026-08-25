@@ -5,10 +5,39 @@ import { createIndentsManualBulk } from '../services/purchaseService';
 export default function CreateIndentFormModal({ onClose, onSaved }) {
     const [vendor, setVendor] = useState('');
     const [items, setItems] = useState([
-        { category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', qty: '' }
+        { category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
     ]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    const [existingItemsDB, setExistingItemsDB] = useState([]);
+
+    useEffect(() => {
+        let isMounted = true;
+        async function loadExistingItems() {
+            try {
+                const { data, error } = await supabase
+                    .from('purchase_indents')
+                    .select('item_details, category, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula')
+                    .order('created_at', { ascending: false });
+                if (error) throw error;
+                const uniqueMap = {};
+                (data || []).forEach(row => {
+                    const name = String(row.item_details || '').trim();
+                    if (name && !uniqueMap[name]) {
+                        uniqueMap[name] = row;
+                    }
+                });
+                if (isMounted) {
+                    setExistingItemsDB(Object.values(uniqueMap));
+                }
+            } catch (err) {
+                console.error('Error fetching existing items for prefill:', err);
+            }
+        }
+        loadExistingItems();
+        return () => { isMounted = false; };
+    }, []);
 
     const updateItem = (index, key, val) => {
         setItems((prev) => {
@@ -18,10 +47,34 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
         });
     };
 
+    const handleItemNameChange = (index, val) => {
+        updateItem(index, 'item_details', val);
+        const matched = existingItemsDB.find(dbItem => String(dbItem.item_details || '').trim().toLowerCase() === String(val || '').trim().toLowerCase());
+        if (matched) {
+            setItems((prev) => {
+                const copy = [...prev];
+                copy[index] = {
+                    ...copy[index],
+                    category: matched.category || copy[index].category,
+                    unit: matched.unit || copy[index].unit,
+                    alt_unit: matched.alt_unit || copy[index].alt_unit,
+                    parent_group: matched.parent_group || copy[index].parent_group,
+                    shelf_capacity: matched.shelf_capacity || copy[index].shelf_capacity,
+                    max_level_qty: matched.max_level_qty !== null ? String(matched.max_level_qty) : copy[index].max_level_qty,
+                    rol_qty: matched.rol_qty !== null ? String(matched.rol_qty) : copy[index].rol_qty,
+                    cl_qty: matched.cl_qty !== null ? String(matched.cl_qty) : copy[index].cl_qty,
+                    conversion_unit: matched.conversion_unit || copy[index].conversion_unit,
+                    order_formula: matched.order_formula !== null ? String(matched.order_formula) : copy[index].order_formula,
+                };
+                return copy;
+            });
+        }
+    };
+
     const addItem = () => {
         setItems((prev) => [
             ...prev,
-            { category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', qty: '' }
+            { category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
         ]);
     };
 
@@ -99,8 +152,24 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                     </div>
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Category</label>
+                                        {/* Row 1: Item Name (Full Width) */}
+                                        <div className="col-span-2 md:col-span-4 space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                Item Name <span className="text-rose-500">*</span>
+                                            </label>
+                                            <ComboSelect
+                                                table="purchase_indents"
+                                                column="item_details"
+                                                value={item.item_details}
+                                                onChange={(val) => handleItemNameChange(index, val)}
+                                                label="Item Name"
+                                                placeholder="Select or enter item name"
+                                            />
+                                        </div>
+
+                                        {/* Row 2: Category, Parent Group */}
+                                        <div className="col-span-2 space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
                                             <ComboSelect
                                                 table="purchase_indents"
                                                 column="category"
@@ -109,8 +178,20 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                 label="Category"
                                             />
                                         </div>
+                                        <div className="col-span-2 space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
+                                            <ComboSelect
+                                                table="purchase_indents"
+                                                column="parent_group"
+                                                value={item.parent_group}
+                                                onChange={(val) => updateItem(index, 'parent_group', val)}
+                                                label="Parent Group"
+                                            />
+                                        </div>
+
+                                        {/* Row 3: Unit, Alt Unit, Conversion Unit */}
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Unit</label>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
                                             <ComboSelect
                                                 table="purchase_indents"
                                                 column="unit"
@@ -120,17 +201,17 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                             />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Parent Group</label>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Alt Unit</label>
                                             <ComboSelect
                                                 table="purchase_indents"
-                                                column="parent_group"
-                                                value={item.parent_group}
-                                                onChange={(val) => updateItem(index, 'parent_group', val)}
-                                                label="Parent Group"
+                                                column="alt_unit"
+                                                value={item.alt_unit}
+                                                onChange={(val) => updateItem(index, 'alt_unit', val)}
+                                                label="Alt Unit"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Conversion Unit</label>
+                                        <div className="col-span-2 space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Conversion Unit</label>
                                             <ComboSelect
                                                 table="purchase_indents"
                                                 column="conversion_unit"
@@ -139,33 +220,57 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                 label="Conversion Unit"
                                             />
                                         </div>
+
+                                        {/* Row 4: Shelf Capacity, Max Level Qty, ROL Qty, CL Qty */}
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order Formula</label>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
+                                            <ComboSelect
+                                                table="purchase_indents"
+                                                column="shelf_capacity"
+                                                value={item.shelf_capacity}
+                                                onChange={(val) => updateItem(index, 'shelf_capacity', val)}
+                                                label="Shelf Capacity"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
+                                            <ComboSelect
+                                                table="purchase_indents"
+                                                column="max_level_qty"
+                                                value={item.max_level_qty}
+                                                onChange={(val) => updateItem(index, 'max_level_qty', val)}
+                                                label="Max Level Qty"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
+                                            <ComboSelect
+                                                table="purchase_indents"
+                                                column="rol_qty"
+                                                value={item.rol_qty}
+                                                onChange={(val) => updateItem(index, 'rol_qty', val)}
+                                                label="ROL Qty"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">CL Qty</label>
+                                            <ComboSelect
+                                                table="purchase_indents"
+                                                column="cl_qty"
+                                                value={item.cl_qty}
+                                                onChange={(val) => updateItem(index, 'cl_qty', val)}
+                                                label="CL Qty"
+                                            />
+                                        </div>
+
+                                        {/* Row 5: Order Formula (Full Width) */}
+                                        <div className="col-span-2 md:col-span-4 space-y-1">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Order Formula</label>
                                             <input
                                                 type="text"
                                                 value={item.order_formula}
                                                 onChange={(e) => updateItem(index, 'order_formula', e.target.value)}
                                                 placeholder="Order formula"
-                                                className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                            />
-                                        </div>
-                                        <div className="space-y-1 md:col-span-2">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Name <span className="text-rose-500">*</span></label>
-                                            <input
-                                                type="text"
-                                                value={item.item_details}
-                                                onChange={(e) => updateItem(index, 'item_details', e.target.value)}
-                                                placeholder="Enter item name"
-                                                className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Qty</label>
-                                            <input
-                                                type="text"
-                                                value={item.qty}
-                                                onChange={(e) => updateItem(index, 'qty', e.target.value)}
-                                                placeholder="Enter quantity"
                                                 className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                             />
                                         </div>
