@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import supabase from '../../../SupabaseClient';
-import { createIndentsManualBulk } from '../services/purchaseService';
+import { createIndentsManualBulk, previewIndentsManualBulk } from '../services/purchaseService';
 
 export default function CreateIndentFormModal({ onClose, onSaved }) {
     const [items, setItems] = useState([
@@ -9,6 +9,8 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [showErrorPopup, setShowErrorPopup] = useState(false);
+    const [step, setStep] = useState('input'); // 'input' or 'review'
+    const [previewData, setPreviewData] = useState({ toCreate: [], toSkip: [] });
 
     const [existingItemsDB, setExistingItemsDB] = useState([]);
 
@@ -83,7 +85,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
         setItems((prev) => prev.filter((_, i) => i !== index));
     };
 
-    async function handleSubmit(e) {
+    async function handleReview(e) {
         e.preventDefault();
         setError('');
         try {
@@ -102,30 +104,33 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 return;
             }
             setSaving(true);
-            const saved = await createIndentsManualBulk(null, items);
-            const createdCount = saved?.length || 0;
-            const requestedCount = items.length;
+            const data = await previewIndentsManualBulk(null, items);
+            setPreviewData(data);
+            setStep('review');
+        } catch (err) {
+            console.error("Error reviewing manual indents:", err);
+            const errMsg = err.message || 'Failed to preview indents.';
+            setError(errMsg);
+            setShowErrorPopup(true);
+        } finally {
+            setSaving(false);
+        }
+    }
 
-            if (createdCount === 0) {
-                const errMsg = requestedCount === 1
-                  ? `Indent "${items[0].item_details}" already exists in the pending Purchase workflow. It was not created again.`
-                  : 'All entered indents already exist in the pending Purchase workflow. They were not created again.';
-                setError(errMsg);
+    async function handleFinalSubmit() {
+        setError('');
+        setSaving(true);
+        try {
+            if (previewData.toCreate.length === 0) {
+                setError('No new indents to create.');
                 setShowErrorPopup(true);
+                setSaving(false);
                 return;
             }
-
-            if (createdCount < requestedCount) {
-                const skippedNames = items
-                  .filter(it => !saved.some(s => String(s.item_details).toLowerCase() === String(it.item_details).toLowerCase()))
-                  .map(it => it.item_details);
-                
-                alert(`Some indents already exist in the pending Purchase workflow and were skipped:\n\n${skippedNames.join('\n')}`);
-            }
-
+            await createIndentsManualBulk(null, previewData.toCreate);
             onSaved();
         } catch (err) {
-            console.error("Error submitting manual indents:", err);
+            console.error("Error saving manual indents:", err);
             const errMsg = err.message || 'Failed to save indents.';
             setError(errMsg);
             setShowErrorPopup(true);
@@ -145,170 +150,266 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                         <span className="text-xl font-bold">×</span>
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-                    {/* Scrollable fields */}
-                    <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
-                        {/* List of items */}
-                        <div className="space-y-4">
-                            {items.map((item, index) => (
-                                <div key={index} className="relative p-5 bg-gray-50/50 border border-gray-150 rounded-2xl space-y-4">
-                                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                                        <span className="text-xs font-bold text-gray-700">Item #{index + 1}</span>
-                                        {items.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removeItem(index)}
-                                                className="text-[11px] font-bold text-rose-500 hover:underline"
-                                            >
-                                                Remove Item
-                                            </button>
+                <form onSubmit={step === 'input' ? handleReview : (e) => { e.preventDefault(); handleFinalSubmit(); }} className="flex flex-col flex-1 min-h-0">
+                    {step === 'input' ? (
+                        /* Scrollable fields */
+                        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+                            {/* List of items */}
+                            <div className="space-y-4">
+                                {items.map((item, index) => (
+                                    <div key={index} className="relative p-5 bg-gray-50/50 border border-gray-155 rounded-2xl space-y-4">
+                                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                                            <span className="text-xs font-bold text-gray-700">Item #{index + 1}</span>
+                                            {items.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(index)}
+                                                    className="text-[11px] font-bold text-rose-500 hover:underline"
+                                                >
+                                                    Remove Item
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* Left half UI section */}
+                                            <div className="space-y-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                        Item Name <span className="text-rose-500">*</span>
+                                                    </label>
+                                                    <ComboSelect
+                                                        table="purchase_indents"
+                                                        column="item_details"
+                                                        value={item.item_details}
+                                                        onChange={(val) => handleItemNameChange(index, val)}
+                                                        label="Item Name"
+                                                        placeholder="Select or enter item name"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
+                                                    <ComboSelect
+                                                        table="purchase_indents"
+                                                        column="category"
+                                                        value={item.category}
+                                                        onChange={(val) => updateItem(index, 'category', val)}
+                                                        label="Category"
+                                                        disableCustom={true}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                        Vendor Name <span className="text-rose-500">*</span>
+                                                    </label>
+                                                    <ComboSelect
+                                                        table="vendors"
+                                                        column="name"
+                                                        value={item.vendor}
+                                                        onChange={(val) => updateItem(index, 'vendor', val)}
+                                                        label="Vendor"
+                                                        placeholder="Select vendor name"
+                                                        disableCustom={true}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
+                                                    <ComboSelect
+                                                        table="purchase_indents"
+                                                        column="parent_group"
+                                                        value={item.parent_group}
+                                                        onChange={(val) => updateItem(index, 'parent_group', val)}
+                                                        label="Parent Group"
+                                                        disableCustom={true}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
+                                                    <ComboSelect
+                                                        table="purchase_indents"
+                                                        column="unit"
+                                                        value={item.unit}
+                                                        onChange={(val) => updateItem(index, 'unit', val)}
+                                                        label="Unit"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Right half UI section */}
+                                            <div className="space-y-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.shelf_capacity || ''}
+                                                        onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
+                                                        placeholder="Shelf Capacity"
+                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.max_level_qty || ''}
+                                                        onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
+                                                        placeholder="Max Level Qty"
+                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.rol_qty || ''}
+                                                        onChange={(e) => updateItem(index, 'rol_qty', e.target.value)}
+                                                        placeholder="ROL Qty"
+                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1 text-gray-800">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Order Qty</label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.order_formula}
+                                                        onChange={(e) => updateItem(index, 'order_formula', e.target.value)}
+                                                        placeholder="Order Qty"
+                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {index === items.length - 1 && (
+                                            <div className="flex justify-end pt-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={addItem}
+                                                    className="rounded-2xl bg-blue-600 hover:bg-blue-700 px-5 py-3 text-xs font-bold text-white transition flex items-center gap-1 shadow-md shadow-blue-200"
+                                                >
+                                                    ➕ Add Another Item
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
+                                ))}
+                            </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Left half UI section */}
-                                        <div className="space-y-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                    Item Name <span className="text-rose-500">*</span>
-                                                </label>
-                                                <ComboSelect
-                                                    table="purchase_indents"
-                                                    column="item_details"
-                                                    value={item.item_details}
-                                                    onChange={(val) => handleItemNameChange(index, val)}
-                                                    label="Item Name"
-                                                    placeholder="Select or enter item name"
-                                                />
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
-                                                <ComboSelect
-                                                    table="purchase_indents"
-                                                    column="category"
-                                                    value={item.category}
-                                                    onChange={(val) => updateItem(index, 'category', val)}
-                                                    label="Category"
-                                                    disableCustom={true}
-                                                />
-                                            </div><div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                    Vendor Name <span className="text-rose-500">*</span>
-                                                </label>
-                                                <ComboSelect
-                                                    table="vendors"
-                                                    column="name"
-                                                    value={item.vendor}
-                                                    onChange={(val) => updateItem(index, 'vendor', val)}
-                                                    label="Vendor"
-                                                    placeholder="Select vendor name"
-                                                    disableCustom={true}
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
-                                                <ComboSelect
-                                                    table="purchase_indents"
-                                                    column="parent_group"
-                                                    value={item.parent_group}
-                                                    onChange={(val) => updateItem(index, 'parent_group', val)}
-                                                    label="Parent Group"
-                                                    disableCustom={true}
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
-                                                <ComboSelect
-                                                    table="purchase_indents"
-                                                    column="unit"
-                                                    value={item.unit}
-                                                    onChange={(val) => updateItem(index, 'unit', val)}
-                                                    label="Unit"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Right half UI section */}
-                                        <div className="space-y-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
-                                                <input
-                                                    type="text"
-                                                    value={item.shelf_capacity || ''}
-                                                    onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
-                                                    placeholder="Shelf Capacity"
-                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
-                                                <input
-                                                    type="text"
-                                                    value={item.max_level_qty || ''}
-                                                    onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
-                                                    placeholder="Max Level Qty"
-                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
-                                                <input
-                                                    type="text"
-                                                    value={item.rol_qty || ''}
-                                                    onChange={(e) => updateItem(index, 'rol_qty', e.target.value)}
-                                                    placeholder="ROL Qty"
-                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                />
-                                            </div>
-                                            <div className="space-y-1 text-gray-800">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Order Qty</label>
-                                                <input
-                                                    type="text"
-                                                    value={item.order_formula}
-                                                    onChange={(e) => updateItem(index, 'order_formula', e.target.value)}
-                                                    placeholder="Order Qty"
-                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {index === items.length - 1 && (
-                                        <div className="flex justify-end pt-2">
-                                            <button
-                                                type="button"
-                                                onClick={addItem}
-                                                className="rounded-2xl bg-blue-600 hover:bg-blue-700 px-5 py-3 text-xs font-bold text-white transition flex items-center gap-1 shadow-md shadow-blue-200"
-                                            >
-                                                ➕ Add Another Item
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                            {error && <div className="mt-3 text-xs font-semibold text-rose-600 text-center">{error}</div>}
                         </div>
+                    ) : (
+                        /* Review step panel */
+                        <div className="overflow-y-auto flex-1 px-6 py-6 space-y-6">
+                            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs font-semibold text-blue-800 leading-relaxed">
+                                Review your indents before final submission. Duplicate active indents will be skipped to prevent duplicates.
+                            </div>
 
-                        {error && <div className="mt-3 text-xs font-semibold text-rose-600 text-center">{error}</div>}
-                    </div>
+                            {/* To Create list */}
+                            <div>
+                                <h4 className="text-xs font-black text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <span>New Indents to Create ({previewData.toCreate.length})</span>
+                                </h4>
+                                {previewData.toCreate.length === 0 ? (
+                                    <div className="text-xs text-gray-500 italic p-3 bg-gray-50 rounded-xl border border-gray-200">No new indents to create.</div>
+                                ) : (
+                                    <div className="overflow-hidden border border-gray-200 rounded-xl">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead>
+                                                <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                                                    <th className="px-3 py-2">Item Name</th>
+                                                    <th className="px-3 py-2">Vendor</th>
+                                                    <th className="px-3 py-2">Qty</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {previewData.toCreate.map((it, idx) => (
+                                                    <tr key={idx} className="border-t border-gray-100 font-semibold text-gray-800">
+                                                        <td className="px-3 py-2">{it.item_details}</td>
+                                                        <td className="px-3 py-2 text-gray-600">{it.vendor}</td>
+                                                        <td className="px-3 py-2 font-bold text-gray-900">{it.order_formula}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* To Skip list */}
+                            {previewData.toSkip.length > 0 && (
+                                <div>
+                                    <h4 className="text-xs font-black text-rose-700 uppercase tracking-wider mb-2">
+                                        Duplicate Indents to Skip ({previewData.toSkip.length})
+                                    </h4>
+                                    <div className="overflow-hidden border border-rose-100 rounded-xl">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead>
+                                                <tr className="bg-rose-50/50 border-b border-rose-100 text-rose-700 font-bold uppercase tracking-wider text-[10px]">
+                                                    <th className="px-3 py-2">Item Name</th>
+                                                    <th className="px-3 py-2">Vendor</th>
+                                                    <th className="px-3 py-2">Existing Indent No.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {previewData.toSkip.map((it, idx) => (
+                                                    <tr key={idx} className="border-t border-rose-50/50 font-semibold text-rose-900 bg-rose-50/20">
+                                                        <td className="px-3 py-2">{it.item_details}</td>
+                                                        <td className="px-3 py-2 text-rose-700/80">{it.vendor}</td>
+                                                        <td className="px-3 py-2 font-bold text-rose-600">{it.uniqueNo}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {error && <div className="mt-3 text-xs font-semibold text-rose-600 text-center">{error}</div>}
+                        </div>
+                    )}
 
                     {/* Footer — sticky */}
                     <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-60"
-                        >
-                            {saving ? 'Saving…' : 'Save'}
-                        </button>
+                        {step === 'input' ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-60 shadow-md shadow-blue-200"
+                                >
+                                    {saving ? 'Loading…' : 'Next: Review'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setError('');
+                                        setStep('input');
+                                    }}
+                                    className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving || previewData.toCreate.length === 0}
+                                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50 shadow-md shadow-emerald-200 animate-pulse"
+                                >
+                                    {saving ? 'Saving…' : 'Confirm & Submit'}
+                                </button>
+                            </>
+                        )}
                     </div>
-                 </form>
+                </form>
             </div>
 
             {/* Error Alert Modal Popup */}

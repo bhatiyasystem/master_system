@@ -9,25 +9,24 @@ export default function PurchaseHeader({ subtitle }) {
   const getPagePendingBadge = () => {
     const path = location.pathname;
     if (path.startsWith('/dashboard/purchase/approval')) {
-      return counts.approvalPending > 0 ? `${counts.approvalPending} Approvals Pending` : null;
+      return null;
     }
     if (path.startsWith('/dashboard/purchase/polist') || path.startsWith('/dashboard/purchase/pocreate')) {
-      return counts.poPending > 0 ? `${counts.poPending} PO Pending` : null;
+      return null;
     }
     if (path.startsWith('/dashboard/purchase/delivery')) {
-      return counts.deliveryPending > 0 ? `${counts.deliveryPending} Deliveries Pending` : null;
+      return null;
     }
     if (path.startsWith('/dashboard/purchase/receiving')) {
-      return counts.receivingPending > 0 ? `${counts.receivingPending} Receivings Pending` : null;
+      return null;
     }
     if (path.startsWith('/dashboard/purchase/payment-approval')) {
-      return counts.paymentApprovalPending > 0 ? `${counts.paymentApprovalPending} Payment Approvals Pending` : null;
+      return null;
     }
     if (path.startsWith('/dashboard/purchase/payment')) {
-      return counts.paymentPending > 0 ? `${counts.paymentPending} Payments Pending` : null;
+      return null;
     }
-    // Main Section (Dashboard/Indent Data) shows the combined sum
-    return counts.total > 0 ? `${counts.total} Total Pending` : null;
+    return null;
   };
 
   const badgeText = getPagePendingBadge();

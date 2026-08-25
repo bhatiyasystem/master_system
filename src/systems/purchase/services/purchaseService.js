@@ -1236,3 +1236,49 @@ export async function createIndentsManualBulk(vendor, items) {
 
   return data;
 }
+
+export async function previewIndentsManualBulk(vendor, items) {
+  if (!items || items.length === 0) return { toCreate: [], toSkip: [] };
+
+  // Query existing pending or approved indents
+  const { data: indents, error: fetchError } = await supabase
+    .from('purchase_indents')
+    .select('item_details, status, po_id, unique_no')
+    .in('status', ['Pending', 'Approved']);
+  if (fetchError) throw fetchError;
+
+  const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
+  const decidedPoIds = new Set();
+  if (poIds.length > 0) {
+    const { data: approvals, error: appErr } = await supabase
+      .from('purchase_payment_approvals')
+      .select('po_id')
+      .in('po_id', poIds);
+    if (appErr) throw appErr;
+    (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
+  }
+
+  const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const activePool = {};
+  (indents || []).forEach(row => {
+    const isPending = row.status === 'Pending';
+    const isApprovedButNotDecided = row.status === 'Approved' && (!row.po_id || !decidedPoIds.has(row.po_id));
+    if (isPending || isApprovedButNotDecided) {
+      activePool[normalize(row.item_details)] = row.unique_no;
+    }
+  });
+
+  const toCreate = [];
+  const toSkip = [];
+
+  for (const item of items) {
+    const norm = normalize(item.item_details);
+    if (activePool[norm]) {
+      toSkip.push({ ...item, uniqueNo: activePool[norm] });
+    } else {
+      toCreate.push(item);
+    }
+  }
+
+  return { toCreate, toSkip };
+}
