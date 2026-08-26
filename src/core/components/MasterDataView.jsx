@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import * as Lucide from 'lucide-react';
 import supabase from '../../SupabaseClient';
@@ -551,6 +552,23 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                 ? await supabase.from(config.table).update(payload).eq('id', record.id)
                 : await supabase.from(config.table).insert(payload);
             if (error) throw error;
+
+            if (config.table === 'vendors' && payload.fix_transporter) {
+                const trName = payload.fix_transporter.trim();
+                if (trName) {
+                    const { data: existingTr } = await supabase
+                        .from('transporters')
+                        .select('id')
+                        .eq('name', trName);
+                    if (!existingTr || existingTr.length === 0) {
+                        await supabase.from('transporters').insert({
+                            name: trName,
+                            contacts: []
+                        });
+                    }
+                }
+            }
+
             onSaved(payload.name || payload.item_details);
         } catch (err) {
             setError(err.message || 'Failed to save.');
@@ -559,7 +577,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
         }
     }
 
-    return (
+    return createPortal(
         <div className={`${zClass} flex items-center justify-center p-4`}>
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
@@ -618,7 +636,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                             onChange={(e) => update(f.key, e.target.value)}
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                                         >
-                                            <option value="" disabled selected>Select {f.label}</option>
+                                            <option value="" disabled>Select {f.label}</option>
                                             {f.options.map((opt) => (
                                                 <option key={opt} value={opt}>{opt}</option>
                                             ))}
@@ -682,7 +700,8 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

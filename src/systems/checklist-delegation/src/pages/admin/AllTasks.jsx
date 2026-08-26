@@ -918,7 +918,7 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
 
     // Validate EA tasks with extended status must have extended date
     // Validate EA tasks with extended status must have extended date AND remarks
-    if (activeTab === "ea") {
+    if (activeTab === "ea" || activeTab === "delegation") {
       for (const id of selectedArray) {
         if (statusData[id] === "extended") {
           if (!extendedDateData[id]) {
@@ -1009,7 +1009,8 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                 nextExtendDate: new Date(extendedDate).toLocaleString('en-IN', {
                   dateStyle: 'medium',
                   timeStyle: 'short'
-                })
+                }),
+                reason: remarksData[id] || null
               });
             }
           } else if (taskStatus === "done") {
@@ -1045,6 +1046,44 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
             const { error: updateError = null } = await supabase.from("ea_tasks").update(updates).eq("task_id", id);
             if (updateError) throw updateError;
           }
+        } else if (activeTab === "delegation") {
+          const taskStatus = statusData[id] || "yes";
+          const updates = {
+            submission_date: new Date(new Date().getTime() + (330 * 60000)).toISOString().replace('Z', '+05:30'),
+            remarks: remarksData[id] || null,
+            admin_done: false
+          };
+          if (imageUrl) {
+            updates.image = imageUrl;
+          }
+          if (taskStatus === "extended" && extendedDateData[id]) {
+            const extDate = new Date(extendedDateData[id]).toISOString();
+            updates.planned_date = extDate;
+            updates.task_start_date = extDate;
+            updates.status = "extend";
+
+            // Send WhatsApp extension notification
+            const task = tasks.find(t => t.task_id === id || t.id === id);
+            if (task) {
+              if (!isWhatsAppConnected()) {
+                showToast("WhatsApp notifications are currently disabled. They will be enabled later.", "info");
+              }
+              await sendTaskExtensionNotification({
+                doerName: task.name || task.assigned_person || task.doer_name,
+                taskId: task.task_id || task.id,
+                givenBy: task.given_by || localStorage.getItem("user-name") || "Admin",
+                description: task.task_description || task.issue_description,
+                nextExtendDate: new Date(extDate).toLocaleString('en-IN', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short'
+                })
+              });
+            }
+          } else {
+            updates.status = "done";
+          }
+          const { error: updateError } = await supabase.from("delegation").update(updates).eq("task_id", id);
+          if (updateError) throw updateError;
         } else {
           // Original logic for other task types
           const updates = {
@@ -1408,7 +1447,7 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                             {header.label}
                           </th>
                         ))}
-                        {!showHistory && activeTab === "ea" && (
+                        {!showHistory && (activeTab === "ea" || activeTab === "delegation") && (
                           <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Extended Date</th>
                         )}
                         {!showHistory && activeTab !== "repair" && (
@@ -1582,17 +1621,17 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                                                         style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.4rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.2em 1.2em` }}
                                                       >
                                                         <option value="">Select Status</option>
-                                                        {activeTab === "ea" ? (
-                                                          <>
-                                                            <option value="done">Done</option>
-                                                            <option value="extended">Extend</option>
-                                                          </>
-                                                        ) : (
-                                                          <>
-                                                            <option value={(activeTab === 'checklist' || activeTab === 'delegation') ? 'yes' : 'Done'}>Done</option>
-                                                            <option value={(activeTab === 'checklist' || activeTab === 'delegation') ? 'no' : 'Not Done'}>Not Done</option>
-                                                          </>
-                                                        )}
+                                                        {activeTab === "ea" || activeTab === "delegation" ? (
+                                                           <>
+                                                             <option value={activeTab === "delegation" ? "yes" : "done"}>Done</option>
+                                                             <option value="extended">Extend</option>
+                                                           </>
+                                                         ) : (
+                                                           <>
+                                                             <option value={activeTab === 'checklist' ? 'yes' : 'Done'}>Done</option>
+                                                             <option value={activeTab === 'checklist' ? 'no' : 'Not Done'}>Not Done</option>
+                                                           </>
+                                                         )}
                                                       </select>
                                                     )
                                                     : (
@@ -1648,7 +1687,7 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                                                                 ? task[header.id] ? <a href={task[header.id]} target="_blank" rel="noopener noreferrer" className="text-purple-600 underline">View</a> : "—"
                                                                 : task[header.id] || "—"}</td>
                                     ))}
-                                    {!showHistory && activeTab === "ea" && (
+                                    {!showHistory && (activeTab === "ea" || activeTab === "delegation") && (
                                       <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-800">
                                         <input
                                           type="date"
@@ -1868,9 +1907,9 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                                         className="w-full text-xs border-gray-200 rounded-md py-1 focus:ring-purple-400"
                                       >
                                         <option value="">Status</option>
-                                        {activeTab === "ea" ? (
+                                        {activeTab === "ea" || activeTab === "delegation" ? (
                                           <>
-                                            <option value="done">Done</option>
+                                            <option value={activeTab === "delegation" ? "yes" : "done"}>Done</option>
                                             <option value="extended">Extend</option>
                                           </>
                                         ) : (
@@ -1949,7 +1988,7 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                               {/* Actions for Pending Tasks */}
                               {!showHistory && activeTab !== "repair" && (
                                 <div className="pt-2 space-y-3 border-t border-gray-50">
-                                  {activeTab === "ea" && statusData[task.id] === "extended" && (
+                                  {(activeTab === "ea" || activeTab === "delegation") && statusData[task.id] === "extended" && (
                                     <div className="space-y-1">
                                       <p className="text-[10px] text-red-500 uppercase font-bold">Extended Date *</p>
                                       <input

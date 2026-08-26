@@ -408,15 +408,19 @@ function DecideModal({ po, onClose, onSuccess }) {
                 <div className="border border-gray-150 p-4 rounded-xl bg-white space-y-3 shadow-sm">
                     <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-1">Bill Verification Checklist</h4>
 
-                    <CheckRow label="Bill Date" val={billDate} setVal={setBillDate} checked={chkBillDate} setChecked={setChkBillDate} type="date" />
-                    <CheckRow label="Vch No." val={vchNo} setVal={setVchNo} checked={chkVchNo} setChecked={setChkVchNo} />
-                    <CheckRow label="Party Name" val={partyName} setVal={setPartyName} checked={chkPartyName} setChecked={setChkPartyName} />
-                    <CheckRow label="Our Name" val={ourName} setVal={setOurName} checked={chkOurName} setChecked={setChkOurName} readOnly />
-                    <CheckRow label="Our GST No." val={ourGstNo} setVal={setOurGstNo} checked={chkOurGstNo} setChecked={setChkOurGstNo} />
-                    <CheckRow label="Taxable Amount" val={taxableAmount} setVal={setTaxableAmount} checked={chkTaxableAmount} setChecked={setChkTaxableAmount} type="number" />
-                    <CheckRow label="GST Amount" val={gstAmount} setVal={setGstAmount} checked={chkGstAmount} setChecked={setChkGstAmount} type="number" />
-                    <CheckRow label="Bill Amount" val={billAmount} setVal={setBillAmount} checked={chkBillAmount} setChecked={setChkBillAmount} type="number" />
-                    <CheckRow label="Seal" val={seal} setVal={setSeal} checked={chkSeal} setChecked={setChkSeal} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                        <CheckRow label="Bill Date" val={billDate} setVal={setBillDate} checked={chkBillDate} setChecked={setChkBillDate} type="date" />
+                        <CheckRow label="Vch No." val={vchNo} setVal={setVchNo} checked={chkVchNo} setChecked={setChkVchNo} />
+                        <CheckRow label="Party Name" val={partyName} setVal={setPartyName} checked={chkPartyName} setChecked={setChkPartyName} />
+                        <CheckRow label="Our Name" val={ourName} setVal={setOurName} checked={chkOurName} setChecked={setChkOurName} readOnly />
+                        <CheckRow label="Our GST No." val={ourGstNo} setVal={setOurGstNo} checked={chkOurGstNo} setChecked={setChkOurGstNo} />
+                        <CheckRow label="Taxable Amount" val={taxableAmount} setVal={setTaxableAmount} checked={chkTaxableAmount} setChecked={setChkTaxableAmount} type="number" />
+                        <CheckRow label="GST Amount" val={gstAmount} setVal={setGstAmount} checked={chkGstAmount} setChecked={setChkGstAmount} type="number" />
+                        <CheckRow label="Bill Amount" val={billAmount} setVal={setBillAmount} checked={chkBillAmount} setChecked={setChkBillAmount} type="number" />
+                        <div className="md:col-span-2">
+                            <CheckRow label="Seal" val={seal} setVal={setSeal} checked={chkSeal} setChecked={setChkSeal} />
+                        </div>
+                    </div>
                 </div>
 
                 <div>
@@ -447,8 +451,8 @@ function DecideModal({ po, onClose, onSuccess }) {
 
 function CheckRow({ label, val, setVal, checked, setChecked, type = 'text', readOnly = false }) {
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between py-1 text-[12.5px] border-b border-gray-50 last:border-0 pb-2">
-            <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700 min-w-[140px]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between py-1 text-[12.5px] border-b border-gray-50 last:border-0 pb-2 w-full">
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700 shrink-0">
                 <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -459,7 +463,7 @@ function CheckRow({ label, val, setVal, checked, setChecked, type = 'text', read
             </label>
             <input
                 type={type}
-                className="input py-1 px-3 h-[36px] border border-gray-300 rounded-lg text-xs font-semibold max-w-sm"
+                className="input py-1 px-3 h-[36px] border border-gray-300 rounded-lg text-xs font-semibold w-full sm:max-w-[160px]"
                 value={val}
                 onChange={(e) => setVal(e.target.value)}
                 readOnly={readOnly}

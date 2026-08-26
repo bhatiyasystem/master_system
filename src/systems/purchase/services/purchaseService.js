@@ -224,8 +224,9 @@ export async function importIndentRows(parsedRows) {
 
     const payload = newRowsToInsert.map((r, i) => {
       const formulaVal = (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '') ? String(r.orderFormula).trim() : null;
-      const evaluated = evaluateFormula(formulaVal);
+      const evaluated = formulaVal ? evaluateFormula(formulaVal) : null;
       const isZero = evaluated === 0;
+      const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
       return {
         unique_no: reserved[i].unique_no,
         import_batch_id: importBatchId,
@@ -241,7 +242,7 @@ export async function importIndentRows(parsedRows) {
         rol_qty: (r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0,
         cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '') ? Number(r.clQty) : 0,
         conversion_unit: r.conversionUnit || '',
-        order_formula: formulaVal,
+        order_formula: dbOrderFormula,
         status: isZero ? 'Rejected' : 'Pending',
         remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
       };
@@ -434,13 +435,14 @@ export async function submitNewPO({ form, items }) {
     if (updErr) throw updErr;
   }
 
-  // Complete Purchase Order stage for these indents, and start Delivery stage for PO
+  // Complete Purchase Order stage for these indents, and start next stage
   try {
     const timestamp = new Date().toISOString();
     if (indentIds.length) {
       await Promise.all(indentIds.map(id => completeStage(id, 'purchase_order', timestamp)));
     }
-    await startOrUpdateStage(poRow.id, 'delivery', poRow.created_at || timestamp);
+    const isAdvance = poRow.vendor_payment_terms === 'Advance';
+    await startOrUpdateStage(poRow.id, isAdvance ? 'payment_approval' : 'delivery', poRow.created_at || timestamp);
   } catch (tatErr) {
     console.error('Error logging PO submit TAT:', tatErr);
   }
@@ -562,7 +564,64 @@ export async function uploadBuiltyImage(file) {
   return data.publicUrl;
 }
 
+async function validateAdvancePayment(poId) {
+  if (!poId) return;
+  const { data: po, error: poErr } = await supabase
+    .from('purchase_pos')
+    .select('id, vendor_payment_terms')
+    .eq('id', poId)
+    .single();
+  if (poErr || !po) return;
+
+  if (po.vendor_payment_terms === 'Advance') {
+    const { data: approvals, error: appErr } = await supabase
+      .from('purchase_payment_approvals')
+      .select('id')
+      .eq('po_id', poId)
+      .eq('status', 'Approved');
+    if (appErr || !approvals || approvals.length === 0) {
+      throw new Error('Advance payment is required before delivery can be processed. Please complete the payment first.');
+    }
+    const approvalIds = approvals.map(a => a.id);
+    const { data: payments, error: payErr } = await supabase
+      .from('purchase_payments')
+      .select('id')
+      .in('payment_approval_id', approvalIds);
+    if (payErr || !payments || payments.length === 0) {
+      throw new Error('Advance payment is required before delivery can be processed. Please complete the payment first.');
+    }
+  }
+}
+
+export async function checkPoPaymentCompleted(poId) {
+  if (!poId) return false;
+  const { data: po, error: poErr } = await supabase
+    .from('purchase_pos')
+    .select('vendor_payment_terms')
+    .eq('id', poId)
+    .single();
+  if (poErr || !po) return false;
+  if (po.vendor_payment_terms !== 'Advance') return true;
+
+  const { data: approvals, error: appErr } = await supabase
+    .from('purchase_payment_approvals')
+    .select('id')
+    .eq('po_id', poId)
+    .eq('status', 'Approved');
+  if (appErr || !approvals || approvals.length === 0) return false;
+
+  const approvalIds = approvals.map(a => a.id);
+  const { data: payments, error: payErr } = await supabase
+    .from('purchase_payments')
+    .select('id')
+    .in('payment_approval_id', approvalIds);
+  if (payErr || !payments || payments.length === 0) return false;
+
+  return true;
+}
+
 export async function createDelivery({ poId, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, billDate, builtyImageFile, billImageFile }) {
+  await validateAdvancePayment(poId);
   let builtyImageUrl = null;
   if (builtyImageFile) {
     builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
@@ -768,6 +827,10 @@ export async function submitReceiving({ deliveryId, items, fullyReceived, receip
 }
 
 export async function updateDelivery({ id, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, billDate, builtyImageFile, billImageFile, existingBuiltyUrl, existingBillUrl }) {
+  const { data: delRow } = await supabase.from('purchase_deliveries').select('po_id').eq('id', id).single();
+  if (delRow && delRow.po_id) {
+    await validateAdvancePayment(delRow.po_id);
+  }
   let builtyImageUrl = existingBuiltyUrl;
   if (builtyImageFile) {
     builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
@@ -1011,6 +1074,9 @@ export async function fetchPayablePOs() {
 
   return (posRes.data || [])
     .filter((row) => {
+      if (row.vendor_payment_terms === 'Advance') {
+        return true;
+      }
       const dels = deliveriesByPo[row.id] || [];
       return dels.length > 0 && dels.every((d) => d.received);
     })
@@ -1217,8 +1283,9 @@ export async function createIndentsManualBulk(vendor, items) {
 
   const payload = itemsToCreate.map((item, idx) => {
     const formulaVal = (item.order_formula !== undefined && item.order_formula !== null && item.order_formula !== '') ? String(item.order_formula).trim() : null;
-    const evaluated = evaluateFormula(formulaVal);
+    const evaluated = formulaVal ? evaluateFormula(formulaVal) : null;
     const isZero = evaluated === 0;
+    const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
     return {
       unique_no: reserved[idx].unique_no,
       created_by: createdBy,
@@ -1233,7 +1300,7 @@ export async function createIndentsManualBulk(vendor, items) {
       rol_qty: (item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '') ? Number(item.rol_qty) : 0,
       cl_qty: (item.cl_qty !== undefined && item.cl_qty !== null && item.cl_qty !== '') ? Number(item.cl_qty) : 0,
       conversion_unit: item.conversion_unit || '',
-      order_formula: formulaVal,
+      order_formula: dbOrderFormula,
       status: isZero ? 'Rejected' : 'Pending',
       remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
     };

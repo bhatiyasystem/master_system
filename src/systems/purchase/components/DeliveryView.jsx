@@ -1,8 +1,8 @@
-import { Loader2, Truck, ImageIcon, Plus, Upload } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Truck, ImageIcon, Plus, Upload, AlertTriangle, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
-import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters, updateDelivery } from '../services/purchaseService';
+import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters, updateDelivery, fetchPaymentApprovals, fetchPayments } from '../services/purchaseService';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
@@ -34,12 +34,15 @@ export default function DeliveryView() {
     const [pos, setPos] = useState([]);
     const [deliveries, setDeliveries] = useState([]);
     const [indents, setIndents] = useState([]);
+    const [approvals, setApprovals] = useState([]);
+    const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
     const [selectedPo, setSelectedPo] = useState(null);
     const [selectedDeliveryToEdit, setSelectedDeliveryToEdit] = useState(null);
+    const [warningPo, setWarningPo] = useState(null);
     const [tatTracking, setTatTracking] = useState({});
     const [tatMins, setTatMins] = useState(60);
     const [, setTick] = useState(0);
@@ -53,10 +56,18 @@ export default function DeliveryView() {
         setLoading(true);
         setError('');
         try {
-            const [posData, delData, indentsData] = await Promise.all([fetchPOs(), fetchDeliveries(), fetchIndents()]);
+            const [posData, delData, indentsData, approvalsData, paymentsData] = await Promise.all([
+                fetchPOs(),
+                fetchDeliveries(),
+                fetchIndents(),
+                fetchPaymentApprovals(),
+                fetchPayments()
+            ]);
             setPos(posData || []);
             setDeliveries(delData || []);
             setIndents(indentsData || []);
+            setApprovals(approvalsData || []);
+            setPayments(paymentsData || []);
 
             const poIds = (posData || []).map(p => p.id);
             if (poIds.length > 0) {
@@ -91,6 +102,31 @@ export default function DeliveryView() {
     useEffect(() => {
         loadData();
     }, []);
+
+    const isPaymentCompleted = (po) => {
+        if (!po) return true;
+        if (po.vendor?.paymentTerms !== 'Advance') return true;
+        const app = approvals.find((a) => a.poId === po.id && a.status === 'Approved');
+        if (!app) return false;
+        return payments.some((pay) => pay.paymentApprovalId === app.id);
+    };
+
+    const handleLogDeliveryClick = (po) => {
+        if (!isPaymentCompleted(po)) {
+            setWarningPo(po);
+            return;
+        }
+        setSelectedPo(po);
+    };
+
+    const handleReviseClick = (d, po) => {
+        if (!isPaymentCompleted(po)) {
+            setWarningPo(po);
+            return;
+        }
+        setSelectedDeliveryToEdit(d);
+        setSelectedPo(po);
+    };
 
     const deliveredPoIds = useMemo(() => new Set((deliveries || []).filter((d) => d.poId).map((d) => d.poId)), [deliveries]);
     const pendingCount = useMemo(() => (pos || []).filter((p) => !deliveredPoIds.has(p.id)).length, [pos, deliveredPoIds]);
@@ -136,18 +172,41 @@ export default function DeliveryView() {
                     indents={indents}
                     tatTracking={tatTracking}
                     tatMins={tatMins}
-                    onLogDelivery={(po) => setSelectedPo(po)}
+                    onLogDelivery={handleLogDeliveryClick}
                 />
             ) : (
                 <DeliveryHistoryPanel
                     deliveries={deliveries}
                     pos={pos}
                     indents={indents}
-                    onRevise={(d, po) => {
-                        setSelectedDeliveryToEdit(d);
-                        setSelectedPo(po);
-                    }}
+                    onRevise={handleReviseClick}
                 />
+            )}
+
+            {warningPo && (
+                <Modal
+                    open={!!warningPo}
+                    onClose={() => setWarningPo(null)}
+                    title="Advance Payment Required"
+                    size="md"
+                    footer={
+                        <button
+                            className="rounded-lg bg-[#173254] px-4 py-2 text-sm font-semibold text-white"
+                            onClick={() => setWarningPo(null)}
+                        >
+                            Close
+                        </button>
+                    }
+                >
+                    <div className="p-6 text-center space-y-4">
+                        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-50">
+                            <AlertTriangle size={24} className="text-amber-500" />
+                        </div>
+                        <p className="text-sm font-bold text-gray-800">
+                            Advance payment is required before delivery can be processed. Please complete the payment first.
+                        </p>
+                    </div>
+                </Modal>
             )}
 
             {selectedPo && (
@@ -387,10 +446,10 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                                             </div>
                                         )}
                                     </td>
-                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
-                                     <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
-                                     <td className="px-3 py-2.5 text-gray-700">{d.billDate || '—'}</td>
-                                     <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
+                                    <td className="px-3 py-2.5 text-gray-700">{d.billNumber || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-700">{d.billDate || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'category') : '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'unit') : '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-700">{po ? distinctIndentValues(po, indentMap, 'parentGroup') : '—'}</td>
@@ -466,7 +525,15 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                 return deliveryToEdit.billDate;
             }
         })() : '',
-    } : emptyForm);
+    } : {
+        transportName: po.vendor_fix_transporter || '',
+        contact: '',
+        builtyDate: '',
+        builtyNumber: '',
+        daggCount: '',
+        billNumber: '',
+        billDate: '',
+    });
     const [transporters, setTransporters] = useState([]);
     const [showAddTransporter, setShowAddTransporter] = useState(false);
     const [builtyImageFile, setBuiltyImageFile] = useState(null);
@@ -477,8 +544,16 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetchTransporters().then(setTransporters).catch(() => setTransporters([]));
-    }, []);
+        fetchTransporters().then((rows) => {
+            setTransporters(rows);
+            if (!deliveryToEdit && po.vendor_fix_transporter) {
+                const t = rows.find(tr => String(tr.name || '').trim().toLowerCase() === String(po.vendor_fix_transporter).trim().toLowerCase());
+                if (t) {
+                    setForm(f => ({ ...f, contact: t.contacts?.[0] || '' }));
+                }
+            }
+        }).catch(() => setTransporters([]));
+    }, [po, deliveryToEdit]);
 
     function update(field, value) {
         setForm((f) => ({ ...f, [field]: value }));
@@ -549,17 +624,15 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                 </div>
 
                 <Field label="Transport Name" required>
-                    <div className="flex items-center gap-2">
-                        <select
-                            className="input"
-                            value={form.transportName}
-                            onChange={(e) => handleTransportSelect(e.target.value)}
-                        >
-                            <option value="">Select transporter</option>
-                            {transporters.map((t) => (
-                                <option key={t.id} value={t.name}>{t.name}</option>
-                            ))}
-                        </select>
+                    <div className="flex items-center gap-2 w-full">
+                        <div className="flex-1 min-w-0">
+                            <SearchableTransporterSelect
+                                options={transporters.map((t) => t.name)}
+                                value={form.transportName}
+                                onChange={handleTransportSelect}
+                                placeholder="Select or type transporter..."
+                            />
+                        </div>
                         <button
                             type="button"
                             onClick={() => setShowAddTransporter(true)}
@@ -636,11 +709,10 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     />
                 </Field>
 
-                <Field label="Bill Date" required>
+                <Field label="Bill Date" >
                     <input
                         type="date"
                         className="input"
-                        required
                         value={form.billDate}
                         onChange={(e) => update('billDate', e.target.value)}
                     />
@@ -704,24 +776,66 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
 }
 
 function AddTransporterModal({ onClose, onCreated }) {
-    const [name, setName] = useState('');
-    const [contact, setContact] = useState('');
-    const [duration, setDuration] = useState('');
-    const [cities, setCities] = useState('');
+    const [form, setForm] = useState({
+        name: '',
+        contacts: [''],
+        duration: '',
+        cities: [''],
+        address: '',
+    });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    function update(key, value) {
+        setForm((f) => ({ ...f, [key]: value }));
+    }
+
+    function updateMulti(key, index, value) {
+        setForm((f) => {
+            const arr = [...f[key]];
+            arr[index] = value;
+            return { ...f, [key]: arr };
+        });
+    }
+
+    function addMultiRow(key) {
+        setForm((f) => ({ ...f, [key]: [...f[key], ''] }));
+    }
+
+    function removeMultiRow(key, index) {
+        setForm((f) => {
+            const arr = f[key].filter((_, i) => i !== index);
+            return { ...f, [key]: arr.length ? arr : [''] };
+        });
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
         setError('');
-        if (!name.trim()) {
-            setError('Transporter name is required.');
+
+        const nameVal = String(form.name || '').trim();
+        if (!nameVal) {
+            setError('Transporter Name is required.');
             return;
         }
+
+        const payload = {
+            name: nameVal,
+            contacts: (form.contacts || []).map((v) => v.trim()).filter(Boolean),
+            duration: String(form.duration || '').trim(),
+            cities: (form.cities || []).map((v) => v.trim()).filter(Boolean),
+            address: String(form.address || '').trim(),
+        };
+
         setSaving(true);
         try {
-            const created = await createTransporter({ name: name.trim(), contact: contact.trim(), duration: duration.trim(), cities: cities.trim() });
-            await onCreated(created);
+            const { data, error } = await supabase
+                .from('transporters')
+                .insert(payload)
+                .select()
+                .single();
+            if (error) throw error;
+            onCreated(data);
         } catch (err) {
             setError(err.message || 'Failed to save transporter.');
         } finally {
@@ -730,33 +844,136 @@ function AddTransporterModal({ onClose, onCreated }) {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title="Add Transporter" size="md">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Transporter Name" required>
-                    <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Sharma Roadlines" />
-                </Field>
-                <Field label="Contact Number">
-                    <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="10-digit mobile" />
-                </Field>
-                <Field label="Duration">
-                    <input className="input" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 2 days" />
-                </Field>
-                <Field label="City">
-                    <input className="input" value={cities} onChange={(e) => setCities(e.target.value)} placeholder="e.g. Raipur" />
-                </Field>
+        <Modal open={true} onClose={onClose} title="Add Transporter" size="lg">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="overflow-y-auto flex-1 px-6 py-5">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                        <div className="col-span-2 space-y-1">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                Transporter Name <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={form.name}
+                                onChange={(e) => update('name', e.target.value)}
+                                placeholder="Enter transporter name"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            />
+                        </div>
 
-                {error && <div className="text-[12.5px] font-semibold text-rose-600">{error}</div>}
+                        <div className="col-span-2 space-y-2">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                Contact Number
+                            </label>
+                            {form.contacts.map((val, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={val}
+                                        onChange={(e) => updateMulti('contacts', i, e.target.value)}
+                                        placeholder="Enter contact number"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                    />
+                                    {form.contacts.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => removeMultiRow('contacts', i)}
+                                            className="shrink-0 text-gray-400 hover:text-rose-500"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => addMultiRow('contacts')}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
+                            >
+                                <Plus size={12} /> Add Contact Number
+                            </button>
+                        </div>
 
-                <div className="flex justify-end gap-2 border-t border-gray-100 pt-2">
-                    <button type="button" onClick={onClose} className="rounded-xl border border-gray-300 px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-gray-50">
+                        <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                Duration
+                            </label>
+                            <input
+                                type="text"
+                                value={form.duration}
+                                onChange={(e) => update('duration', e.target.value)}
+                                placeholder="Enter duration"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            />
+                        </div>
+
+                        <div className="col-span-2 space-y-2">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                City
+                            </label>
+                            {form.cities.map((val, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={val}
+                                        onChange={(e) => updateMulti('cities', i, e.target.value)}
+                                        placeholder="City name"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                    />
+                                    {form.cities.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => removeMultiRow('cities', i)}
+                                            className="shrink-0 text-gray-400 hover:text-rose-500"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => addMultiRow('cities')}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
+                            >
+                                <Plus size={12} /> Add City
+                            </button>
+                        </div>
+
+                        <div className="col-span-2 space-y-1">
+                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                                Address
+                            </label>
+                            <input
+                                type="text"
+                                value={form.address}
+                                onChange={(e) => update('address', e.target.value)}
+                                placeholder="Enter transporter address"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {error && <div className="px-6 pb-4 text-[12px] font-semibold text-rose-600">{error}</div>}
+
+                <div className="flex justify-end gap-2 border-t border-gray-100 p-4 bg-gray-50 flex-shrink-0">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl border border-gray-300 px-4 py-2 text-[13px] font-semibold text-gray-700 hover:bg-gray-50"
+                    >
                         Cancel
                     </button>
-                    <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-[#173254] px-5 py-2 text-[13px] font-bold text-white hover:bg-[#10243e] disabled:opacity-50">
+                    <button
+                        type="submit"
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#173254] px-5 py-2 text-[13px] font-bold text-white hover:bg-[#10243e] disabled:opacity-50"
+                    >
                         {saving ? 'Saving…' : 'Save Transporter'}
                     </button>
                 </div>
             </form>
-
             <style>{`
         .input { height: 42px; border-radius: 0.75rem; border: 1px solid #e5e7eb; padding: 0 0.75rem; font-size: 13px; width: 100%; }
         .input:focus { outline: none; border-color: #173254; }
@@ -772,6 +989,86 @@ function Field({ label, required, children }) {
                 {label} {required && <span className="text-rose-500">*</span>}
             </label>
             {children}
+        </div>
+    );
+}
+
+function SearchableTransporterSelect({ options, value, onChange, placeholder }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState(value || '');
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        setSearch(value || '');
+    }, [value]);
+
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filtered = options.filter(opt =>
+        String(opt).toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+        <div ref={containerRef} className="relative w-full">
+            <div className="relative flex items-center">
+                <input
+                    type="text"
+                    value={search}
+                    onFocus={() => setIsOpen(true)}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setSearch(val);
+                        setIsOpen(true);
+                        onChange(val);
+                    }}
+                    placeholder={placeholder}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none outline-none cursor-pointer"
+                >
+                    <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto py-1">
+                    {filtered.length > 0 ? (
+                        filtered.map((opt) => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                    onChange(opt);
+                                    setSearch(opt);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 border-none bg-transparent cursor-pointer ${
+                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
+                                }`}
+                            >
+                                {opt}
+                            </button>
+                        ))
+                    ) : (
+                        <div className="px-4 py-3 text-xs text-gray-400 font-medium italic">
+                            No matches (press Enter to use custom value)
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

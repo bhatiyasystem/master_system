@@ -763,7 +763,7 @@ export const sendDelegationTaskNotification = async (taskDetails) => {
  */
 export const sendTaskExtensionNotification = async (taskDetails) => {
     try {
-        const { doerName, taskId, givenBy, description, nextExtendDate } = taskDetails;
+        const { doerName, taskId, givenBy, description, nextExtendDate, reason } = taskDetails;
         const phoneNumber = await getUserPhoneNumber(doerName);
 
         if (!phoneNumber) return false;
@@ -778,12 +778,12 @@ export const sendTaskExtensionNotification = async (taskDetails) => {
             ? `🎤 Voice Note: ${audioUrl}`
             : description;
 
-        // Template: task_extend_notification
-        // Variables: {{1}} doerName, {{2}} taskId, {{3}} description, {{4}} nextExtendDate, {{5}} givenBy, {{6}} link
+        // Template: extend_task_reminder
+        // Variables: {{1}} taskId, {{2}} doerName, {{3}} description, {{4}} givenBy, {{5}} nextExtendDate, {{6}} reason
         const sent = await sendWhatsAppTemplate(
             phoneNumber,
-            'task_extend_notification',
-            [doerName, taskId, displayDescription, nextExtendDate, givenBy, APP_LINK],
+            'extend_task_reminder',
+            [taskId, doerName, displayDescription, givenBy, nextExtendDate, reason || 'N/A'],
             'en',
             { recipientName: doerName, referenceId: taskId, senderName: givenBy }
         );
