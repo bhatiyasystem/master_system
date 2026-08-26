@@ -6,9 +6,9 @@ import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 // Helper function to format delay in terms of days and hours
-const formatDelay = (builtyDate) => {
-    if (!builtyDate) return '—';
-    const diffMs = Date.now() - new Date(builtyDate).getTime();
+const formatDelay = (biltyDate) => {
+    if (!biltyDate) return '—';
+    const diffMs = Date.now() - new Date(biltyDate).getTime();
     if (diffMs <= 0) return '0 hours';
     const totalHours = Math.floor(diffMs / 3600000);
     const days = Math.floor(totalHours / 24);
@@ -194,7 +194,7 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
             const po = poMap.get(d.poId);
             const poNo = po?.poNo || '';
             const vendorName = po?.vendor?.name || '';
-            return `${poNo} ${vendorName} ${d.transportName} ${d.builtyNumber}`.toLowerCase().includes(term);
+            return `${poNo} ${vendorName} ${d.transportName} ${d.biltyNumber}`.toLowerCase().includes(term);
         });
     }, [pending, search, poMap]);
 
@@ -219,12 +219,12 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                             <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Transporter</th>
                             <th className="px-3 py-2.5">Contact</th>
-                            <th className="px-3 py-2.5">Builty No.</th>
-                            <th className="px-3 py-2.5">Builty Date</th>
+                            <th className="px-3 py-2.5">Bilty No.</th>
+                            <th className="px-3 py-2.5">Bilty Date</th>
                             <th className="px-3 py-2.5">Bill Date</th>
                             <th className="px-3 py-2.5">Assigned Dagg</th>
                             <th className="px-3 py-2.5">Remaining Dagg</th>
-                            <th className="px-3 py-2.5">Builty Image</th>
+                            <th className="px-3 py-2.5">Bilty Image</th>
                             <th className="px-3 py-2.5">Arrived</th>
                             <th className="px-3 py-2.5">Delay</th>
                             <th className="px-3 py-2.5">Planned Date</th>
@@ -238,7 +238,7 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                         ) : filtered.map((d) => {
                             const po = poMap.get(d.poId);
                             const poNo = po?.poNo || '—';
-                            const diffDays = d.builtyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.builtyDate).getTime()) / 86400000)) : null;
+                            const diffDays = d.biltyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.biltyDate).getTime()) / 86400000)) : null;
                             const isDelayed = diffDays !== null && diffDays >= 1;
                             const dStatus = deliveryDaggStatus[d.id];
                             return (
@@ -268,11 +268,11 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                                     </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.biltyNumber || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-600">
-                                        {d.builtyDate ? (
+                                        {d.biltyDate ? (
                                             <span className={isDelayed ? 'text-red-700 font-semibold' : ''}>
-                                                {d.builtyDate}
+                                                {d.biltyDate}
                                             </span>
                                         ) : '—'}
                                     </td>
@@ -280,8 +280,8 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                                     <td className="px-3 py-2.5 text-gray-600">{dStatus ? dStatus.assigned : d.daggCount}</td>
                                     <td className="px-3 py-2.5 text-gray-600 font-bold">{dStatus ? (dStatus.assigned - dStatus.received) : d.daggCount}</td>
                                     <td className="px-3 py-2.5">
-                                        {d.builtyImageUrl ? (
-                                            <a href={d.builtyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
+                                        {d.biltyImageUrl ? (
+                                            <a href={d.biltyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
                                                 <ImageIcon size={14} /> View
                                             </a>
                                         ) : (

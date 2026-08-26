@@ -512,9 +512,9 @@ function mapDeliveryRow(row) {
     poId: row.po_id,
     transportName: row.transport_name,
     contact: row.contact,
-    builtyDate: row.builty_date,
-    builtyNumber: row.builty_number,
-    builtyImageUrl: row.builty_image_url,
+    biltyDate: row.builty_date,
+    biltyNumber: row.builty_number,
+    biltyImageUrl: row.builty_image_url,
     daggCount: row.dagg_count,
     billNumber: billNumber,
     billImageUrl: billImageUrl,
@@ -555,7 +555,7 @@ export async function fetchDeliveries() {
   return (data || []).map(mapDeliveryRow);
 }
 
-export async function uploadBuiltyImage(file) {
+export async function uploadBiltyImage(file) {
   const fileExt = file.name.split('.').pop();
   const fileName = `builty_${Date.now()}.${fileExt}`;
   const { error: uploadError } = await supabase.storage.from('purchase-builty').upload(fileName, file);
@@ -620,11 +620,11 @@ export async function checkPoPaymentCompleted(poId) {
   return true;
 }
 
-export async function createDelivery({ poId, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, billDate, builtyImageFile, billImageFile }) {
+export async function createDelivery({ poId, transportName, contact, biltyDate, biltyNumber, daggCount, billNumber, billDate, biltyImageFile, billImageFile }) {
   await validateAdvancePayment(poId);
-  let builtyImageUrl = null;
-  if (builtyImageFile) {
-    builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
+  let biltyImageUrl = null;
+  if (biltyImageFile) {
+    biltyImageUrl = await uploadBiltyImage(biltyImageFile);
   }
 
   let billImageUrl = null;
@@ -646,13 +646,13 @@ export async function createDelivery({ poId, transportName, contact, builtyDate,
       po_id: poId || null,
       transport_name: transportName,
       contact,
-      builty_date: builtyDate || null,
-      builty_number: builtyNumber,
+      builty_date: biltyDate || null,
+      builty_number: biltyNumber,
       dagg_count: Number(daggCount) || 0,
       bill_number: billNumber || '',
       bill_date: billDate || null,
       bill_image_url: billImageUrl,
-      builty_image_url: builtyImageUrl,
+      builty_image_url: biltyImageUrl,
       created_by: createdBy,
     })
     .select()
@@ -826,14 +826,14 @@ export async function submitReceiving({ deliveryId, items, fullyReceived, receip
   return mapReceivingRow(receivingRow, finalItems);
 }
 
-export async function updateDelivery({ id, transportName, contact, builtyDate, builtyNumber, daggCount, billNumber, billDate, builtyImageFile, billImageFile, existingBuiltyUrl, existingBillUrl }) {
+export async function updateDelivery({ id, transportName, contact, biltyDate, biltyNumber, daggCount, billNumber, billDate, biltyImageFile, billImageFile, existingBiltyUrl, existingBillUrl }) {
   const { data: delRow } = await supabase.from('purchase_deliveries').select('po_id').eq('id', id).single();
   if (delRow && delRow.po_id) {
     await validateAdvancePayment(delRow.po_id);
   }
-  let builtyImageUrl = existingBuiltyUrl;
-  if (builtyImageFile) {
-    builtyImageUrl = await uploadBuiltyImage(builtyImageFile);
+  let biltyImageUrl = existingBiltyUrl;
+  if (biltyImageFile) {
+    biltyImageUrl = await uploadBiltyImage(biltyImageFile);
   }
 
   let billImageUrl = existingBillUrl;
@@ -852,13 +852,13 @@ export async function updateDelivery({ id, transportName, contact, builtyDate, b
     .update({
       transport_name: transportName,
       contact,
-      builty_date: builtyDate || null,
-      builty_number: builtyNumber,
+      builty_date: biltyDate || null,
+      builty_number: biltyNumber,
       dagg_count: Number(daggCount) || 0,
       bill_number: billNumber || '',
       bill_date: billDate || null,
       bill_image_url: billImageUrl,
-      builty_image_url: builtyImageUrl,
+      builty_image_url: biltyImageUrl,
     })
     .eq('id', id)
     .select()

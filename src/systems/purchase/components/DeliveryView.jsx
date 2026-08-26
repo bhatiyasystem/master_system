@@ -10,8 +10,8 @@ import supabase from '../../../SupabaseClient';
 const emptyForm = {
     transportName: '',
     contact: '',
-    builtyDate: '',
-    builtyNumber: '',
+    biltyDate: '',
+    biltyNumber: '',
     daggCount: '',
     billNumber: '',
     billDate: '',
@@ -375,7 +375,7 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
         if (!term) return deliveries;
         return deliveries.filter((d) => {
             const poNo = poMap.get(d.poId)?.poNo || '';
-            return `${poNo} ${d.transportName} ${poMap.get(d.poId)?.vendor?.name} ${d.billNumber} ${d.builtyNumber}`.toLowerCase().includes(term);
+            return `${poNo} ${d.transportName} ${poMap.get(d.poId)?.vendor?.name} ${d.billNumber} ${d.biltyNumber}`.toLowerCase().includes(term);
         });
     }, [deliveries, search, poMap]);
 
@@ -406,10 +406,10 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                             <th className="px-3 py-2.5">Unit</th>
                             <th className="px-3 py-2.5">Parent Group</th>
                             <th className="px-3 py-2.5">Advance Amount</th>
-                            <th className="px-3 py-2.5">Builty No.</th>
-                            <th className="px-3 py-2.5">Builty Date</th>
+                            <th className="px-3 py-2.5">Bilty No.</th>
+                            <th className="px-3 py-2.5">Bilty Date</th>
                             <th className="px-3 py-2.5">No. of Dagg</th>
-                            <th className="px-3 py-2.5">Builty Image</th>
+                            <th className="px-3 py-2.5">Bilty Image</th>
                             <th className="px-3 py-2.5">Bill Image</th>
                             <th className="px-3 py-2.5">Arrived</th>
                         </tr>
@@ -461,13 +461,13 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
                                             <span className="text-gray-400">—</span>
                                         )}
                                     </td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.builtyNumber || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.builtyDate || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.biltyNumber || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-600">{d.biltyDate || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-600">{d.daggCount ?? '—'}</td>
                                     <td className="px-3 py-2.5">
-                                        {d.builtyImageUrl ? (
+                                        {d.biltyImageUrl ? (
                                             <a
-                                                href={d.builtyImageUrl}
+                                                href={d.biltyImageUrl}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]"
@@ -509,14 +509,14 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
     const [form, setForm] = useState(deliveryToEdit ? {
         transportName: deliveryToEdit.transportName || '',
         contact: deliveryToEdit.contact || '',
-        builtyDate: deliveryToEdit.builtyDate ? (() => {
+        biltyDate: deliveryToEdit.biltyDate ? (() => {
             try {
-                return new Date(deliveryToEdit.builtyDate).toISOString().split('T')[0];
+                return new Date(deliveryToEdit.biltyDate).toISOString().split('T')[0];
             } catch (e) {
-                return deliveryToEdit.builtyDate;
+                return deliveryToEdit.biltyDate;
             }
         })() : '',
-        builtyNumber: deliveryToEdit.builtyNumber || '',
+        biltyNumber: deliveryToEdit.biltyNumber || '',
         daggCount: deliveryToEdit.daggCount || '',
         billNumber: deliveryToEdit.billNumber || '',
         billDate: deliveryToEdit.billDate ? (() => {
@@ -529,17 +529,17 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
     } : {
         transportName: po.vendor_fix_transporter || '',
         contact: '',
-        builtyDate: '',
-        builtyNumber: '',
+        biltyDate: '',
+        biltyNumber: '',
         daggCount: '',
         billNumber: '',
         billDate: '',
     });
     const [transporters, setTransporters] = useState([]);
     const [showAddTransporter, setShowAddTransporter] = useState(false);
-    const [builtyImageFile, setBuiltyImageFile] = useState(null);
+    const [biltyImageFile, setBiltyImageFile] = useState(null);
     const [billImageFile, setBillImageFile] = useState(null);
-    const [builtyImagePreview, setBuiltyImagePreview] = useState(null);
+    const [biltyImagePreview, setBiltyImagePreview] = useState(null);
     const [billImagePreview, setBillImagePreview] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -574,9 +574,9 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
 
     function handleFileChange(e) {
         const file = e.target.files?.[0] || null;
-        setBuiltyImageFile(file);
-        if (builtyImagePreview) URL.revokeObjectURL(builtyImagePreview);
-        setBuiltyImagePreview(file ? URL.createObjectURL(file) : null);
+        setBiltyImageFile(file);
+        if (biltyImagePreview) URL.revokeObjectURL(biltyImagePreview);
+        setBiltyImagePreview(file ? URL.createObjectURL(file) : null);
     }
     function handleBillFileChange(e) {
         const file = e.target.files?.[0] || null;
@@ -589,7 +589,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         e.preventDefault();
         setError('');
 
-        if (!form.transportName || !form.builtyNumber || !form.builtyDate || !form.daggCount ) {
+        if (!form.transportName || !form.biltyNumber || !form.biltyDate || !form.daggCount ) {
             setError('Transport name, builty number, builty date and number of dagg are required.');
             return;
         }
@@ -600,15 +600,15 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                 await updateDelivery({
                     id: deliveryToEdit.id,
                     ...form,
-                    builtyImageFile,
+                    biltyImageFile,
                     billImageFile,
-                    existingBuiltyUrl: deliveryToEdit.builtyImageUrl,
+                    existingBiltyUrl: deliveryToEdit.biltyImageUrl,
                     existingBillUrl: deliveryToEdit.billImageUrl
                 });
             } else {
-                await createDelivery({ ...form, poId: po.id, builtyImageFile, billImageFile });
+                await createDelivery({ ...form, poId: po.id, biltyImageFile, billImageFile });
             }
-            if (builtyImagePreview) URL.revokeObjectURL(builtyImagePreview);
+            if (biltyImagePreview) URL.revokeObjectURL(biltyImagePreview);
             onSuccess();
         } catch (err) {
             setError(err.message || 'Failed to save delivery.');
@@ -670,23 +670,23 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     /> */}
                 </Field>
 
-                <Field label="Builty Number" required>
+                <Field label="Bilty Number" required>
                     <input
                         className="input"
                         required
-                        value={form.builtyNumber}
-                        onChange={(e) => update('builtyNumber', e.target.value)}
+                        value={form.biltyNumber}
+                        onChange={(e) => update('biltyNumber', e.target.value)}
                         placeholder="e.g. BLT-00123"
                     />
                 </Field>
 
-                <Field label="Builty Date" required>
+                <Field label="Bilty Date" required>
                     <input
                         type="date"
                         className="input"
                         required
-                        value={form.builtyDate}
-                        onChange={(e) => update('builtyDate', e.target.value)}
+                        value={form.biltyDate}
+                        onChange={(e) => update('biltyDate', e.target.value)}
                     />
                 </Field>
 
@@ -719,10 +719,10 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     />
                 </Field>
 
-                <Field label="Builty Image">
+                <Field label="Bilty Image">
                     <label className="flex h-[42px] cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 text-[13px] text-gray-500 hover:border-gray-400">
                         <Upload size={16} />
-                        {builtyImageFile ? builtyImageFile.name : 'Choose image'}
+                        {biltyImageFile ? biltyImageFile.name : 'Choose image'}
                         <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                     </label>
                 </Field>
@@ -734,9 +734,9 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     </label>
                 </Field>
 
-                {/* {builtyImagePreview && (
+                {/* {biltyImagePreview && (
                     <div className="md:col-span-2">
-                        <img src={builtyImagePreview} alt="Builty preview" className="max-h-48 rounded-xl border border-gray-200" />
+                        <img src={biltyImagePreview} alt="Bilty preview" className="max-h-48 rounded-xl border border-gray-200" />
                     </div>
                 )} */}
 
