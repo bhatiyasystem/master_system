@@ -589,8 +589,8 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         e.preventDefault();
         setError('');
 
-        if (!form.transportName || !form.builtyNumber || !form.builtyDate || !form.daggCount || !form.billDate) {
-            setError('Transport name, builty number, builty date, bill date and number of dagg are required.');
+        if (!form.transportName || !form.builtyNumber || !form.builtyDate || !form.daggCount ) {
+            setError('Transport name, builty number, builty date and number of dagg are required.');
             return;
         }
 
@@ -710,7 +710,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     />
                 </Field>
 
-                <Field label="Bill Date" >
+                <Field label="Bill Date (Optional)" >
                     <input
                         type="date"
                         className="input"
