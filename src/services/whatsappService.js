@@ -783,7 +783,7 @@ export const sendTaskExtensionNotification = async (taskDetails) => {
         const sent = await sendWhatsAppTemplate(
             phoneNumber,
             'extend_task_reminder',
-            [taskId, doerName, displayDescription, givenBy, nextExtendDate, reason || 'N/A'],
+            [taskId, doerName, displayDescription, givenBy, nextExtendDate, reason || 'N/A', APP_LINK],
             'en',
             { recipientName: doerName, referenceId: taskId, senderName: givenBy }
         );
