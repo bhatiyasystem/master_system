@@ -5,6 +5,7 @@ import { fmt, uniqueValues } from '../utils/helpers';
 import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters, updateDelivery, fetchPaymentApprovals, fetchPayments } from '../services/purchaseService';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
+import supabase from '../../../SupabaseClient';
 
 const emptyForm = {
     transportName: '',
