@@ -766,11 +766,16 @@ function TransporterComboField({ table, value, onChange }) {
     );
 }
 
-function ComboSelect({ table, column, value, onChange, label, placeholder }) {
+function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom }) {
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showCustomInput, setShowCustomInput] = useState(false);
-    const [customValue, setCustomValue] = useState(value || '');
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState(value || '');
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        setSearch(value || '');
+    }, [value]);
 
     useEffect(() => {
         let isMounted = true;
@@ -787,10 +792,6 @@ function ComboSelect({ table, column, value, onChange, label, placeholder }) {
                 if (isMounted) {
                     setOptions(vals);
                     setLoading(false);
-                    if (value && !vals.includes(value)) {
-                        setShowCustomInput(true);
-                        setCustomValue(value);
-                    }
                 }
             } catch (err) {
                 console.error(err);
@@ -799,47 +800,90 @@ function ComboSelect({ table, column, value, onChange, label, placeholder }) {
         }
         fetchOptions();
         return () => { isMounted = false; };
-    }, [table, column, value]);
+    }, [table, column]);
+
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setIsOpen(false);
+                if (disableCustom) {
+                    const exactMatch = options.find(opt => opt.toLowerCase() === search.toLowerCase());
+                    if (exactMatch) {
+                        onChange(exactMatch);
+                        setSearch(exactMatch);
+                    } else {
+                        onChange('');
+                        setSearch('');
+                    }
+                }
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [search, options, disableCustom, onChange]);
+
+    const filtered = options.filter(opt =>
+        String(opt).toLowerCase().includes(search.toLowerCase())
+    );
 
     if (loading) {
-        return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-150 rounded-2xl">Loading {label || column}...</div>;
+        return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-155 rounded-2xl animate-pulse">Loading options...</div>;
     }
 
     return (
-        <div className="space-y-2">
-            <select
-                value={showCustomInput ? '__custom__' : value || ''}
-                onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '__custom__') {
-                        setShowCustomInput(true);
-                        onChange(customValue);
-                    } else {
-                        setShowCustomInput(false);
-                        onChange(val);
-                    }
-                }}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-            >
-                <option value="">Select {label || column}</option>
-                {options.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                ))}
-                <option value="__custom__">➕ Type Custom Value...</option>
-            </select>
-
-            {showCustomInput && (
+        <div ref={containerRef} className="relative w-full">
+            <div className="relative flex items-center">
                 <input
                     type="text"
-                    value={customValue}
+                    value={search}
+                    onFocus={() => setIsOpen(true)}
                     onChange={(e) => {
                         const val = e.target.value;
-                        setCustomValue(val);
-                        onChange(val);
+                        setSearch(val);
+                        setIsOpen(true);
+                        if (!disableCustom) {
+                            onChange(val);
+                        }
                     }}
-                    placeholder={placeholder || `Enter custom ${label || column}`}
-                    className="w-full px-4 py-3 bg-white border border-blue-400 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder={placeholder || `Search or enter ${label || column}...`}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-155 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-10"
                 />
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                    <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
+
+            {isOpen && (
+                <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto py-1">
+                    {filtered.length > 0 ? (
+                        filtered.map((opt) => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                    onChange(opt);
+                                    setSearch(opt);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 ${
+                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
+                                }`}
+                            >
+                                {opt}
+                            </button>
+                        ))
+                    ) : (
+                        <div className="px-4 py-3 text-xs text-gray-400 font-medium italic">
+                            {disableCustom ? 'No matching records' : 'No matches (press Enter to use custom value)'}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

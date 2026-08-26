@@ -222,23 +222,30 @@ export async function importIndentRows(parsedRows) {
     const createdBy = localStorage.getItem('user-id') || null;
     const importBatchId = crypto.randomUUID();
 
-    const payload = newRowsToInsert.map((r, i) => ({
-      unique_no: reserved[i].unique_no,
-      import_batch_id: importBatchId,
-      created_by: createdBy,
-      item_details: r.itemDetails,
-      category: r.category || 'Uncategorized',
-      vendor: r.vendor || '',
-      unit: r.unit || 'Pcs.',
-      alt_unit: r.altUnit || '',
-      parent_group: r.parentGroup || '',
-      shelf_capacity: r.shelfCapacity || '',
-      max_level_qty: (r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '') ? Number(r.maxLevelQty) : 0,
-      rol_qty: (r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0,
-      cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '') ? Number(r.clQty) : 0,
-      conversion_unit: r.conversionUnit || '',
-      order_formula: (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '') ? String(r.orderFormula).trim() : null,
-    }));
+    const payload = newRowsToInsert.map((r, i) => {
+      const formulaVal = (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '') ? String(r.orderFormula).trim() : null;
+      const evaluated = evaluateFormula(formulaVal);
+      const isZero = evaluated === 0;
+      return {
+        unique_no: reserved[i].unique_no,
+        import_batch_id: importBatchId,
+        created_by: createdBy,
+        item_details: r.itemDetails,
+        category: r.category || 'Uncategorized',
+        vendor: r.vendor || '',
+        unit: r.unit || 'Pcs.',
+        alt_unit: r.altUnit || '',
+        parent_group: r.parentGroup || '',
+        shelf_capacity: r.shelfCapacity || '',
+        max_level_qty: (r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '') ? Number(r.maxLevelQty) : 0,
+        rol_qty: (r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0,
+        cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '') ? Number(r.clQty) : 0,
+        conversion_unit: r.conversionUnit || '',
+        order_formula: formulaVal,
+        status: isZero ? 'Rejected' : 'Pending',
+        remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
+      };
+    });
 
     const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
     if (error) throw error;
@@ -249,8 +256,9 @@ export async function importIndentRows(parsedRows) {
 
     // Start Indent Approval stage for newly imported indents
     try {
-      if (insertedRows.length) {
-        await Promise.all(insertedRows.map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
+      const pendingRows = insertedRows.filter(row => row.status === 'Pending');
+      if (pendingRows.length) {
+        await Promise.all(pendingRows.map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
       }
     } catch (tatErr) {
       console.error('Error logging import Indent TAT:', tatErr);
@@ -1207,29 +1215,38 @@ export async function createIndentsManualBulk(vendor, items) {
 
   const createdBy = localStorage.getItem('user-id') || null;
 
-  const payload = itemsToCreate.map((item, idx) => ({
-    unique_no: reserved[idx].unique_no,
-    created_by: createdBy,
-    item_details: item.item_details,
-    category: item.category || 'Uncategorized',
-    vendor: item.vendor || vendor || '',
-    unit: item.unit || 'Pcs.',
-    alt_unit: item.alt_unit || '',
-    parent_group: item.parent_group || '',
-    shelf_capacity: item.shelf_capacity || '',
-    max_level_qty: (item.max_level_qty !== undefined && item.max_level_qty !== null && item.max_level_qty !== '') ? Number(item.max_level_qty) : 0,
-    rol_qty: (item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '') ? Number(item.rol_qty) : 0,
-    cl_qty: (item.cl_qty !== undefined && item.cl_qty !== null && item.cl_qty !== '') ? Number(item.cl_qty) : 0,
-    conversion_unit: item.conversion_unit || '',
-    order_formula: (item.order_formula !== undefined && item.order_formula !== null && item.order_formula !== '') ? String(item.order_formula).trim() : null,
-    status: 'Pending',
-  }));
+  const payload = itemsToCreate.map((item, idx) => {
+    const formulaVal = (item.order_formula !== undefined && item.order_formula !== null && item.order_formula !== '') ? String(item.order_formula).trim() : null;
+    const evaluated = evaluateFormula(formulaVal);
+    const isZero = evaluated === 0;
+    return {
+      unique_no: reserved[idx].unique_no,
+      created_by: createdBy,
+      item_details: item.item_details,
+      category: item.category || 'Uncategorized',
+      vendor: item.vendor || vendor || '',
+      unit: item.unit || 'Pcs.',
+      alt_unit: item.alt_unit || '',
+      parent_group: item.parent_group || '',
+      shelf_capacity: item.shelf_capacity || '',
+      max_level_qty: (item.max_level_qty !== undefined && item.max_level_qty !== null && item.max_level_qty !== '') ? Number(item.max_level_qty) : 0,
+      rol_qty: (item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '') ? Number(item.rol_qty) : 0,
+      cl_qty: (item.cl_qty !== undefined && item.cl_qty !== null && item.cl_qty !== '') ? Number(item.cl_qty) : 0,
+      conversion_unit: item.conversion_unit || '',
+      order_formula: formulaVal,
+      status: isZero ? 'Rejected' : 'Pending',
+      remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
+    };
+  });
 
   const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
   if (error) throw error;
 
   try {
-    await Promise.all((data || []).map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
+    const pendingRows = (data || []).filter(row => row.status === 'Pending');
+    if (pendingRows.length) {
+      await Promise.all(pendingRows.map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
+    }
   } catch (tatErr) {
     console.error('Error logging manual Indent TAT:', tatErr);
   }
