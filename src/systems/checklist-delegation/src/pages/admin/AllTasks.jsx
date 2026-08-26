@@ -1047,6 +1047,7 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
             if (updateError) throw updateError;
           }
         } else if (activeTab === "delegation") {
+          const taskStatus = statusData[id] || "yes";
           const remarksVal = remarksData[id] || remarksData[String(id)] || remarksData[Number(id)] || null;
           const updates = {
             submission_date: new Date(new Date().getTime() + (330 * 60000)).toISOString().replace('Z', '+05:30'),
