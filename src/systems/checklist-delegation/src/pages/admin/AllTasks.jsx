@@ -1047,10 +1047,10 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
             if (updateError) throw updateError;
           }
         } else if (activeTab === "delegation") {
-          const taskStatus = statusData[id] || "yes";
+          const remarksVal = remarksData[id] || remarksData[String(id)] || remarksData[Number(id)] || null;
           const updates = {
             submission_date: new Date(new Date().getTime() + (330 * 60000)).toISOString().replace('Z', '+05:30'),
-            remarks: remarksData[id] || null,
+            remarks: remarksVal,
             admin_done: false
           };
           if (imageUrl) {
@@ -1076,7 +1076,8 @@ const AllTasks = ({ defaultTab = "checklist", lockedTab = false }) => {
                 nextExtendDate: new Date(extDate).toLocaleString('en-IN', {
                   dateStyle: 'medium',
                   timeStyle: 'short'
-                })
+                }),
+                reason: remarksVal
               });
             }
           } else {

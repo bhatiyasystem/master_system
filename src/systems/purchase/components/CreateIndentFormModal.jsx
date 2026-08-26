@@ -470,9 +470,11 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
         async function fetchOptions() {
             try {
                 const targetColumn = table === 'vendors' ? 'name' : column;
-                const { data, error } = await supabase
-                    .from(table)
-                    .select(targetColumn);
+                let query = supabase.from(table).select(targetColumn);
+                if (table === 'purchase_indents') {
+                    query = query.or('hide_in_master.eq.false,hide_in_master.is.null');
+                }
+                const { data, error } = await query;
                 if (error) throw error;
                 const vals = Array.from(
                     new Set((data || []).map((r) => r[targetColumn]).filter(Boolean))
