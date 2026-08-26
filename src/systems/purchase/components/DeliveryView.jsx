@@ -705,7 +705,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     <input
                         className="input"
                         value={form.billNumber}
-                        onChange={(e) => update('billNumber', e.target.value)}
+                        onChange={(e) =>  update('billNumber', e.target.value)}
                         placeholder="e.g. BILL-00123"
                     />
                 </Field>

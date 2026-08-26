@@ -78,14 +78,14 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
           // Parse allowed systems from database
           let systemSlugs = [];
           if (userProfile.system_access === "all") {
-            systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"];
+          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"];
           } else if (userProfile.system_access === "none") {
             systemSlugs = [];
           } else if (userProfile.system_access) {
             systemSlugs = userProfile.system_access.split(",").map(s => s.trim()).filter(Boolean);
           } else {
             // Fallback to active systems
-            systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"];
+            systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"];
           }
 
           setAllowedSystems(systemSlugs);
@@ -110,8 +110,13 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
               "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
               "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
-              "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
-              "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport"
+              "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll",
+              "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
+              "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
+              "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
+              "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
+              "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment",
+              "/dashboard/inventory"
             ];
           } else if (roleLower === "hod") {
             potentialRoutes = [
@@ -161,6 +166,12 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               }
               if (route === "/dashboard/whatsapp-history") {
                 return systemSlugs.includes("whatsapp-management");
+              }
+              if (route.startsWith("/dashboard/purchase")) {
+                return systemSlugs.includes("purchase");
+              }
+              if (route.startsWith("/dashboard/inventory")) {
+                return systemSlugs.includes("inventory");
               }
               if (route === "/dashboard" || route === "/dashboard/setting" || route === "/dashboard/global-settings") {
                 return true;

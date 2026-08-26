@@ -1,5 +1,6 @@
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation,Link, Navigate } from 'react-router-dom';
 import * as Lucide from "lucide-react";
+
 
 const ProtectedRoute = ({ children, _allowedRoles = [] }) => {
     const location = useLocation();
@@ -50,6 +51,12 @@ const ProtectedRoute = ({ children, _allowedRoles = [] }) => {
         currentSystem = "hr-fms";
     } else if (path.startsWith("/dashboard/whatsapp-")) {
         currentSystem = "whatsapp-management";
+    } else if (path.startsWith("/dashboard/purchase")) {
+        currentSystem = "purchase";
+    } else if (path.startsWith("/dashboard/inventory")) {
+        currentSystem = "inventory";
+    } else if (path.startsWith("/dashboard/global-settings") || path.startsWith("/dashboard/master")) {
+        currentSystem = "global-settings";
     }
 
     const isSystemAllowed = allowedSystems.includes(currentSystem) || isLegacySelfAssignAllowed;

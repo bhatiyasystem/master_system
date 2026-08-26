@@ -80,13 +80,13 @@ const LoginPage = () => {
         // Process systems & pages permissions
         let systemSlugs = [];
         if (systemAccess === "all") {
-          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"];
+          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"];
         } else if (systemAccess === "none") {
           systemSlugs = [];
         } else if (systemAccess) {
           systemSlugs = systemAccess.split(",").map(s => s.trim()).filter(Boolean);
         } else {
-          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"]; // legacy fallback
+          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"]; // legacy fallback
         }
 
         const roleLower = roleName.toLowerCase();
@@ -110,7 +110,12 @@ const LoginPage = () => {
             "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
             "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
             "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
-            "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", "/dashboard/hr-misreport"
+            "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", "/dashboard/hr-misreport",
+            "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
+            "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
+            "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
+            "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment",
+            "/dashboard/inventory"
           ];
         } else if (roleLower === "hod") {
           potentialRoutes = [
@@ -157,6 +162,12 @@ const LoginPage = () => {
             }
             if (route === "/dashboard/whatsapp-history") {
               return systemSlugs.includes("whatsapp-management");
+            }
+            if (route.startsWith("/dashboard/purchase")) {
+              return systemSlugs.includes("purchase");
+            }
+            if (route.startsWith("/dashboard/inventory")) {
+              return systemSlugs.includes("inventory");
             }
             if (route === "/dashboard" || route === "/dashboard/setting" || route === "/dashboard/global-settings") {
               return true;
