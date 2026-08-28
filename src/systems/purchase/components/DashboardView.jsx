@@ -2,7 +2,7 @@ import { CardPanel, BarChart } from './ui';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { fmt } from '../utils/helpers';
-import { fetchIndents, fetchPOs } from '../services/purchaseService';
+import { fetchIndents, fetchPOs, fetchDeliveries, fetchPaymentApprovals, fetchPayments } from '../services/purchaseService';
 
 function aggregateVendors(indents, pos) {
   const map = {};
@@ -40,17 +40,29 @@ function aggregateProducts(pos) {
 export default function DashboardView({ onTabChange }) {
   const [indents, setIndents] = useState([]);
   const [pos, setPos] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
+  const [paymentApprovals, setPaymentApprovals] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all([fetchIndents(), fetchPOs()])
-      .then(([indentRows, poRows]) => {
+    Promise.all([
+      fetchIndents(),
+      fetchPOs(),
+      fetchDeliveries(),
+      fetchPaymentApprovals(),
+      fetchPayments(),
+    ])
+      .then(([indentRows, poRows, deliveryRows, approvalRows, paymentRows]) => {
         if (!cancelled) {
           setIndents(indentRows);
           setPos(poRows);
+          setDeliveries(deliveryRows);
+          setPaymentApprovals(approvalRows);
+          setPayments(paymentRows);
         }
       })
       .catch((err) => {
@@ -65,12 +77,81 @@ export default function DashboardView({ onTabChange }) {
   }, []);
 
   const statIndent = indents.length;
-  const statApproval = indents.filter((i) => i.orderFormula > 0 && i.status === 'Pending').length;
+  const statApproval = indents.filter((i) => i.orderFormula > 0 && i.status === 'Rejected').length;
   const statPending = indents.filter((i) => i.status === 'Approved' && !i.poId).length;
   const totalAmount = pos.reduce((s, p) => s + p.grandTotal, 0);
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const vendors = useMemo(() => aggregateVendors(indents, pos), [indents, pos]);
   const products = useMemo(() => aggregateProducts(pos), [pos]);
+
+  const indentStatusList = useMemo(() => {
+    return indents.map((indent) => {
+      let stage = 'Indent Approval';
+      let status = indent.status; // 'Pending', 'Approved', 'Rejected'
+
+      if (indent.status === 'Approved') {
+        if (!indent.poId) {
+          stage = 'PO Creation';
+          status = 'Pending';
+        } else {
+          // Find delivery
+          const delivery = deliveries.find((d) => d.poId === indent.poId);
+          if (!delivery) {
+            stage = 'Delivery';
+            status = 'Pending';
+          } else if (!delivery.received) {
+            stage = 'Receiving';
+            status = 'Pending';
+          } else {
+            // Find payment approval
+            const approval = paymentApprovals.find((a) => a.poId === indent.poId);
+            if (!approval) {
+              stage = 'Payment Approval';
+              status = 'Pending';
+            } else if (approval.status === 'Pending') {
+              stage = 'Payment Approval';
+              status = 'Pending';
+            } else if (approval.status === 'Rejected') {
+              stage = 'Payment Approval';
+              status = 'Rejected';
+            } else if (approval.status === 'Approved') {
+              // Find payment
+              const payment = payments.find((p) => p.poId === indent.poId);
+              if (!payment) {
+                stage = 'Payment';
+                status = 'Pending';
+              } else {
+                stage = 'Completed';
+                status = 'Paid';
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        id: indent.id,
+        itemDetails: indent.itemDetails,
+        vendor: indent.vendor || '—',
+        stage,
+        status,
+      };
+    });
+  }, [indents, deliveries, paymentApprovals, payments]);
+
+  const filteredIndentStatusList = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return indentStatusList;
+    return indentStatusList.filter(
+      (item) =>
+        item.itemDetails.toLowerCase().includes(q) ||
+        item.vendor.toLowerCase().includes(q) ||
+        item.stage.toLowerCase().includes(q) ||
+        item.status.toLowerCase().includes(q)
+    );
+  }, [indentStatusList, searchQuery]);
 
   if (loading) {
     return (
@@ -92,7 +173,70 @@ export default function DashboardView({ onTabChange }) {
         <StatCard label="Total PO Amount" value={'₹ ' + fmt(totalAmount)} foot={`${pos.length} purchase order${pos.length !== 1 ? 's' : ''}`} accent="bg-indigo-600" small />
       </div>
 
-      <CardPanel title="Quick actions" desc="Follow the flow left to right — import, approve, then raise the PO.">
+      <CardPanel title="Indent Item Status" desc="Track the current status and stage of each imported indent.">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <input
+            type="text"
+            placeholder="Search by indent name, vendor, stage, or status..."
+            className="w-full max-w-md rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold shadow-sm focus:border-blue-500 focus:outline-none"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-2.5">Indent Name</th>
+                <th className="px-4 py-2.5">Vendor</th>
+                <th className="px-4 py-2.5">Stage</th>
+                <th className="px-4 py-2.5">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredIndentStatusList.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500 font-semibold">
+                    No indent items found.
+                  </td>
+                </tr>
+              ) : (
+                filteredIndentStatusList.map((item, idx) => (
+                  <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50/50 font-semibold text-gray-800">
+                    <td className="px-4 py-2.5 text-gray-900">{item.itemDetails}</td>
+                    <td className="px-4 py-2.5 text-gray-600">{item.vendor}</td>
+                    <td className="px-4 py-2.5">
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 border border-blue-100">
+                        {item.stage}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {item.status === 'Rejected' && (
+                        <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10.5px] font-bold text-rose-700 border border-rose-100">
+                          {item.status}
+                        </span>
+                      )}
+                      {(item.status === 'Approved' || item.status === 'Paid') && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700 border border-emerald-100">
+                          {item.status}
+                        </span>
+                      )}
+                      {item.status !== 'Rejected' && item.status !== 'Approved' && item.status !== 'Paid' && (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 border border-amber-100">
+                          {item.status}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardPanel>
+
+      {/* <CardPanel title="Quick actions" desc="Follow the flow left to right — import, approve, then raise the PO.">
         <div className="flex flex-wrap gap-2">
           <button className="rounded-lg bg-[#173254] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0E2138]" onClick={() => onTabChange('import')}>
             1. Import Indent
@@ -117,7 +261,7 @@ export default function DashboardView({ onTabChange }) {
             4. Purchase Orders
           </button>
         </div>
-      </CardPanel>
+      </CardPanel> */}
 
       <div className="grid grid-cols-1 gap-0 lg:grid-cols-2 lg:gap-4">
         <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4.5">

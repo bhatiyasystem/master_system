@@ -591,7 +591,7 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
                     </div>
                 </div>
 
-                {/* {items.length === 0 ? (
+                {items.length === 0 ? (
                     <div className="text-[12.5px] text-gray-500">No product line items found for this PO.</div>
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-gray-200">
@@ -627,7 +627,7 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
                             </tbody>
                         </table>
                     </div>
-                )} */}
+                )}
 
                 {error && <div className="text-[12.5px] font-semibold text-rose-600">{error}</div>}
 

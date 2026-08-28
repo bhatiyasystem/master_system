@@ -83,7 +83,7 @@ function PODocument({ po }) {
                             <Text>GSTIN: {po.vendor?.gstin || '—'}</Text>
                             <Text>Contact: {po.vendor?.contact || '—'}</Text>
                             <Text>Email: {po.vendor?.email || '—'}</Text>
-                            <Text>Fixed Transporter: {po.vendor?.fixTransporter || '—'}</Text>
+                            <Text>Fixed Transporter: {po.vendor?.fixTransporter || po.shipVia || '—'}</Text>
                         </View>
                     </View>
                     <View style={S.infoBox}>
@@ -126,7 +126,7 @@ function PODocument({ po }) {
 
                 {/* Footer */}
                 <View style={S.footerRow}>
-                    <Text style={S.footerEmail}>Mark all communications to purchase-team@bhatia.com</Text>
+                    {/* <Text style={S.footerEmail}>Mark all communications to purchase-team@bhatia.com</Text> */}
                     <View style={S.sigBlock}>
                         <Text style={S.sigLabel}>For Bhatia Enterprises</Text>
                         <Text style={[S.sigLine, { marginTop: 28 }]}>Authorized Signatory</Text>

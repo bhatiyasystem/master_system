@@ -169,7 +169,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
               shipVia: form.fixTransporter,
               fob: form.fob,
               shipTerms: form.shipTerms,
-              vendor: { name: form.vendorName, addr: form.vendorAddr, gstin: form.vendorGstin, contact: form.vendorContact, email: form.vendorEmail },
+              vendor: { name: form.vendorName, addr: form.vendorAddr, gstin: form.vendorGstin, contact: form.vendorContact, email: form.vendorEmail, fixTransporter: form.fixTransporter },
               shipTo: { name: form.shipName, addr: form.shipAddr, gstin: form.shipGstin, contact: form.shipContact, email: form.shipEmail },
               terms: form.terms,
               items,

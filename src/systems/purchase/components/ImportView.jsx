@@ -13,6 +13,43 @@ export default function ImportView({ onImported }) {
   const [error, setError] = useState('');
   const [previewData, setPreviewData] = useState({ toCreate: [], toSkip: [] });
 
+  const handleDownloadTemplate = () => {
+    const headers = [
+      "Item Details",
+      "Product Category",
+      "Vendor",
+      "Unit",
+      "Alt Unit",
+      "Parent Group",
+      "Shelf Capacity",
+      "Max Level",
+      "Rol Qty",
+      "Cl Qty",
+      "Conversion Unit",
+      "Order Formula"
+    ];
+    const sampleData = [
+      [
+        "Example Item A",
+        "Stationery",
+        "Ace Mark Stationary",
+        "Pcs.",
+        "",
+        "",
+        "",
+        "100",
+        "20",
+        "10",
+        "",
+        "90"
+      ]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Indent_Import_Template.xlsx");
+  };
+
   const handleFile = (file) => {
     if (!file) return;
     setError('');
@@ -178,6 +215,15 @@ export default function ImportView({ onImported }) {
                     <p className="text-xs text-gray-500 leading-relaxed font-semibold">
                       Upload your excel sheet containing indent details. Supported formats are <strong>.xlsx, .xls, .csv</strong>. Make sure your sheet contains an <strong>"Item Details"</strong> column header.
                     </p>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadTemplate}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                      >
+                        Download Excel Import Template (.xlsx)
+                      </button>
+                    </div>
                   </div>
                   {error && <div className="text-xs font-semibold text-rose-600 text-center">{error}</div>}
                 </div>

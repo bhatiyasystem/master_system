@@ -1,7 +1,7 @@
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
-import { fetchPayablePOs, fetchPaymentApprovals, submitPaymentApproval } from '../services/purchaseService';
+import { fetchPayablePOs, fetchPaymentApprovals, submitPaymentApproval, revisePaymentApproval } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
@@ -16,6 +16,7 @@ export default function PaymentApprovalView() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [selectedPo, setSelectedPo] = useState(null);
+    const [selectedApproval, setSelectedApproval] = useState(null);
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -108,16 +109,21 @@ export default function PaymentApprovalView() {
             ) : tab === 'pending' ? (
                 <PendingApprovalPanel pos={pendingPOs} tatTracking={tatTracking} tatMins={tatMins} onDecide={(po) => setSelectedPo(po)} />
             ) : (
-                <ApprovalHistoryPanel approvals={approvals} poMap={poMap} />
+                <ApprovalHistoryPanel approvals={approvals} poMap={poMap} onRevise={(a) => setSelectedApproval(a)} />
             )}
 
-            {selectedPo && (
+            {(selectedPo || selectedApproval) && (
                 <DecideModal
-                    po={selectedPo}
-                    onClose={() => setSelectedPo(null)}
+                    po={selectedPo || poMap.get(selectedApproval.poId)}
+                    approvalToEdit={selectedApproval}
+                    onClose={() => {
+                        setSelectedPo(null);
+                        setSelectedApproval(null);
+                    }}
                     onSuccess={() => {
                         setSelectedPo(null);
-                        setSuccess('Payment approval decision recorded.');
+                        setSelectedApproval(null);
+                        setSuccess(selectedApproval ? 'Payment approval decision revised.' : 'Payment approval decision recorded.');
                         setTimeout(() => setSuccess(''), 4000);
                         loadData();
                     }}
@@ -205,7 +211,7 @@ function PendingApprovalPanel({ pos, tatTracking, tatMins, onDecide }) {
     );
 }
 
-function ApprovalHistoryPanel({ approvals, poMap }) {
+function ApprovalHistoryPanel({ approvals, poMap, onRevise }) {
     const [search, setSearch] = useState('');
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -232,6 +238,7 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
                 <table className="w-full text-left text-[12.5px]">
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
                             <th className="px-3 py-2.5">PO No.</th>
                             <th className="px-3 py-2.5">Vendor</th>
                             <th className="px-3 py-2.5">Status</th>
@@ -241,13 +248,21 @@ function ApprovalHistoryPanel({ approvals, poMap }) {
                     </thead>
                     <tbody>
                         {approvals.length === 0 ? (
-                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No payment approval decisions yet.</td></tr>
+                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No payment approval decisions yet.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
                         ) : filtered.map((a) => {
                             const po = poMap.get(a.poId);
                             return (
                                 <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5">
+                                        <button
+                                            onClick={() => onRevise(a)}
+                                            className="rounded-lg bg-[#C99A3E] px-2.5 py-1 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
+                                        >
+                                            Revise
+                                        </button>
+                                    </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-800">
                                         <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
@@ -293,10 +308,10 @@ function StatusPill({ status }) {
     );
 }
 
-function DecideModal({ po, onClose, onSuccess }) {
-    const [status, setStatus] = useState('Approved');
-    const [remarks, setRemarks] = useState('');
-    const [advanceAmount, setAdvanceAmount] = useState('');
+function DecideModal({ po, approvalToEdit, onClose, onSuccess }) {
+    const [status, setStatus] = useState(approvalToEdit ? approvalToEdit.status : 'Approved');
+    const [remarks, setRemarks] = useState(approvalToEdit ? approvalToEdit.remarks : '');
+    const [advanceAmount, setAdvanceAmount] = useState(approvalToEdit ? (approvalToEdit.advanceAmount || '') : '');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const isAdvanceVendor = po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Saman aatey saath';
@@ -310,7 +325,7 @@ function DecideModal({ po, onClose, onSuccess }) {
         }
     })() : '');
     const [vchNo, setVchNo] = useState(po.deliveries?.[0]?.billNumber || '');
-    const [partyName, setPartyName] = useState(po.vendor?.name || '');
+    const [partyName, setPartyName] = useState(po.vendor_name || po.vendor?.name || '');
     const [ourName, setOurName] = useState('Bhatia Enterprises');
     const [ourGstNo, setOurGstNo] = useState(po.shipTo?.gstin || '');
     const [taxableAmount, setTaxableAmount] = useState(po.total || '');
@@ -319,15 +334,15 @@ function DecideModal({ po, onClose, onSuccess }) {
     const [seal, setSeal] = useState('Available');
 
     // Verification Checkbox States
-    const [chkBillDate, setChkBillDate] = useState(false);
-    const [chkVchNo, setChkVchNo] = useState(false);
-    const [chkPartyName, setChkPartyName] = useState(false);
-    const [chkOurName, setChkOurName] = useState(false);
-    const [chkOurGstNo, setChkOurGstNo] = useState(false);
-    const [chkTaxableAmount, setChkTaxableAmount] = useState(false);
-    const [chkGstAmount, setChkGstAmount] = useState(false);
-    const [chkBillAmount, setChkBillAmount] = useState(false);
-    const [chkSeal, setChkSeal] = useState(false);
+    const [chkBillDate, setChkBillDate] = useState(approvalToEdit ? !!approvalToEdit.checkBillDate : false);
+    const [chkVchNo, setChkVchNo] = useState(approvalToEdit ? !!approvalToEdit.checkVchNo : false);
+    const [chkPartyName, setChkPartyName] = useState(approvalToEdit ? !!approvalToEdit.checkPartyName : false);
+    const [chkOurName, setChkOurName] = useState(approvalToEdit ? !!approvalToEdit.checkOurName : false);
+    const [chkOurGstNo, setChkOurGstNo] = useState(approvalToEdit ? !!approvalToEdit.checkOurGstNo : false);
+    const [chkTaxableAmount, setChkTaxableAmount] = useState(approvalToEdit ? !!approvalToEdit.checkTaxableAmount : false);
+    const [chkGstAmount, setChkGstAmount] = useState(approvalToEdit ? !!approvalToEdit.checkGstAmount : false);
+    const [chkBillAmount, setChkBillAmount] = useState(approvalToEdit ? !!approvalToEdit.checkBillAmount : false);
+    const [chkSeal, setChkSeal] = useState(approvalToEdit ? !!approvalToEdit.checkSeal : false);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -346,27 +361,52 @@ function DecideModal({ po, onClose, onSuccess }) {
 
         setSubmitting(true);
         try {
-            await submitPaymentApproval({
-                poId: po.id,
-                status,
-                remarks,
-                advanceAmount: isAdvanceVendor ? advanceAmount : null,
-                checkBillDate: chkBillDate,
-                checkVchNo: chkVchNo,
-                checkPartyName: chkPartyName,
-                checkOurName: chkOurName,
-                checkOurGstNo: chkOurGstNo,
-                checkTaxableAmount: chkTaxableAmount,
-                checkGstAmount: chkGstAmount,
-                checkBillAmount: chkBillAmount,
-                checkSeal: chkSeal,
-                editedBillDate: billDate,
-                editedVchNo: vchNo,
-                editedPartyName: partyName,
-                editedTaxableAmount: taxableAmount,
-                editedGstAmount: gstAmount,
-                editedBillAmount: billAmount,
-            });
+            if (approvalToEdit) {
+                await revisePaymentApproval({
+                    approvalId: approvalToEdit.id,
+                    poId: po.id,
+                    status,
+                    remarks,
+                    advanceAmount: isAdvanceVendor ? advanceAmount : null,
+                    checkBillDate: chkBillDate,
+                    checkVchNo: chkVchNo,
+                    checkPartyName: chkPartyName,
+                    checkOurName: chkOurName,
+                    checkOurGstNo: chkOurGstNo,
+                    checkTaxableAmount: chkTaxableAmount,
+                    checkGstAmount: chkGstAmount,
+                    checkBillAmount: chkBillAmount,
+                    checkSeal: chkSeal,
+                    editedBillDate: billDate,
+                    editedVchNo: vchNo,
+                    editedPartyName: partyName,
+                    editedTaxableAmount: taxableAmount,
+                    editedGstAmount: gstAmount,
+                    editedBillAmount: billAmount,
+                });
+            } else {
+                await submitPaymentApproval({
+                    poId: po.id,
+                    status,
+                    remarks,
+                    advanceAmount: isAdvanceVendor ? advanceAmount : null,
+                    checkBillDate: chkBillDate,
+                    checkVchNo: chkVchNo,
+                    checkPartyName: chkPartyName,
+                    checkOurName: chkOurName,
+                    checkOurGstNo: chkOurGstNo,
+                    checkTaxableAmount: chkTaxableAmount,
+                    checkGstAmount: chkGstAmount,
+                    checkBillAmount: chkBillAmount,
+                    checkSeal: chkSeal,
+                    editedBillDate: billDate,
+                    editedVchNo: vchNo,
+                    editedPartyName: partyName,
+                    editedTaxableAmount: taxableAmount,
+                    editedGstAmount: gstAmount,
+                    editedBillAmount: billAmount,
+                });
+            }
             onSuccess();
         } catch (err) {
             setError(err.message || 'Failed to save decision.');
@@ -376,7 +416,7 @@ function DecideModal({ po, onClose, onSuccess }) {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={`Payment Decision — ${po.poNo}`} size="lg">
+        <Modal open={true} onClose={onClose} title={approvalToEdit ? `Revise Payment Decision — ${po.poNo}` : `Payment Decision — ${po.poNo}`} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
                     PO <span className="font-bold text-gray-900">{po.poNo}</span> ({po.vendor?.name}) — ₹ {fmt(po.grandTotal)}
@@ -436,7 +476,7 @@ function DecideModal({ po, onClose, onSuccess }) {
                     </button>
                     <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[#173254] px-5 py-2 text-[13px] font-bold text-white hover:bg-[#10243e] disabled:opacity-50">
                         <CheckCircle2 size={16} />
-                        {submitting ? 'Saving…' : 'Submit Decision'}
+                        {submitting ? 'Saving…' : approvalToEdit ? 'Revise Decision' : 'Submit Decision'}
                     </button>
                 </div>
             </form>

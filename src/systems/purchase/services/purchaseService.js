@@ -868,8 +868,12 @@ export async function updateDelivery({ id, transportName, contact, biltyDate, bi
 }
 
 export async function reviseReceiving({ receivingId, items, fullyReceived, receiptDate, receiptTime, receivedDagg, receivedBy }) {
+  console.log('[DEBUG] reviseReceiving input:', { receivingId, receiptDate, receiptTime, receivedDagg, receivedBy });
   const { data: exRec, error: exRecErr } = await supabase.from('purchase_receivings').select('*').eq('id', receivingId).single();
-  if (exRecErr) throw exRecErr;
+  if (exRecErr) {
+    console.error('[DEBUG] reviseReceiving select error:', exRecErr);
+    throw exRecErr;
+  }
 
   const activeReceivedBy = receivedBy || localStorage.getItem('user-id') || null;
 
@@ -926,11 +930,15 @@ export async function reviseReceiving({ receivingId, items, fullyReceived, recei
       received_qty: Number(it.receivedQty) || 0,
     }));
 
-  const { data: itemRows, error: itemErr } = await supabase
-    .from('purchase_receiving_items')
-    .insert(itemPayload)
-    .select();
-  if (itemErr) throw itemErr;
+  let itemRows = [];
+  if (itemPayload.length > 0) {
+    const { data, error: itemErr } = await supabase
+      .from('purchase_receiving_items')
+      .insert(itemPayload)
+      .select();
+    if (itemErr) throw itemErr;
+    itemRows = data || [];
+  }
 
   // Update delivery
   const newTotalReceived = totalReceived + inputDagg;
@@ -1226,6 +1234,114 @@ export async function submitPayment({ paymentApprovalId, poId, proofFile, remark
   }
 
   return mapPaymentRow(data);
+}
+
+export async function revisePayment({ paymentId, proofFile, remarks, amountPaid, existingProofUrl }) {
+  console.log('[DEBUG] revisePayment input:', { paymentId, remarks, amountPaid, existingProofUrl });
+  let proofUrl = existingProofUrl || null;
+  if (proofFile) proofUrl = await uploadPaymentProof(proofFile);
+  const paidBy = localStorage.getItem('user-id') || null;
+
+  const { data, error } = await supabase
+    .from('purchase_payments')
+    .update({
+      proof_url: proofUrl,
+      remarks,
+      amount_paid: Number(amountPaid) || 0,
+      paid_by: paidBy,
+    })
+    .eq('id', paymentId)
+    .select()
+    .single();
+  if (error) {
+    console.error('[DEBUG] revisePayment error:', error);
+    throw error;
+  }
+
+  return mapPaymentRow(data);
+}
+
+export async function revisePaymentApproval({
+  approvalId,
+  poId,
+  status,
+  remarks,
+  advanceAmount,
+  checkBillDate,
+  checkVchNo,
+  checkPartyName,
+  checkOurName,
+  checkOurGstNo,
+  checkTaxableAmount,
+  checkGstAmount,
+  checkBillAmount,
+  checkSeal,
+  editedBillDate,
+  editedVchNo,
+  editedPartyName,
+  editedTaxableAmount,
+  editedGstAmount,
+  editedBillAmount,
+}) {
+  // Update PO details
+  const { error: poUpdErr } = await supabase
+    .from('purchase_pos')
+    .update({
+      vendor_name: editedPartyName,
+      total: Number(editedTaxableAmount) || 0,
+      tax_amount: Number(editedGstAmount) || 0,
+      grand_total: Number(editedBillAmount) || 0,
+    })
+    .eq('id', poId);
+  if (poUpdErr) throw poUpdErr;
+
+  // Update associated Delivery details
+  const { error: delUpdErr } = await supabase
+    .from('purchase_deliveries')
+    .update({
+      bill_date: editedBillDate || null,
+      bill_number: editedVchNo || '',
+    })
+    .eq('po_id', poId);
+  if (delUpdErr) throw delUpdErr;
+
+  console.log('[DEBUG] revisePaymentApproval input:', { approvalId, poId, status, remarks, advanceAmount });
+  const decidedBy = localStorage.getItem('user-id') || null;
+  const { data, error } = await supabase
+    .from('purchase_payment_approvals')
+    .update({
+      status,
+      remarks,
+      decided_by: decidedBy,
+      advance_amount: advanceAmount != null && advanceAmount !== '' ? Number(advanceAmount) || 0 : null,
+      check_bill_date: !!checkBillDate,
+      check_vch_no: !!checkVchNo,
+      check_party_name: !!checkPartyName,
+      check_our_name: !!checkOurName,
+      check_our_gst_no: !!checkOurGstNo,
+      check_taxable_amount: !!checkTaxableAmount,
+      check_gst_amount: !!checkGstAmount,
+      check_bill_amount: !!checkBillAmount,
+      check_seal: !!checkSeal,
+    })
+    .eq('id', approvalId)
+    .select()
+    .single();
+  if (error) {
+    console.error('[DEBUG] revisePaymentApproval error:', error);
+    throw error;
+  }
+
+  try {
+    const timestamp = new Date().toISOString();
+    if (status === 'Approved') {
+      await startOrUpdateStage(data.id, 'payment', timestamp);
+    }
+  } catch (tatErr) {
+    console.error('Error logging Payment Approval TAT adjustment:', tatErr);
+  }
+
+  return mapPaymentApprovalRow(data);
 }
 
 export async function createIndentsManualBulk(vendor, items) {

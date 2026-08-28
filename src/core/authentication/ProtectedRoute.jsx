@@ -38,9 +38,11 @@ const ProtectedRoute = ({ children, _allowedRoles = [] }) => {
 
     // Check if the route is explicitly allowed in cached page permissions
     const isPageAllowed = allowedPages.some(route => {
-        // Clean paths for comparison (e.g. matching /dashboard/data/:category)
-        const cleanRoute = route.split("/:")[0];
-        return path.startsWith(cleanRoute);
+        if (route.includes("/:")) {
+            const cleanRoute = route.split("/:")[0];
+            return path === cleanRoute || path.startsWith(cleanRoute + "/");
+        }
+        return path === route;
     }) || isLegacySelfAssignAllowed;
 
     // Determine system from path

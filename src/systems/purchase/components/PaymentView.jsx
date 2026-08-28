@@ -1,7 +1,7 @@
 import { Loader2, Wallet, ImageIcon, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
-import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment } from '../services/purchaseService';
+import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment, revisePayment } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
@@ -17,6 +17,7 @@ export default function PaymentView() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [selectedApproval, setSelectedApproval] = useState(null);
+    const [selectedPayment, setSelectedPayment] = useState(null);
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -113,17 +114,22 @@ export default function PaymentView() {
             ) : tab === 'pending' ? (
                 <PendingPaymentsPanel approvals={pendingApprovals} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onPay={(a) => setSelectedApproval(a)} />
             ) : (
-                <PaymentHistoryPanel payments={payments} poMap={poMap} />
+                <PaymentHistoryPanel payments={payments} poMap={poMap} onRevise={(p) => setSelectedPayment(p)} />
             )}
 
-            {selectedApproval && (
+            {(selectedApproval || selectedPayment) && (
                 <RecordPaymentModal
-                    approval={selectedApproval}
-                    po={poMap.get(selectedApproval.poId)}
-                    onClose={() => setSelectedApproval(null)}
+                    approval={selectedApproval || approvals.find(a => a.id === selectedPayment.paymentApprovalId)}
+                    paymentToEdit={selectedPayment}
+                    po={poMap.get(selectedApproval?.poId || selectedPayment?.poId)}
+                    onClose={() => {
+                        setSelectedApproval(null);
+                        setSelectedPayment(null);
+                    }}
                     onSuccess={() => {
                         setSelectedApproval(null);
-                        setSuccess('Payment recorded successfully.');
+                        setSelectedPayment(null);
+                        setSuccess(selectedPayment ? 'Payment revised successfully.' : 'Payment recorded successfully.');
                         setTimeout(() => setSuccess(''), 4000);
                         loadData();
                     }}
@@ -212,7 +218,7 @@ function PendingPaymentsPanel({ approvals, poMap, tatTracking, tatMins, onPay })
     );
 }
 
-function PaymentHistoryPanel({ payments, poMap }) {
+function PaymentHistoryPanel({ payments, poMap, onRevise }) {
     const [search, setSearch] = useState('');
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
@@ -239,6 +245,7 @@ function PaymentHistoryPanel({ payments, poMap }) {
                     <table className="w-full min-w-[760px] text-left text-[12.5px]">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                                <th className="px-3 py-2.5">Action</th>
                                 <th className="px-3 py-2.5">PO No.</th>
                                 <th className="px-3 py-2.5">Vendor</th>
                                 <th className="px-3 py-2.5">Amount Paid</th>
@@ -249,13 +256,21 @@ function PaymentHistoryPanel({ payments, poMap }) {
                         </thead>
                         <tbody>
                             {payments.length === 0 ? (
-                                <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No payments recorded yet.</td></tr>
+                                <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No payments recorded yet.</td></tr>
                             ) : filtered.length === 0 ? (
-                                <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                                <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
                             ) : filtered.map((p) => {
                                 const po = poMap.get(p.poId);
                                 return (
                                 <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5">
+                                        <button
+                                            onClick={() => onRevise(p)}
+                                            className="rounded-lg bg-[#C99A3E] px-2.5 py-1 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
+                                        >
+                                            Revise
+                                        </button>
+                                    </td>
                                     <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
                                     <td className="px-3 py-2.5 text-gray-800">
                                         <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
@@ -294,9 +309,9 @@ function PaymentHistoryPanel({ payments, poMap }) {
     );
 }
 
-function RecordPaymentModal({ approval, po, onClose, onSuccess }) {
-    const [amountPaid, setAmountPaid] = useState('');
-    const [remarks, setRemarks] = useState('');
+function RecordPaymentModal({ approval, paymentToEdit, po, onClose, onSuccess }) {
+    const [amountPaid, setAmountPaid] = useState(paymentToEdit ? paymentToEdit.amountPaid : '');
+    const [remarks, setRemarks] = useState(paymentToEdit ? paymentToEdit.remarks : '');
     const [proofFile, setProofFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -314,17 +329,27 @@ function RecordPaymentModal({ approval, po, onClose, onSuccess }) {
         }
         setSubmitting(true);
         try {
-            await submitPayment({ paymentApprovalId: approval.id, poId: approval.poId, proofFile, remarks, amountPaid });
+            if (paymentToEdit) {
+                await revisePayment({
+                    paymentId: paymentToEdit.id,
+                    proofFile,
+                    remarks,
+                    amountPaid,
+                    existingProofUrl: paymentToEdit.proofUrl
+                });
+            } else {
+                await submitPayment({ paymentApprovalId: approval.id, poId: approval.poId, proofFile, remarks, amountPaid });
+            }
             onSuccess();
         } catch (err) {
-            setError(err.message || 'Failed to record payment.');
+            setError(err.message || 'Failed to save payment.');
         } finally {
             setSubmitting(false);
         }
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={`Record Payment — ${po?.poNo || ''}`} size="md">
+        <Modal open={true} onClose={onClose} title={paymentToEdit ? `Revise Payment — ${po?.poNo || ''}` : `Record Payment — ${po?.poNo || ''}`} size="md">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
                     PO <span className="font-bold text-gray-900">{po?.poNo}</span> ({po?.vendor?.name}) — Grand Total ₹ {fmt(po?.grandTotal)}
@@ -337,9 +362,14 @@ function RecordPaymentModal({ approval, po, onClose, onSuccess }) {
 
                 <div>
                     <label className="mb-1 block text-[12px] font-bold text-gray-600">Payment Proof</label>
+                    {paymentToEdit && paymentToEdit.proofUrl && (
+                        <div className="mb-2 text-xs">
+                            Current file: <a href={paymentToEdit.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">View proof</a>
+                        </div>
+                    )}
                     <label className="flex h-[42px] cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 text-[13px] text-gray-500 hover:border-gray-400">
                         <Upload size={16} />
-                        {proofFile ? proofFile.name : 'Choose file'}
+                        {proofFile ? proofFile.name : 'Choose file to update'}
                         <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
                     </label>
                 </div>
@@ -357,7 +387,7 @@ function RecordPaymentModal({ approval, po, onClose, onSuccess }) {
                     </button>
                     <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[#173254] px-5 py-2 text-[13px] font-bold text-white hover:bg-[#10243e] disabled:opacity-50">
                         <Wallet size={16} />
-                        {submitting ? 'Saving…' : 'Record Payment'}
+                        {submitting ? 'Saving…' : paymentToEdit ? 'Revise Payment' : 'Record Payment'}
                     </button>
                 </div>
             </form>

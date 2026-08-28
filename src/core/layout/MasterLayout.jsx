@@ -385,8 +385,11 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
         // Verify page-level permission
         if (item.href) {
           const isAllowed = allowedPages.some(route => {
-            const cleanRoute = route.split("/:")[0];
-            return item.href.startsWith(cleanRoute);
+            if (route.includes("/:")) {
+              const cleanRoute = route.split("/:")[0];
+              return item.href === cleanRoute || item.href.startsWith(cleanRoute + "/");
+            }
+            return item.href === route;
           });
           if (!isAllowed) return false;
         }
@@ -400,8 +403,11 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             subItems: item.subItems.filter((sub) => {
               if (isSuperAdmin) return true;
               return allowedPages.some(route => {
-                const cleanRoute = route.split("/:")[0];
-                return sub.href.startsWith(cleanRoute);
+                if (route.includes("/:")) {
+                  const cleanRoute = route.split("/:")[0];
+                  return sub.href === cleanRoute || sub.href.startsWith(cleanRoute + "/");
+                }
+                return sub.href === route;
               });
             }),
           };
@@ -729,7 +735,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
           </a>
         </div>
 
-        {/* Premium Bottom Navigation for Mobile */}
+        {/* Premium Bottom Navigation for Mobile
         <div className="mobile-bottom-nav md:hidden fixed bottom-6 left-4 right-4 h-16 bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-50 flex items-center justify-around px-2">
           <Link
             to="/dashboard"
@@ -783,7 +789,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             {getLucideIcon("UserRound", 20, 2)}
             <span className="text-[10px] mt-1 font-bold">Profile</span>
           </button>
-        </div>
+        </div> */}
 
         {/* Mobile Sidebar Drawer */}
         {isMobileMenuOpen && (

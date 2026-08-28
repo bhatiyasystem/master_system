@@ -38,7 +38,7 @@ export default function POSheet({ po, revisionNote }) {
           <br />
           Email: {po.vendor.email || '—'}
           <br />
-          Ship Via: {po.vendor.fixTransporter || '—'}
+          Ship Via: {po.vendor.fixTransporter || po.shipVia || '—'}
         </InfoBox>
         <InfoBox title="SHIP TO">
           Bhatia Enterprises
