@@ -5,6 +5,7 @@ import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment, revisePa
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
+import { sendWhatsAppTemplateMessage, sendWhatsAppTextMessage } from '../../../services/whatsappService';
 
 export default function PaymentView() {
     const [tab, setTab] = useState('pending');
@@ -339,6 +340,29 @@ function RecordPaymentModal({ approval, paymentToEdit, po, onClose, onSuccess })
                 });
             } else {
                 await submitPayment({ paymentApprovalId: approval.id, poId: approval.poId, proofFile, remarks, amountPaid });
+            }
+            if (po?.vendor?.contact) {
+                const processedDate = new Date().toLocaleDateString('en-IN');
+                try {
+                    const billNo = approval?.editedVchNo || po?.poNo || '—';
+                    const templateSent = await sendWhatsAppTemplateMessage(
+                        po.vendor.contact,
+                        'payment_verification',
+                        [po.vendor.name || 'Vendor', billNo, processedDate, remarks || 'Processed'],
+                        'en',
+                        { recipientName: po.vendor.name, stage: 'Payment Approved Alert', referenceId: po.poNo }
+                    );
+                    if (!templateSent) {
+                        const text = `Dear *${po.vendor.name}*, This is to inform you that the payment against Bill No. *${billNo}* has been processed on *${processedDate}*. *Remarks:* ${remarks || 'Processed'} Kindly verify the payment and confirm receipt at your earliest convenience. Thank you.`;
+                        await sendWhatsAppTextMessage(
+                            po.vendor.contact,
+                            text,
+                            { recipientName: po.vendor.name, stage: 'Payment Approved Alert (Text)', referenceId: po.poNo }
+                        );
+                    }
+                } catch (whatsappErr) {
+                    console.error("Failed to send payment notification:", whatsappErr);
+                }
             }
             onSuccess();
         } catch (err) {

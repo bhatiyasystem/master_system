@@ -1,11 +1,12 @@
 import { Loader2, Truck, ImageIcon, Plus, Upload, AlertTriangle, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
 import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters, updateDelivery, fetchPaymentApprovals, fetchPayments } from '../services/purchaseService';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 import supabase from '../../../SupabaseClient';
+import { sendWhatsAppTextMessage, sendWhatsAppTemplateMessage } from '../../../services/whatsappService';
 
 const emptyForm = {
     transportName: '',
@@ -234,6 +235,72 @@ export default function DeliveryView() {
 function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, onLogDelivery }) {
     const [search, setSearch] = useState('');
     const [vendor, setVendor] = useState('');
+    const [transporters, setTransporters] = useState([]);
+    const [alertStatuses, setAlertStatuses] = useState({});
+    const checkedAlertsRef = useRef({});
+
+    useEffect(() => {
+        fetchTransporters()
+            .then((rows) => setTransporters(rows || []))
+            .catch((err) => console.error("Error fetching transporters for alerts:", err));
+    }, []);
+
+    const handleSendAlerts = useCallback(async (po, isSilent = false) => {
+        const delayDays = po.poDate ? Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000)) : 0;
+        if (delayDays < 3) return;
+
+        setAlertStatuses(prev => ({ ...prev, [po.id]: 'sending' }));
+        let successCount = 0;
+        let errors = [];
+
+        // 1. Send to Vendor only - Template: dispatch_reminder_purchase
+        const vendorPhone = po.vendor?.contact;
+        if (vendorPhone) {
+            try {
+                const templateSent = await sendWhatsAppTemplateMessage(
+                    vendorPhone,
+                    'dispatch_reminder_purchase',
+                    [po.vendor.name || 'Vendor', po.poNo, po.poDate, String(delayDays)],
+                    'en',
+                    { recipientName: po.vendor.name, stage: 'Delivery Delay Alert', referenceId: po.poNo }
+                );
+                if (templateSent) {
+                    successCount++;
+                } else {
+                    const text = `Dear *${po.vendor.name}*, your delivery for PO *${po.poNo}* (dated ${po.poDate}) is pending. Please expedite delivery. Thank you, Bhatia Enterprises.`;
+                    const textSent = await sendWhatsAppTextMessage(
+                        vendorPhone,
+                        text,
+                        { recipientName: po.vendor.name, stage: 'Delivery Delay Alert (Text)', referenceId: po.poNo }
+                    );
+                    if (textSent) successCount++;
+                }
+            } catch (err) {
+                console.error("Failed to alert vendor:", err);
+            }
+        } else {
+            errors.push("Vendor phone number not found.");
+        }
+
+        if (successCount > 0) {
+            setAlertStatuses(prev => ({ ...prev, [po.id]: 'sent' }));
+        } else {
+            setAlertStatuses(prev => ({ ...prev, [po.id]: 'error' }));
+        }
+
+        if (!isSilent) {
+            if (successCount > 0) {
+                alert(`Successfully sent ${successCount} WhatsApp reminder(s).`);
+            } else {
+                alert(`Failed to send reminders. ${errors.join(' ')}`);
+            }
+        }
+    }, []);
+
+    const pendingPOs = useMemo(() => {
+        const deliveredIds = new Set((deliveries || []).map(d => d.poId));
+        return (pos || []).filter(po => !deliveredIds.has(po.id));
+    }, [pos, deliveries]);
 
     const indentMap = useMemo(() => {
         const map = new Map();
@@ -241,18 +308,9 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
         return map;
     }, [indents]);
 
-    const deliveredPoIds = useMemo(() => {
-        return new Set(deliveries.filter((d) => d.poId).map((d) => d.poId));
-    }, [deliveries]);
-
-    const pendingPOs = useMemo(() => {
-        return pos.filter((p) => !deliveredPoIds.has(p.id));
-    }, [pos, deliveredPoIds]);
-
     const vendors = useMemo(() => {
         return uniqueValues(pendingPOs.map((p) => ({ vendor: p.vendor?.name })), 'vendor');
     }, [pendingPOs]);
-
     const filteredRows = useMemo(() => {
         const term = search.toLowerCase().trim();
         return pendingPOs.filter((po) => {
@@ -266,6 +324,42 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
         setSearch('');
         setVendor('');
     };
+
+    useEffect(() => {
+        if (!pos.length) return;
+
+        const checkAndSendAutoAlerts = async () => {
+            for (const po of pendingPOs) {
+                const delayDays = po.poDate ? Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000)) : 0;
+                if (delayDays >= 3) {
+                    const cacheKey = `delivery_alert_${po.id}`;
+                    if (checkedAlertsRef.current[cacheKey]) continue;
+                    checkedAlertsRef.current[cacheKey] = true;
+
+                    try {
+                        const { data, error } = await supabase
+                            .from('whatsapp_logs')
+                            .select('id')
+                            .eq('reference_id', po.poNo)
+                            .in('stage', ['Delivery Delay Alert', 'Delivery Delay Alert (Text)'])
+                            .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+                        if (!error && data && data.length > 0) {
+                            setAlertStatuses(prev => ({ ...prev, [po.id]: 'sent' }));
+                        } else {
+                            console.log(`[AutoAlert] Delay is ${delayDays} days. Triggering auto alerts for PO: ${po.poNo}`);
+                            await handleSendAlerts(po, true);
+                        }
+                    } catch (err) {
+                        console.error("[AutoAlert] Failed checking/sending alerts:", err);
+                        checkedAlertsRef.current[cacheKey] = false;
+                    }
+                }
+            }
+        };
+
+        checkAndSendAutoAlerts();
+    }, [pos, pendingPOs, handleSendAlerts]);
 
     return (
         <div>
@@ -295,7 +389,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                 <table className="w-full text-[12.6px]">
                     <thead>
                         <tr className="bg-gray-50 text-gray-500">
-                            {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
+                            {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'Alerts'].map((h) => (
                                 <th
                                     key={h}
                                     className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
@@ -307,9 +401,9 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                     </thead>
                     <tbody>
                         {pendingPOs.length === 0 ? (
-                            <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
+                            <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
                         ) : filteredRows.length === 0 ? (
-                            <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
+                            <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
                         ) : filteredRows.map((po) => (
                             <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
                                 <td className="whitespace-nowrap px-3 py-2.5">
@@ -346,6 +440,25 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                                     })() : '—'}
                                 </td>
                                 <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                    {(() => {
+                                        const d = po.poDate ? Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000)) : 0;
+                                        if (d >= 3) {
+                                            const status = alertStatuses[po.id];
+                                            if (status === 'sent') {
+                                                return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">✅ Auto Sent</span>;
+                                            }
+                                            if (status === 'sending') {
+                                                return <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">⏳ Sending...</span>;
+                                            }
+                                            if (status === 'error') {
+                                                return <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">❌ Error</span>;
+                                            }
+                                            return <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">⏳ Checking...</span>;
+                                        }
+                                        return <span className="text-gray-400 text-xs">—</span>;
+                                    })()}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
@@ -589,7 +702,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
         e.preventDefault();
         setError('');
 
-        if (!form.transportName || !form.biltyNumber || !form.biltyDate || !form.daggCount ) {
+        if (!form.transportName || !form.biltyNumber || !form.biltyDate || !form.daggCount) {
             setError('Transport name, builty number, builty date and number of dagg are required.');
             return;
         }
@@ -705,7 +818,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     <input
                         className="input"
                         value={form.billNumber}
-                        onChange={(e) =>  update('billNumber', e.target.value)}
+                        onChange={(e) => update('billNumber', e.target.value)}
                         placeholder="e.g. BILL-00123"
                     />
                 </Field>
@@ -1056,9 +1169,8 @@ function SearchableTransporterSelect({ options, value, onChange, placeholder }) 
                                     setSearch(opt);
                                     setIsOpen(false);
                                 }}
-                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 border-none bg-transparent cursor-pointer ${
-                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
-                                }`}
+                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 border-none bg-transparent cursor-pointer ${value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
+                                    }`}
                             >
                                 {opt}
                             </button>

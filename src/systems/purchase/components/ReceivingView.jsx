@@ -1,9 +1,11 @@
 import { Loader2, PackageCheck, ImageIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving, reviseReceiving } from '../services/purchaseService';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
+import { sendWhatsAppTextMessage, sendWhatsAppTemplateMessage } from '../../../services/whatsappService';
+import supabase from '../../../SupabaseClient';
 
 // Helper function to format delay in terms of days and hours
 const formatDelay = (biltyDate) => {
@@ -184,6 +186,8 @@ export default function ReceivingView() {
 
 function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTracking, tatMins, onUpdate }) {
     const [search, setSearch] = useState('');
+    const [alertStatuses, setAlertStatuses] = useState({});
+    const checkedAlertsRef = useRef({});
 
     const pending = deliveries;
 
@@ -197,6 +201,97 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
             return `${poNo} ${vendorName} ${d.transportName} ${d.biltyNumber}`.toLowerCase().includes(term);
         });
     }, [pending, search, poMap]);
+
+    const handleSendAlerts = useCallback(async (d, isSilent = false) => {
+        const po = poMap.get(d.poId);
+        const delayDays = d.biltyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.biltyDate).getTime()) / 86400000)) : 0;
+        if (delayDays < 3) return;
+
+        setAlertStatuses(prev => ({ ...prev, [d.id]: 'sending' }));
+        let successCount = 0;
+        let errors = [];
+
+        // 1. Send to Transporter only - Template: transporters_reminder_purchase
+        const transporterPhone = d.contact;
+        const transportName = d.transportName;
+        if (transporterPhone && transportName) {
+            try {
+                const templateSent = await sendWhatsAppTemplateMessage(
+                    transporterPhone,
+                    'transporters_reminder_purchase',
+                    [transportName, d.biltyNumber || '—', d.biltyDate || '—', String(delayDays)],
+                    'en',
+                    { recipientName: transportName, stage: 'Receiving Delay Alert', referenceId: po?.poNo }
+                );
+                if (templateSent) {
+                    successCount++;
+                } else {
+                    const text = `Dear *${transportName}*, your shipment under Bilty *${d.biltyNumber || '—'}* for PO *${po?.poNo || '—'}* has been in transit for ${delayDays} days. Please expedite delivery. Thank you, Bhatia Enterprises.`;
+                    const textSent = await sendWhatsAppTextMessage(
+                        transporterPhone,
+                        text,
+                        { recipientName: transportName, stage: 'Receiving Delay Alert (Text)', referenceId: po?.poNo }
+                    );
+                    if (textSent) successCount++;
+                }
+            } catch (err) {
+                console.error("Failed to alert transporter:", err);
+            }
+        } else if (transportName) {
+            errors.push(`Transporter "${transportName}" contact details not found.`);
+        }
+
+        if (successCount > 0) {
+            setAlertStatuses(prev => ({ ...prev, [d.id]: 'sent' }));
+        } else {
+            setAlertStatuses(prev => ({ ...prev, [d.id]: 'error' }));
+        }
+
+        if (!isSilent) {
+            if (successCount > 0) {
+                alert(`Successfully sent ${successCount} WhatsApp reminder(s).`);
+            } else {
+                alert(`Failed to send reminders. ${errors.join(' ')}`);
+            }
+        }
+    }, [poMap]);
+
+    useEffect(() => {
+        if (!pending.length) return;
+
+        const checkAndSendAutoAlerts = async () => {
+            for (const d of pending) {
+                const po = poMap.get(d.poId);
+                const delayDays = d.biltyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.biltyDate).getTime()) / 86400000)) : 0;
+                if (delayDays >= 3) {
+                    const cacheKey = `receiving_alert_${d.id}`;
+                    if (checkedAlertsRef.current[cacheKey]) continue;
+                    checkedAlertsRef.current[cacheKey] = true;
+
+                    try {
+                        const { data, error } = await supabase
+                            .from('whatsapp_logs')
+                            .select('id')
+                            .eq('reference_id', po?.poNo || '—')
+                            .in('stage', ['Receiving Delay Alert', 'Receiving Delay Alert (Text)'])
+                            .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+                        if (!error && data && data.length > 0) {
+                            setAlertStatuses(prev => ({ ...prev, [d.id]: 'sent' }));
+                        } else {
+                            console.log(`[AutoAlert] Delay is ${delayDays} days. Triggering auto alerts for Delivery ID: ${d.id}`);
+                            await handleSendAlerts(d, true);
+                        }
+                    } catch (err) {
+                        console.error("[AutoAlert] Failed checking/sending alerts:", err);
+                        checkedAlertsRef.current[cacheKey] = false;
+                    }
+                }
+            }
+        };
+
+        checkAndSendAutoAlerts();
+    }, [pending, poMap, handleSendAlerts]);
 
     return (
         <div>
@@ -228,13 +323,14 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                             <th className="px-3 py-2.5">Arrived</th>
                             <th className="px-3 py-2.5">Delay</th>
                             <th className="px-3 py-2.5">Planned Date</th>
+                            <th className="px-3 py-2.5">Alerts</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pending.length === 0 ? (
-                            <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
+                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={14} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
                         ) : filtered.map((d) => {
                             const po = poMap.get(d.poId);
                             const poNo = po?.poNo || '—';
@@ -295,6 +391,24 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                                         {diffDays !== null ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}` : '—'}
                                     </td>
                                     <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[d.id], d.createdAt, tatMins)}</td>
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                        {(() => {
+                                            if (diffDays !== null && diffDays >= 3) {
+                                                const status = alertStatuses[d.id];
+                                                if (status === 'sent') {
+                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">✅ Auto Sent</span>;
+                                                }
+                                                if (status === 'sending') {
+                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">⏳ Sending...</span>;
+                                                }
+                                                if (status === 'error') {
+                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">❌ Error</span>;
+                                                }
+                                                return <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">⏳ Checking...</span>;
+                                            }
+                                            return <span className="text-gray-400 text-xs">—</span>;
+                                        })()}
+                                    </td>
                                 </tr>
                             );
                         })}

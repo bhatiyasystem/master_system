@@ -141,6 +141,36 @@ function PendingApprovalPanel({ pos, tatTracking, tatMins, onDecide }) {
         return pos.filter((p) => `${p.poNo} ${p.vendor?.name}`.toLowerCase().includes(term));
     }, [pos, search]);
 
+    const renderArrivalCell = (po) => {
+        const arrivedAtStr = tatTracking[po.id]?.started_at;
+        if (!arrivedAtStr) return <span className="text-gray-400">—</span>;
+
+        const arrivedDate = new Date(arrivedAtStr);
+        const isValid = !isNaN(arrivedDate.getTime());
+        if (!isValid) return <span className="text-gray-400">—</span>;
+
+        const diffDays = (Date.now() - arrivedDate.getTime()) / (1000 * 60 * 60 * 24);
+        const isOverTwoDays = diffDays > 2;
+
+        const formattedDate = arrivedDate.toLocaleString('en-IN', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        });
+
+        if (isOverTwoDays) {
+            return (
+                <div className="bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-2 py-1 font-bold inline-block">
+                    {formattedDate}
+                    <span className="block text-[9px] text-rose-500 font-extrabold uppercase mt-0.5 tracking-wider">
+                        Over 2 Days ({Math.floor(diffDays)}d ago)
+                    </span>
+                </div>
+            );
+        }
+
+        return <span className="text-gray-600 font-medium">{formattedDate}</span>;
+    };
+
     return (
         <div>
             <FilterBar onClear={() => setSearch('')}>
@@ -157,22 +187,23 @@ function PendingApprovalPanel({ pos, tatTracking, tatMins, onDecide }) {
                 <table className="w-full text-left text-[12.5px]">
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                            <th className="px-3 py-2.5">Action</th>
-                            <th className="px-3 py-2.5">PO No.</th>
-                            <th className="px-3 py-2.5">Date</th>
-                            <th className="px-3 py-2.5">Vendor</th>
-                            <th className="px-3 py-2.5">Advance</th>
-                            <th className="px-3 py-2.5">Planned Date</th>
+                            <th className="px-3 py-2.5 text-center">Action</th>
+                            <th className="px-3 py-2.5 text-center">PO No.</th>
+                            <th className="px-3 py-2.5 text-center">PO Date</th>
+                            <th className="px-3 py-2.5 text-center">Vendor</th>
+                            <th className="px-3 py-2.5 text-center">Advance</th>
+                            <th className="px-3 py-2.5 text-center">Arrived At</th>
+                            <th className="px-3 py-2.5 text-center">Planned Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         {pos.length === 0 ? (
-                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No fully received POs waiting for payment approval.</td></tr>
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No fully received POs waiting for payment approval.</td></tr>
                         ) : filtered.length === 0 ? (
-                            <tr><td colSpan={6} className="px-3 py-10 text-center text-gray-500">No POs match the search.</td></tr>
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No POs match the search.</td></tr>
                         ) : filtered.map((po) => (
                             <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                <td className="px-3 py-2.5">
+                                <td className="px-3 py-2.5 text-center">
                                     <button
                                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
                                         onClick={() => onDecide(po)}
@@ -180,28 +211,28 @@ function PendingApprovalPanel({ pos, tatTracking, tatMins, onDecide }) {
                                         <CheckCircle2 size={14} /> Decide
                                     </button>
                                 </td>
-                                <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
-                                <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                <td className="px-3 py-2.5 text-gray-800">
+                                <td className="px-3 py-2.5 font-semibold text-gray-900 text-center">{po.poNo}</td>
+                                <td className="px-3 py-2.5 text-gray-600 text-center">{po.poDate}</td>
+                                <td className="px-3 py-2.5 text-gray-800 text-center">
                                     <div className="font-semibold text-gray-900">{po.vendor?.name || '—'}</div>
                                     {po.vendor && (
-                                        <div className="text-[11px] text-gray-500 mt-0.5">
-                                            {po.vendor.city && <span>{po.vendor.city}</span>}
-                                            {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                        <div className="text-[11px] text-gray-500 mt-0.5 flex flex-col items-center justify-center">
+                                            <span>{po.vendor.city || ''} {po.vendor.contact ? `• ${po.vendor.contact}` : ''}</span>
                                             {po.vendor.paymentTerms && (
-                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                <span className="mt-1 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
                                                     {po.vendor.paymentTerms}
                                                 </span>
                                             )}
                                         </div>
                                     )}
                                 </td>
-                                <td className="px-3 py-2.5 text-gray-800">
+                                <td className="px-3 py-2.5 text-gray-800 text-center">
                                     {po.vendor?.paymentTerms === 'Advance' || po.vendor?.paymentTerms === 'Saman aatey saath'
                                         ? po.vendor.paymentTerms
                                         : 'No'}
                                 </td>
-                                <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
+                                <td className="px-3 py-2.5 text-center">{renderArrivalCell(po)}</td>
+                                <td className="px-3 py-2.5 text-center">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -238,12 +269,12 @@ function ApprovalHistoryPanel({ approvals, poMap, onRevise }) {
                 <table className="w-full text-left text-[12.5px]">
                     <thead>
                         <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                            <th className="px-3 py-2.5">Action</th>
-                            <th className="px-3 py-2.5">PO No.</th>
-                            <th className="px-3 py-2.5">Vendor</th>
-                            <th className="px-3 py-2.5">Status</th>
-                            <th className="px-3 py-2.5">Remark</th>
-                            <th className="px-3 py-2.5">Decided At</th>
+                            <th className="px-3 py-2.5 text-center">Action</th>
+                            <th className="px-3 py-2.5 text-center">PO No.</th>
+                            <th className="px-3 py-2.5 text-center">Vendor</th>
+                            <th className="px-3 py-2.5 text-center">Status</th>
+                            <th className="px-3 py-2.5 text-center">Remark</th>
+                            <th className="px-3 py-2.5 text-center">Decided At</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -255,7 +286,7 @@ function ApprovalHistoryPanel({ approvals, poMap, onRevise }) {
                             const po = poMap.get(a.poId);
                             return (
                                 <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                    <td className="px-3 py-2.5">
+                                    <td className="px-3 py-2.5 text-center">
                                         <button
                                             onClick={() => onRevise(a)}
                                             className="rounded-lg bg-[#C99A3E] px-2.5 py-1 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
@@ -263,26 +294,27 @@ function ApprovalHistoryPanel({ approvals, poMap, onRevise }) {
                                             Revise
                                         </button>
                                     </td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900 text-center">{po?.poNo || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-800 text-center">
                                         <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
                                         {po?.vendor && (
-                                            <div className="text-[11px] text-gray-500 mt-0.5">
-                                                {po.vendor.city && <span>{po.vendor.city}</span>}
-                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                            <div className="text-[11px] text-gray-500 mt-0.5 flex flex-col items-center justify-center">
+                                                <span>{po.vendor.city || ''} {po.vendor.contact ? `• ${po.vendor.contact}` : ''}</span>
                                                 {po.vendor.paymentTerms && (
-                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                    <span className="mt-1 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
                                                         {po.vendor.paymentTerms}
                                                     </span>
                                                 )}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-3 py-2.5">
-                                        <StatusPill status={a.status} />
+                                    <td className="px-3 py-2.5 text-center">
+                                        <div className="inline-flex justify-center w-full">
+                                            <StatusPill status={a.status} />
+                                        </div>
                                     </td>
-                                    <td className="px-3 py-2.5 text-gray-600">{a.remarks || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-500">
+                                    <td className="px-3 py-2.5 text-gray-600 text-center">{a.remarks || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-500 text-center">
                                         {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
                                     </td>
                                 </tr>
