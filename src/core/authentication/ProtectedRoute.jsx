@@ -57,6 +57,8 @@ const ProtectedRoute = ({ children, _allowedRoles = [] }) => {
         currentSystem = "purchase";
     } else if (path.startsWith("/dashboard/inventory")) {
         currentSystem = "inventory";
+    } else if (path.startsWith("/dashboard/newpete")) {
+        currentSystem = "newpete";
     } else if (path.startsWith("/dashboard/global-settings") || path.startsWith("/dashboard/master")) {
         currentSystem = "global-settings";
     }

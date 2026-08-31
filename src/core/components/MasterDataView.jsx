@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import * as Lucide from 'lucide-react';
 import supabase from '../../SupabaseClient';
 import CreateIndentFormModal from '../../systems/purchase/components/CreateIndentFormModal';
+import NewPeteSettings from '../../systems/newpete/src/pages/Settings';
 
 const VENDOR_FIELDS = [
     { key: 'name', label: 'Vendor Name', placeholder: 'Enter vendor name', required: true },
@@ -57,6 +58,15 @@ const CONFIG = {
         label: 'Indent',
         pluralLabel: 'Indents'
     },
+    'NewPete Settings': {
+        table: 'newpete_settings',
+        fields: [
+            { key: 'setting_name', label: 'Setting Name', placeholder: 'Enter setting name', required: true },
+            { key: 'setting_value', label: 'Setting Value', placeholder: 'Enter setting value' },
+        ],
+        label: 'NewPete Setting',
+        pluralLabel: 'NewPete Settings'
+    }
 };
 
 export default function MasterDataView() {
@@ -94,10 +104,22 @@ export default function MasterDataView() {
                         <Lucide.ClipboardList size={14} />
                         Master Item
                     </button>
+                    <button
+                        onClick={() => setType('NewPete Settings')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${type === 'NewPete Settings' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                    >
+                        <Lucide.Settings size={14} />
+                        Pete Setting
+                    </button>
                 </div>
             </div>
 
-            <MasterDataPanel key={type} type={type} />
+            {type === 'NewPete Settings' ? (
+                <NewPeteSettings />
+            ) : (
+                <MasterDataPanel key={type} type={type} />
+            )}
         </div>
     );
 }
@@ -890,9 +912,8 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                                     setSearch(opt);
                                     setIsOpen(false);
                                 }}
-                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 ${
-                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
-                                }`}
+                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 ${value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
+                                    }`}
                             >
                                 {opt}
                             </button>

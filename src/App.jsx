@@ -11,6 +11,7 @@ import ProtectedRoute from "./core/authentication/ProtectedRoute";
 import SuperAdminRoute from "./core/authentication/SuperAdminRoute";
 import systemRegistry from "./core/registry/systemRegistry";
 
+
 // --- System Module Registrations ---
 import "./systems/checklist-delegation";
 import "./systems/mis_summary/index.jsx"; // MIS Summary system
@@ -19,6 +20,7 @@ import "./systems/HR_fms";
 import "./systems/greetings";
 import "./systems/inventory";
 import "./systems/purchase";
+import "./systems/newpete"
 
 function App() {
   const systems = systemRegistry.getAllSystems();
