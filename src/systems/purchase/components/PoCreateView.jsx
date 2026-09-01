@@ -82,13 +82,13 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
     if (!match) return;
     setForm((prev) => ({
       ...prev,
-      vendorAddr: match.address || prev.vendorAddr,
-      vendorGstin: match.gstin || prev.vendorGstin,
-      vendorContact: match.contact || prev.vendorContact,
-      vendorEmail: match.email || prev.vendorEmail,
-      vendorCity: match.city || prev.vendorCity,
-      fixTransporter: match.fix_transporter || prev.fixTransporter,
-      vendorPaymentTerms: match.payment_terms || prev.vendorPaymentTerms,
+      vendorAddr: match.address || '',
+      vendorGstin: match.gstin || '',
+      vendorContact: match.contact || '',
+      vendorEmail: match.email || '',
+      vendorCity: match.city || '',
+      fixTransporter: match.fix_transporter || '',
+      vendorPaymentTerms: match.payment_terms || '',
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.vendorName, vendors]);
@@ -245,7 +245,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
           <input className="form-input mb-2" placeholder="Supplier address" value={form.vendorAddr} onChange={(e) => updateField('vendorAddr', e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
             <input className="form-input" placeholder="GSTIN" value={form.vendorGstin} onChange={(e) => updateField('vendorGstin', e.target.value)} />
-            <input className="form-input" placeholder="Contact no. *" value={form.vendorContact} onChange={(e) => updateField('vendorContact', e.target.value)} required />
+            <input className="form-input" placeholder="Contact no. *" value={form.vendorContact} onChange={(e) => updateField('vendorContact', e.target.value)} autoComplete="new-password" required />
           </div>
           <input className="form-input mt-2" placeholder="City" value={form.vendorCity} onChange={(e) => updateField('vendorCity', e.target.value)} />
           <div className="mt-2 grid grid-cols-2 gap-2">

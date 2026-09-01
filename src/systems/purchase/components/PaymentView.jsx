@@ -145,7 +145,10 @@ function PendingPaymentsPanel({ approvals, poMap, tatTracking, tatMins, onPay })
     const filtered = useMemo(() => {
         const term = search.toLowerCase().trim();
         if (!term) return approvals;
-        return approvals.filter((a) => (poMap.get(a.poId)?.poNo || '').toLowerCase().includes(term));
+        return approvals.filter((a) => {
+            const po = poMap.get(a.poId);
+            return `${po?.poNo || ''} ${po?.vendor?.name || ''}`.toLowerCase().includes(term);
+        });
     }, [approvals, search, poMap]);
 
     return (
@@ -153,7 +156,7 @@ function PendingPaymentsPanel({ approvals, poMap, tatTracking, tatMins, onPay })
             <FilterBar onClear={() => setSearch('')}>
                 <input
                     type="text"
-                    placeholder="Search PO no..."
+                    placeholder="Search PO no, Vendor..."
                     className="min-w-[150px] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -225,8 +228,8 @@ function PaymentHistoryPanel({ payments, poMap, onRevise }) {
         const term = search.toLowerCase().trim();
         if (!term) return payments;
         return payments.filter((p) => {
-            const poNo = poMap.get(p.poId)?.poNo || '';
-            return `${poNo} ${p.remarks}`.toLowerCase().includes(term);
+            const po = poMap.get(p.poId);
+            return `${po?.poNo || ''} ${po?.vendor?.name || ''} ${p.remarks}`.toLowerCase().includes(term);
         });
     }, [payments, search, poMap]);
 
@@ -235,7 +238,7 @@ function PaymentHistoryPanel({ payments, poMap, onRevise }) {
             <FilterBar onClear={() => setSearch('')}>
                 <input
                     type="text"
-                    placeholder="Search PO no, remark..."
+                    placeholder="Search PO no,Vendor, remark..."
                     className="min-w-[150px] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -344,7 +347,8 @@ function RecordPaymentModal({ approval, paymentToEdit, po, onClose, onSuccess })
             if (po?.vendor?.contact) {
                 const processedDate = new Date().toLocaleDateString('en-IN');
                 try {
-                    const billNo = approval?.editedVchNo || po?.poNo || '—';
+                    const billNos = Array.from(new Set(po?.deliveries?.map(d => d.billNumber).filter(Boolean)));
+                    const billNo = approval?.editedVchNo || (billNos.length > 0 ? billNos.join(', ') : '—');
                     const templateSent = await sendWhatsAppTemplateMessage(
                         po.vendor.contact,
                         'payment_verification',

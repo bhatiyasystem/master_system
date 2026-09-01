@@ -1,4 +1,4 @@
-import { Loader2, Truck, ImageIcon, Plus, Upload, AlertTriangle, Trash2 } from 'lucide-react';
+import { Loader2, Truck, ImageIcon, Plus, AlertTriangle, ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
@@ -42,7 +42,7 @@ export default function DeliveryView() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const [selectedPo, setSelectedPo] = useState(null);
+    const [selectedPos, setSelectedPos] = useState(null);
     const [selectedDeliveryToEdit, setSelectedDeliveryToEdit] = useState(null);
     const [warningPo, setWarningPo] = useState(null);
     const [tatTracking, setTatTracking] = useState({});
@@ -113,12 +113,13 @@ export default function DeliveryView() {
         return payments.some((pay) => pay.paymentApprovalId === app.id);
     };
 
-    const handleLogDeliveryClick = (po) => {
-        if (!isPaymentCompleted(po)) {
-            setWarningPo(po);
+    const handleLogDeliveryClick = (posGroup) => {
+        const notPaid = posGroup.filter(po => !isPaymentCompleted(po));
+        if (notPaid.length > 0) {
+            setWarningPo(notPaid[0]);
             return;
         }
-        setSelectedPo(po);
+        setSelectedPos(posGroup);
     };
 
     const handleReviseClick = (d, po) => {
@@ -127,7 +128,7 @@ export default function DeliveryView() {
             return;
         }
         setSelectedDeliveryToEdit(d);
-        setSelectedPo(po);
+        setSelectedPos([po]);
     };
 
     const deliveredPoIds = useMemo(() => new Set((deliveries || []).filter((d) => d.poId).map((d) => d.poId)), [deliveries]);
@@ -211,16 +212,16 @@ export default function DeliveryView() {
                 </Modal>
             )}
 
-            {selectedPo && (
+            {selectedPos && (
                 <CreateDeliveryModal
-                    po={selectedPo}
+                    pos={selectedPos}
                     deliveryToEdit={selectedDeliveryToEdit}
                     onClose={() => {
-                        setSelectedPo(null);
+                        setSelectedPos(null);
                         setSelectedDeliveryToEdit(null);
                     }}
                     onSuccess={() => {
-                        setSelectedPo(null);
+                        setSelectedPos(null);
                         setSelectedDeliveryToEdit(null);
                         setSuccess(selectedDeliveryToEdit ? 'Delivery revised successfully.' : 'Delivery recorded successfully.');
                         setTimeout(() => setSuccess(''), 4000);
@@ -237,7 +238,12 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
     const [vendor, setVendor] = useState('');
     const [transporters, setTransporters] = useState([]);
     const [alertStatuses, setAlertStatuses] = useState({});
+    const [expanded, setExpanded] = useState({});
     const checkedAlertsRef = useRef({});
+
+    const toggleVendor = (v) => {
+        setExpanded((prev) => ({ ...prev, [v]: !prev[v] }));
+    };
 
     useEffect(() => {
         fetchTransporters()
@@ -320,6 +326,15 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
         });
     }, [pendingPOs, search, vendor]);
 
+    const groups = useMemo(() => {
+        const g = {};
+        filteredRows.forEach((po) => {
+            const v = po.vendor?.name || 'Unknown Vendor';
+            (g[v] = g[v] || []).push(po);
+        });
+        return g;
+    }, [filteredRows]);
+
     const clearFilters = () => {
         setSearch('');
         setVendor('');
@@ -385,85 +400,117 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                 </select>
             </FilterBar>
 
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-                <table className="w-full text-[12.6px]">
-                    <thead>
-                        <tr className="bg-gray-50 text-gray-500">
-                            {['Action', 'PO No.', 'Date', 'Vendor', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'Alerts'].map((h) => (
-                                <th
-                                    key={h}
-                                    className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
-                                >
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pendingPOs.length === 0 ? (
-                            <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
-                        ) : filteredRows.length === 0 ? (
-                            <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
-                        ) : filteredRows.map((po) => (
-                            <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                <td className="whitespace-nowrap px-3 py-2.5">
-                                    <button
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
-                                        onClick={() => onLogDelivery(po)}
-                                    >
-                                        <Truck size={14} /> Update
-                                    </button>
-                                </td>
-                                <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
-                                <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                <td className="px-3 py-2.5 text-gray-800">
-                                    <div className="font-semibold text-gray-900">{po.vendor?.name || '—'}</div>
-                                    {po.vendor && (
-                                        <div className="text-[11px] text-gray-500 mt-0.5">
-                                            {po.vendor.city && <span>{po.vendor.city}</span>}
-                                            {po.vendor.contact && <span> • {po.vendor.contact}</span>}
-                                            {po.vendor.paymentTerms && (
-                                                <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
-                                                    {po.vendor.paymentTerms}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'category')}</td>
-                                <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'unit')}</td>
-                                <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'parentGroup')}</td>
-                                <td className="px-3 py-2.5 font-semibold text-gray-900">
-                                    {po.poDate ? (() => {
-                                        const d = Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000));
-                                        return <span className={d > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{d}</span>;
-                                    })() : '—'}
-                                </td>
-                                <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
-                                <td className="px-3 py-2.5 whitespace-nowrap">
-                                    {(() => {
-                                        const d = po.poDate ? Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000)) : 0;
-                                        if (d >= 3) {
-                                            const status = alertStatuses[po.id];
-                                            if (status === 'sent') {
-                                                return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">✅ Auto Sent</span>;
-                                            }
-                                            if (status === 'sending') {
-                                                return <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">⏳ Sending...</span>;
-                                            }
-                                            if (status === 'error') {
-                                                return <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">❌ Error</span>;
-                                            }
-                                            return <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">⏳ Checking...</span>;
-                                        }
-                                        return <span className="text-gray-400 text-xs">—</span>;
-                                    })()}
-                                </td>
+            {pendingPOs.length === 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-[12.6px]">
+                        <thead>
+                            <tr className="bg-gray-50 text-gray-500">
+                                {['PO No.', 'Date', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'Alerts'].map((h) => (
+                                    <th key={h} className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">{h}</th>
+                                ))}
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No purchase orders waiting for delivery.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            ) : filteredRows.length === 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-[12.6px]">
+                        <thead>
+                            <tr className="bg-gray-50 text-gray-500">
+                                {['PO No.', 'Date', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'Alerts'].map((h) => (
+                                    <th key={h} className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colSpan={8} className="px-3 py-10 text-center text-gray-500">No pending POs match the current filters.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                Object.keys(groups).sort().map((vendorName) => {
+                    const list = groups[vendorName];
+                    return (
+                        <div key={vendorName} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                            <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleVendor(vendorName)}
+                                    className="flex items-center gap-1.5 text-left"
+                                >
+                                    {expanded[vendorName] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
+                                    <span className="text-[14px] font-bold text-[#173254]">{vendorName}</span>
+                                    <span className="text-[11.5px] text-gray-500">— {list.length} pending PO(s)</span>
+                                </button>
+                                <button
+                                    className="rounded-lg bg-[#173254] px-4 py-2 text-xs font-bold text-white hover:bg-[#10243e] flex items-center gap-1.5 transition-colors"
+                                    onClick={() => onLogDelivery(list)}
+                                >
+                                    <Truck size={14} /> Log Delivery
+                                </button>
+                            </div>
+                            {expanded[vendorName] && (
+                                <div className="overflow-x-auto border-t border-gray-200">
+                                    <table className="w-full text-[12.6px]">
+                                        <thead>
+                                            <tr className="bg-gray-50 text-gray-500">
+                                                {['PO No.', 'Date', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'Alerts'].map((h) => (
+                                                    <th
+                                                        key={h}
+                                                        className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
+                                                    >
+                                                        {h}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {list.map((po) => (
+                                                <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po.poNo}</td>
+                                                    <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
+                                                    <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'category')}</td>
+                                                    <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'unit')}</td>
+                                                    <td className="px-3 py-2.5 text-gray-700">{distinctIndentValues(po, indentMap, 'parentGroup')}</td>
+                                                    <td className="px-3 py-2.5 font-semibold text-gray-900">
+                                                        {po.poDate ? (() => {
+                                                            const d = Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000));
+                                                            return <span className={d > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{d}</span>;
+                                                        })() : '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
+                                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                                        {(() => {
+                                                            const d = po.poDate ? Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000)) : 0;
+                                                            if (d >= 3) {
+                                                                const status = alertStatuses[po.id];
+                                                                if (status === 'sent') {
+                                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">✅ Auto Sent</span>;
+                                                                }
+                                                                if (status === 'sending') {
+                                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">⏳ Sending...</span>;
+                                                                }
+                                                                if (status === 'error') {
+                                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">❌ Error</span>;
+                                                                }
+                                                                return <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">⏳ Checking...</span>;
+                                                            }
+                                                            return <span className="text-gray-400 text-xs">—</span>;
+                                                        })()}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
         </div>
     );
 }
@@ -618,7 +665,9 @@ function DeliveryHistoryPanel({ deliveries, pos, indents, onRevise }) {
     );
 }
 
-function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
+function CreateDeliveryModal({ pos, deliveryToEdit, onClose, onSuccess }) {
+    const firstPo = pos[0];
+    const [selectedPoIds, setSelectedPoIds] = useState(new Set(pos.map(p => p.id)));
     const [form, setForm] = useState(deliveryToEdit ? {
         transportName: deliveryToEdit.transportName || '',
         contact: deliveryToEdit.contact || '',
@@ -640,7 +689,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
             }
         })() : '',
     } : {
-        transportName: po.vendor_fix_transporter || '',
+        transportName: firstPo?.vendor_fix_transporter || '',
         contact: '',
         biltyDate: '',
         biltyNumber: '',
@@ -660,14 +709,14 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
     useEffect(() => {
         fetchTransporters().then((rows) => {
             setTransporters(rows);
-            if (!deliveryToEdit && po.vendor_fix_transporter) {
-                const t = rows.find(tr => String(tr.name || '').trim().toLowerCase() === String(po.vendor_fix_transporter).trim().toLowerCase());
+            if (!deliveryToEdit && firstPo?.vendor_fix_transporter) {
+                const t = rows.find(tr => String(tr.name || '').trim().toLowerCase() === String(firstPo.vendor_fix_transporter).trim().toLowerCase());
                 if (t) {
                     setForm(f => ({ ...f, contact: t.contacts?.[0] || '' }));
                 }
             }
         }).catch(() => setTransporters([]));
-    }, [po, deliveryToEdit]);
+    }, [firstPo, deliveryToEdit]);
 
     function update(field, value) {
         setForm((f) => ({ ...f, [field]: value }));
@@ -709,6 +758,12 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
 
         setSubmitting(true);
         try {
+            if (selectedPoIds.size === 0 && !deliveryToEdit) {
+                setError('Please select at least one PO.');
+                setSubmitting(false);
+                return;
+            }
+
             if (deliveryToEdit) {
                 await updateDelivery({
                     id: deliveryToEdit.id,
@@ -719,7 +774,7 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
                     existingBillUrl: deliveryToEdit.billImageUrl
                 });
             } else {
-                await createDelivery({ ...form, poId: po.id, biltyImageFile, billImageFile });
+                await createDelivery({ ...form, poIds: Array.from(selectedPoIds), biltyImageFile, billImageFile });
             }
             if (biltyImagePreview) URL.revokeObjectURL(biltyImagePreview);
             onSuccess();
@@ -731,11 +786,37 @@ function CreateDeliveryModal({ po, deliveryToEdit, onClose, onSuccess }) {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={deliveryToEdit ? `Revise Delivery — ${po.poNo}` : `Create Delivery — ${po.poNo}`} size="lg">
+        <Modal open={true} onClose={onClose} title={deliveryToEdit ? `Revise Delivery — ${firstPo?.poNo}` : `Create Delivery — ${firstPo?.vendor?.name}`} size="lg">
             <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="md:col-span-2 rounded-xl bg-gray-50 px-4 py-2.5 text-[12.5px] text-gray-600">
-                    Delivery against <span className="font-bold text-gray-900">{po.poNo}</span> ({po.vendor?.name})
+                    Delivery against {pos.length === 1 ? <span className="font-bold text-gray-900">{firstPo?.poNo}</span> : `${pos.length} POs`} ({firstPo?.vendor?.name})
                 </div>
+
+                {/* PO Selection List */}
+                {!deliveryToEdit && pos.length > 1 && (
+                    <div className="md:col-span-2">
+                        <label className="mb-2 block text-[12px] font-bold text-gray-600">Select POs to include in this delivery:</label>
+                        <div className="flex flex-col gap-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 p-3 bg-white">
+                            {pos.map(p => (
+                                <label key={p.id} className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="h-4 w-4 rounded border-gray-300 text-[#173254] focus:ring-[#173254]"
+                                        checked={selectedPoIds.has(p.id)}
+                                        onChange={(e) => {
+                                            const newSet = new Set(selectedPoIds);
+                                            if (e.target.checked) newSet.add(p.id);
+                                            else newSet.delete(p.id);
+                                            setSelectedPoIds(newSet);
+                                        }}
+                                    />
+                                    <span className="text-[13px] font-semibold text-gray-800">{p.poNo}</span>
+                                    <span className="text-[12px] text-gray-500">— {p.poDate}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <Field label="Transport Name" required>
                     <div className="flex items-center gap-2 w-full">

@@ -1,4 +1,4 @@
-import { Loader2, PackageCheck, ImageIcon } from 'lucide-react';
+import { Loader2, PackageCheck, ImageIcon, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving, reviseReceiving } from '../services/purchaseService';
@@ -32,7 +32,7 @@ export default function ReceivingView() {
     const [success, setSuccess] = useState('');
     const [tatMins, setTatMins] = useState(20);
 
-    const [selectedDelivery, setSelectedDelivery] = useState(null);
+    const [selectedDeliveries, setSelectedDeliveries] = useState(null);
     const [selectedReceivingToEdit, setSelectedReceivingToEdit] = useState(null);
     const [, setTick] = useState(0);
 
@@ -148,7 +148,7 @@ export default function ReceivingView() {
             {loading ? (
                 <EmptyState icon={<Loader2 size={36} className="animate-spin" />}>Loading receiving data…</EmptyState>
             ) : tab === 'pending' ? (
-                <PendingReceivingPanel deliveries={pendingDeliveries} deliveryDaggStatus={deliveryDaggStatus} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onUpdate={(d) => setSelectedDelivery(d)} />
+                <PendingReceivingPanel deliveries={pendingDeliveries} deliveryDaggStatus={deliveryDaggStatus} poMap={poMap} tatTracking={tatTracking} tatMins={tatMins} onUpdate={(dels) => setSelectedDeliveries(dels)} />
             ) : (
                 <ReceivingHistoryPanel
                     receivings={receivings}
@@ -156,23 +156,23 @@ export default function ReceivingView() {
                     poMap={poMap}
                     onRevise={(rec, del) => {
                         setSelectedReceivingToEdit(rec);
-                        setSelectedDelivery(del);
+                        setSelectedDeliveries([del]);
                     }}
                 />
             )}
 
-            {selectedDelivery && (
+            {selectedDeliveries && (
                 <ReceiveItemsModal
-                    delivery={selectedDelivery}
-                    po={poMap.get(selectedDelivery.poId)}
+                    deliveries={selectedDeliveries}
+                    poMap={poMap}
                     receivings={receivings}
                     receivingToEdit={selectedReceivingToEdit}
                     onClose={() => {
-                        setSelectedDelivery(null);
+                        setSelectedDeliveries(null);
                         setSelectedReceivingToEdit(null);
                     }}
                     onSuccess={() => {
-                        setSelectedDelivery(null);
+                        setSelectedDeliveries(null);
                         setSelectedReceivingToEdit(null);
                         setSuccess(selectedReceivingToEdit ? 'Receiving revised successfully.' : 'Receiving recorded successfully.');
                         setTimeout(() => setSuccess(''), 4000);
@@ -187,7 +187,12 @@ export default function ReceivingView() {
 function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTracking, tatMins, onUpdate }) {
     const [search, setSearch] = useState('');
     const [alertStatuses, setAlertStatuses] = useState({});
+    const [expanded, setExpanded] = useState({});
     const checkedAlertsRef = useRef({});
+
+    const toggleVendor = (v) => {
+        setExpanded((prev) => ({ ...prev, [v]: !prev[v] }));
+    };
 
     const pending = deliveries;
 
@@ -201,6 +206,16 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
             return `${poNo} ${vendorName} ${d.transportName} ${d.biltyNumber}`.toLowerCase().includes(term);
         });
     }, [pending, search, poMap]);
+
+    const groups = useMemo(() => {
+        const g = {};
+        filtered.forEach((d) => {
+            const po = poMap.get(d.poId);
+            const v = po?.vendor?.name || 'Unknown Vendor';
+            (g[v] = g[v] || []).push(d);
+        });
+        return g;
+    }, [filtered, poMap]);
 
     const handleSendAlerts = useCallback(async (d, isSilent = false) => {
         const po = poMap.get(d.poId);
@@ -305,116 +320,136 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                 />
             </FilterBar>
 
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-                <table className="w-full min-w-[820px] text-left text-[12.5px]">
-                    <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                            <th className="px-3 py-2.5">Action</th>
-                            <th className="px-3 py-2.5">PO No.</th>
-                            <th className="px-3 py-2.5">Vendor</th>
-                            <th className="px-3 py-2.5">Transporter</th>
-                            <th className="px-3 py-2.5">Contact</th>
-                            <th className="px-3 py-2.5">Bilty No.</th>
-                            <th className="px-3 py-2.5">Bilty Date</th>
-                            <th className="px-3 py-2.5">Bill Date</th>
-                            <th className="px-3 py-2.5">Assigned Dagg</th>
-                            <th className="px-3 py-2.5">Remaining Dagg</th>
-                            <th className="px-3 py-2.5">Bilty Image</th>
-                            <th className="px-3 py-2.5">Arrived</th>
-                            <th className="px-3 py-2.5">Delay</th>
-                            <th className="px-3 py-2.5">Planned Date</th>
-                            <th className="px-3 py-2.5">Alerts</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pending.length === 0 ? (
-                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
-                        ) : filtered.length === 0 ? (
-                            <tr><td colSpan={15} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
-                        ) : filtered.map((d) => {
-                            const po = poMap.get(d.poId);
-                            const poNo = po?.poNo || '—';
-                            const diffDays = d.biltyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.biltyDate).getTime()) / 86400000)) : null;
-                            const isDelayed = diffDays !== null && diffDays >= 1;
-                            const dStatus = deliveryDaggStatus[d.id];
-                            return (
-                                <tr key={d.id} className={`border-t border-gray-100 transition-colors ${isDelayed ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
-                                    <td className="px-3 py-2.5">
-                                        <button
-                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
-                                            onClick={() => onUpdate(d)}
-                                        >
-                                            <PackageCheck size={14} /> Update
-                                        </button>
-                                    </td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
-                                    <td className="px-3 py-2.5 text-gray-800">
-                                        <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
-                                        {po?.vendor && (
-                                            <div className="text-[11px] text-gray-500 mt-0.5">
-                                                {po.vendor.city && <span>{po.vendor.city}</span>}
-                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
-                                                {po.vendor.paymentTerms && (
-                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
-                                                        {po.vendor.paymentTerms}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.biltyNumber || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">
-                                        {d.biltyDate ? (
-                                            <span className={isDelayed ? 'text-red-700 font-semibold' : ''}>
-                                                {d.biltyDate}
-                                            </span>
-                                        ) : '—'}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-gray-600">{d.billDate || '—'}</td>
-                                    <td className="px-3 py-2.5 text-gray-600">{dStatus ? dStatus.assigned : d.daggCount}</td>
-                                    <td className="px-3 py-2.5 text-gray-600 font-bold">{dStatus ? (dStatus.assigned - dStatus.received) : d.daggCount}</td>
-                                    <td className="px-3 py-2.5">
-                                        {d.biltyImageUrl ? (
-                                            <a href={d.biltyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
-                                                <ImageIcon size={14} /> View
-                                            </a>
-                                        ) : (
-                                            '—'
-                                        )}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-gray-500">
-                                        {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-gray-500">
-                                        {diffDays !== null ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}` : '—'}
-                                    </td>
-                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[d.id], d.createdAt, tatMins)}</td>
-                                    <td className="px-3 py-2.5 whitespace-nowrap">
-                                        {(() => {
-                                            if (diffDays !== null && diffDays >= 3) {
-                                                const status = alertStatuses[d.id];
-                                                if (status === 'sent') {
-                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">✅ Auto Sent</span>;
-                                                }
-                                                if (status === 'sending') {
-                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">⏳ Sending...</span>;
-                                                }
-                                                if (status === 'error') {
-                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">❌ Error</span>;
-                                                }
-                                                return <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">⏳ Checking...</span>;
-                                            }
-                                            return <span className="text-gray-400 text-xs">—</span>;
-                                        })()}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+            {pending.length === 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                                {['PO No.', 'Transporter', 'Contact', 'Bilty No.', 'Bilty Date', 'Bill Date', 'Assigned Dagg', 'Remaining Dagg', 'Bilty Image', 'Arrived', 'Delay', 'Planned Date', 'Alerts'].map(h => (
+                                    <th key={h} className="px-3 py-2.5">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colSpan={13} className="px-3 py-10 text-center text-gray-500">No deliveries waiting to be received.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            ) : filtered.length === 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                                {['PO No.', 'Transporter', 'Contact', 'Bilty No.', 'Bilty Date', 'Bill Date', 'Assigned Dagg', 'Remaining Dagg', 'Bilty Image', 'Arrived', 'Delay', 'Planned Date', 'Alerts'].map(h => (
+                                    <th key={h} className="px-3 py-2.5">{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colSpan={13} className="px-3 py-10 text-center text-gray-500">No deliveries match the search.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                Object.keys(groups).sort().map((vendorName) => {
+                    const list = groups[vendorName];
+                    return (
+                        <div key={vendorName} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                            <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleVendor(vendorName)}
+                                    className="flex items-center gap-1.5 text-left"
+                                >
+                                    {expanded[vendorName] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
+                                    <span className="text-[14px] font-bold text-[#173254]">{vendorName}</span>
+                                    <span className="text-[11.5px] text-gray-500">— {list.length} pending delivery(s)</span>
+                                </button>
+                                <button
+                                    className="rounded-lg bg-[#173254] px-4 py-2 text-xs font-bold text-white hover:bg-[#10243e] flex items-center gap-1.5 transition-colors"
+                                    onClick={() => onUpdate(list)}
+                                >
+                                    <PackageCheck size={14} /> Receive Items
+                                </button>
+                            </div>
+                            {expanded[vendorName] && (
+                                <div className="overflow-x-auto border-t border-gray-200">
+                                    <table className="w-full min-w-[820px] text-left text-[12.5px]">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                                                {['PO No.', 'Transporter', 'Contact', 'Bilty No.', 'Bilty Date', 'Bill Date', 'Assigned Dagg', 'Remaining Dagg', 'Bilty Image', 'Arrived', 'Delay', 'Planned Date', 'Alerts'].map(h => (
+                                                    <th key={h} className="px-3 py-2.5">{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {list.map((d) => {
+                                                const po = poMap.get(d.poId);
+                                                const poNo = po?.poNo || '—';
+                                                const diffDays = d.biltyDate ? Math.max(0, Math.floor((Date.now() - new Date(d.biltyDate).getTime()) / 86400000)) : null;
+                                                const isDelayed = diffDays !== null && diffDays >= 1;
+                                                const dStatus = deliveryDaggStatus[d.id];
+                                                return (
+                                                    <tr key={d.id} className={`border-t border-gray-100 transition-colors ${isDelayed ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+                                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{poNo}</td>
+                                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{d.transportName}</td>
+                                                        <td className="px-3 py-2.5 text-gray-600">{d.contact || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-gray-600">{d.biltyNumber || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-gray-600">
+                                                            {d.biltyDate ? (
+                                                                <span className={isDelayed ? 'text-red-700 font-semibold' : ''}>
+                                                                    {d.biltyDate}
+                                                                </span>
+                                                            ) : '—'}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-gray-600">{d.billDate || '—'}</td>
+                                                        <td className="px-3 py-2.5 text-gray-600">{dStatus ? dStatus.assigned : d.daggCount}</td>
+                                                        <td className="px-3 py-2.5 text-gray-600 font-bold">{dStatus ? (dStatus.assigned - dStatus.received) : d.daggCount}</td>
+                                                        <td className="px-3 py-2.5">
+                                                            {d.biltyImageUrl ? (
+                                                                <a href={d.biltyImageUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#173254] underline hover:text-[#10243e]">
+                                                                    <ImageIcon size={14} /> View
+                                                                </a>
+                                                            ) : (
+                                                                '—'
+                                                            )}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-gray-500">
+                                                            {d.createdAt ? new Date(d.createdAt).toLocaleString('en-IN') : '—'}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-gray-500">
+                                                            {diffDays !== null ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}` : '—'}
+                                                        </td>
+                                                        <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[d.id], d.createdAt, tatMins)}</td>
+                                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                                            {(() => {
+                                                                if (diffDays !== null && diffDays >= 3) {
+                                                                    const status = alertStatuses[d.id];
+                                                                    if (status === 'sent') {
+                                                                        return <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">✅ Auto Sent</span>;
+                                                                    }
+                                                                    if (status === 'sending') {
+                                                                        return <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/20">⏳ Sending...</span>;
+                                                                    }
+                                                                    if (status === 'error') {
+                                                                        return <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/20">❌ Error</span>;
+                                                                    }
+                                                                    return <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">⏳ Checking...</span>;
+                                                                }
+                                                                return <span className="text-gray-400 text-xs">—</span>;
+                                                            })()}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
         </div>
     );
 }
@@ -543,53 +578,68 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
     );
 }
 
-function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose, onSuccess }) {
-    const alreadyReceivedMap = useMemo(() => {
-        const map = {};
-        receivings
-            .filter((r) => r.deliveryId === delivery.id && (!receivingToEdit || r.id !== receivingToEdit.id))
-            .forEach((r) => {
-                (r.items || []).forEach((it) => {
-                    map[it.productName] = (map[it.productName] || 0) + Number(it.receivedQty || 0);
+function ReceiveItemsModal({ deliveries, poMap, receivings, receivingToEdit, onClose, onSuccess }) {
+    const isEditing = !!receivingToEdit;
+    const firstDelivery = deliveries[0];
+    const firstPo = poMap.get(firstDelivery?.poId);
+
+    const initialItems = useMemo(() => {
+        const flatItems = [];
+        deliveries.forEach(del => {
+            const po = poMap.get(del.poId);
+            
+            const alreadyReceivedMap = {};
+            receivings
+                .filter(r => r.deliveryId === del.id && (!receivingToEdit || r.id !== receivingToEdit.id))
+                .forEach(r => {
+                    (r.items || []).forEach(it => {
+                        alreadyReceivedMap[it.productName] = (alreadyReceivedMap[it.productName] || 0) + Number(it.receivedQty || 0);
+                    });
                 });
+
+            (po?.items || []).forEach(it => {
+                const already = alreadyReceivedMap[it.productName] || 0;
+                const remaining = Math.max(Number(it.qty) - already, 0);
+                
+                let curReceived = 0;
+                if (receivingToEdit && deliveries.length === 1 && del.id === deliveries[0].id) {
+                    const found = (receivingToEdit.items || []).find(x => x.productName === it.productName);
+                    if (found) curReceived = Number(found.receivedQty) || 0;
+                }
+
+                if (remaining > 0 || (receivingToEdit && already > 0)) {
+                    flatItems.push({
+                        deliveryId: del.id,
+                        poNo: po?.poNo,
+                        productCode: it.productCode,
+                        productName: it.productName,
+                        orderedQty: it.qty,
+                        alreadyReceived: already,
+                        remaining,
+                        receivedQty: receivingToEdit ? curReceived : remaining
+                    });
+                }
             });
-        return map;
-    }, [receivings, delivery, receivingToEdit]);
+        });
+        return flatItems;
+    }, [deliveries, poMap, receivings, receivingToEdit]);
 
-    const totalReceivedDagg = useMemo(() => {
-        return (receivings || [])
-            .filter((r) => r.deliveryId === delivery.id && (!receivingToEdit || r.id !== receivingToEdit.id))
-            .reduce((sum, r) => sum + (Number(r.receivedDagg) || 0), 0);
-    }, [receivings, delivery, receivingToEdit]);
-
-    const remainingDagg = Math.max((Number(delivery.daggCount) || 0) - totalReceivedDagg, 0);
-
-    const initialItems = (po?.items || [])
-        .map((it) => {
-            const already = alreadyReceivedMap[it.productName] || 0;
-            const remaining = Math.max(Number(it.qty) - already, 0);
-
-            let curReceived = 0;
-            if (receivingToEdit) {
-                const foundItem = (receivingToEdit.items || []).find(x => x.productName === it.productName);
-                if (foundItem) curReceived = Number(foundItem.receivedQty) || 0;
-            }
-
-            return {
-                productCode: it.productCode,
-                productName: it.productName,
-                orderedQty: it.qty,
-                alreadyReceived: already,
-                remaining,
-                receivedQty: receivingToEdit ? curReceived : remaining,
-            };
-        })
-        .filter((it) => it.remaining > 0 || (receivingToEdit && it.alreadyReceived > 0));
+    const maxRemainingDagg = useMemo(() => {
+        let maxD = 0;
+        deliveries.forEach(del => {
+            const totalRec = (receivings || [])
+                .filter(r => r.deliveryId === del.id && (!receivingToEdit || r.id !== receivingToEdit.id))
+                .reduce((sum, r) => sum + (Number(r.receivedDagg) || 0), 0);
+            const rem = Math.max((Number(del.daggCount) || 0) - totalRec, 0);
+            if (rem > maxD) maxD = rem;
+        });
+        return maxD;
+    }, [deliveries, receivings, receivingToEdit]);
 
     const [items, setItems] = useState(initialItems);
     const [receiptDate, setReceiptDate] = useState(receivingToEdit ? (receivingToEdit.receiptDate ? new Date(receivingToEdit.receiptDate).toISOString().split('T')[0] : '') : new Date().toISOString().split('T')[0]);
     const [receiptTime, setReceiptTime] = useState(receivingToEdit ? (receivingToEdit.receiptTime || '') : new Date().toLocaleTimeString('en-US', { hour12: false }).slice(0, 5));
-    const [receivedDagg, setReceivedDagg] = useState(receivingToEdit ? (receivingToEdit.receivedDagg || '') : remainingDagg);
+    const [receivedDagg, setReceivedDagg] = useState(receivingToEdit ? (receivingToEdit.receivedDagg || '') : maxRemainingDagg);
     const [receivedBy, setReceivedBy] = useState(receivingToEdit ? (receivingToEdit.receivedBy || '') : '');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -604,17 +654,13 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
 
         const overEntry = items.find((it) => Number(it.receivedQty) > it.remaining);
         if (overEntry) {
-            setError(`Received qty for "${overEntry.productName}" can't exceed the remaining ${overEntry.remaining}.`);
+            setError(`Received qty for "${overEntry.productName}" (PO ${overEntry.poNo}) can't exceed remaining ${overEntry.remaining}.`);
             return;
         }
 
         const inputDagg = Number(receivedDagg);
         if (isNaN(inputDagg) || inputDagg < 0) {
             setError('Received Dagg must be a non-negative number.');
-            return;
-        }
-        if (inputDagg > remainingDagg) {
-            setError(`Received Dagg cannot exceed the remaining ${remainingDagg} daggs.`);
             return;
         }
 
@@ -625,13 +671,26 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
 
         setSubmitting(true);
         try {
-            const fullyReceived = items.every(
-                (it) => it.alreadyReceived + Number(it.receivedQty || 0) >= Number(it.orderedQty)
-            );
-            if (receivingToEdit) {
-                await reviseReceiving({ receivingId: receivingToEdit.id, items, fullyReceived, receiptDate, receiptTime, receivedDagg: inputDagg, receivedBy });
-            } else {
-                await submitReceiving({ deliveryId: delivery.id, items, fullyReceived, receiptDate, receiptTime, receivedDagg: inputDagg, receivedBy });
+            for (const del of deliveries) {
+                const delItems = items.filter(it => it.deliveryId === del.id);
+                if (delItems.length === 0 && !isEditing) continue;
+                
+                const totalRec = (receivings || [])
+                    .filter(r => r.deliveryId === del.id && (!receivingToEdit || r.id !== receivingToEdit.id))
+                    .reduce((sum, r) => sum + (Number(r.receivedDagg) || 0), 0);
+                const remaining = Math.max((Number(del.daggCount) || 0) - totalRec, 0);
+                
+                const clampedDagg = Math.min(inputDagg, remaining);
+    
+                const fullyReceived = delItems.every(
+                    (it) => it.alreadyReceived + Number(it.receivedQty || 0) >= Number(it.orderedQty)
+                );
+    
+                if (receivingToEdit) {
+                    await reviseReceiving({ receivingId: receivingToEdit.id, items: delItems, fullyReceived, receiptDate, receiptTime, receivedDagg: clampedDagg, receivedBy });
+                } else {
+                    await submitReceiving({ deliveryId: del.id, items: delItems, fullyReceived, receiptDate, receiptTime, receivedDagg: clampedDagg, receivedBy });
+                }
             }
             onSuccess();
         } catch (err) {
@@ -642,20 +701,11 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={receivingToEdit ? `Revise Receiving — ${po?.poNo || delivery.transportName}` : `Receive — ${po?.poNo || delivery.transportName}`} size="lg">
+        <Modal open={true} onClose={onClose} title={receivingToEdit ? `Revise Receiving — ${firstPo?.poNo || firstDelivery.transportName}` : `Receive — ${firstPo?.vendor?.name || firstDelivery.transportName}`} size="xl">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl bg-gray-50 px-4 py-3 text-[12.5px] text-gray-600">
+                <div className="grid grid-cols-1 gap-4 rounded-xl bg-gray-50 px-4 py-3 text-[12.5px] text-gray-600">
                     <div>
-                        <span className="font-semibold text-gray-500">Transporter:</span> <span className="font-bold text-gray-900">{delivery.transportName}</span>
-                    </div>
-                    <div>
-                        <span className="font-semibold text-gray-500">Bill Date:</span> <span className="font-bold text-gray-900">{delivery.billDate || '—'}</span>
-                    </div>
-                    <div>
-                        <span className="font-semibold text-gray-500">Assigned Dagg:</span> <span className="font-bold text-gray-900">{delivery.daggCount || '0'}</span>
-                    </div>
-                    <div>
-                        <span className="font-semibold text-gray-500">Remaining Dagg:</span> <span className="font-bold text-gray-900">{remainingDagg}</span>
+                        Delivery against {deliveries.length === 1 ? <span className="font-bold text-gray-900">{firstPo?.poNo}</span> : `${deliveries.length} Deliveries`} ({firstPo?.vendor?.name || firstDelivery?.transportName})
                     </div>
                 </div>
 
@@ -677,7 +727,7 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
                             type="number"
                             required
                             min="0"
-                            max={remainingDagg}
+                            max={maxRemainingDagg}
                             className="input border-gray-300 font-bold"
                             value={receivedDagg}
                             onChange={(e) => setReceivedDagg(e.target.value)}
@@ -712,6 +762,7 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
                         <table className="w-full text-left text-[12.5px]">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                                    <th className="px-3 py-2.5">PO No.</th>
                                     <th className="px-3 py-2.5">Product</th>
                                     <th className="px-3 py-2.5">Ordered Qty</th>
                                     <th className="px-3 py-2.5">Already Received</th>
@@ -722,7 +773,8 @@ function ReceiveItemsModal({ delivery, po, receivings, receivingToEdit, onClose,
                             <tbody>
                                 {items.map((item, i) => (
                                     <tr key={i} className="border-t border-gray-100">
-                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{item.productName}</td>
+                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{item.poNo}</td>
+                                        <td className="px-3 py-2.5 text-gray-900">{item.productName}</td>
                                         <td className="px-3 py-2.5 text-gray-700">{item.orderedQty}</td>
                                         <td className="px-3 py-2.5 text-gray-700">{item.alreadyReceived}</td>
                                         <td className="px-3 py-2.5 font-semibold text-gray-900">{item.remaining}</td>

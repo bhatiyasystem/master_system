@@ -626,8 +626,13 @@ export async function checkPoPaymentCompleted(poId) {
   return true;
 }
 
-export async function createDelivery({ poId, transportName, contact, biltyDate, biltyNumber, daggCount, billNumber, billDate, biltyImageFile, billImageFile }) {
-  await validateAdvancePayment(poId);
+export async function createDelivery({ poIds, transportName, contact, biltyDate, biltyNumber, daggCount, billNumber, billDate, biltyImageFile, billImageFile }) {
+  if (!poIds || poIds.length === 0) throw new Error("No POs selected");
+  
+  for (const poId of poIds) {
+    await validateAdvancePayment(poId);
+  }
+
   let biltyImageUrl = null;
   if (biltyImageFile) {
     biltyImageUrl = await uploadBiltyImage(biltyImageFile);
@@ -645,37 +650,42 @@ export async function createDelivery({ poId, transportName, contact, biltyDate, 
   }
 
   const createdBy = localStorage.getItem('user-id') || null;
+  const results = [];
 
-  const { data, error } = await supabase
-    .from('purchase_deliveries')
-    .insert({
-      po_id: poId || null,
-      transport_name: transportName,
-      contact,
-      builty_date: biltyDate || null,
-      builty_number: biltyNumber,
-      dagg_count: Number(daggCount) || 0,
-      bill_number: billNumber || '',
-      bill_date: billDate || null,
-      bill_image_url: billImageUrl,
-      builty_image_url: biltyImageUrl,
-      created_by: createdBy,
-    })
-    .select()
-    .single();
-  if (error) throw error;
+  for (const poId of poIds) {
+    const { data, error } = await supabase
+      .from('purchase_deliveries')
+      .insert({
+        po_id: poId || null,
+        transport_name: transportName,
+        contact,
+        builty_date: biltyDate || null,
+        builty_number: biltyNumber,
+        dagg_count: Number(daggCount) || 0,
+        bill_number: billNumber || '',
+        bill_date: billDate || null,
+        bill_image_url: billImageUrl,
+        builty_image_url: biltyImageUrl,
+        created_by: createdBy,
+      })
+      .select()
+      .single();
+    if (error) throw error;
 
-  // Complete Delivery stage for PO and start Receiving stage for delivery
-  try {
-    if (poId) {
-      await completeStage(poId, 'delivery', data.created_at);
+    // Complete Delivery stage for PO and start Receiving stage for delivery
+    try {
+      if (poId) {
+        await completeStage(poId, 'delivery', data.created_at);
+      }
+      await startOrUpdateStage(data.id, 'receiving', data.created_at);
+    } catch (tatErr) {
+      console.error('Error logging createDelivery TAT:', tatErr);
     }
-    await startOrUpdateStage(data.id, 'receiving', data.created_at);
-  } catch (tatErr) {
-    console.error('Error logging createDelivery TAT:', tatErr);
+    
+    results.push(mapDeliveryRow(data));
   }
 
-  return mapDeliveryRow(data);
+  return results;
 }
 
 export async function markDeliveryReceived(deliveryId, received) {
