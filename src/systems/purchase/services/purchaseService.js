@@ -215,9 +215,19 @@ export async function importIndentRows(parsedRows) {
   if (newRowsToInsert.length > 0) {
     const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
       p_year: year,
-      p_count: newRowsToInsert.length,
+      p_count: 1, // Only ask for 1 to get the starting base number
     });
     if (reserveError) throw reserveError;
+
+    const baseNoStr = reserved[0].unique_no; // e.g. "IND/2026/3241"
+    const prefixMatch = baseNoStr.match(/^(IND\/\d{4}\/)(\d+)$/);
+    let prefix = "IND/" + year + "/";
+    let startNum = 1;
+
+    if (prefixMatch) {
+      prefix = prefixMatch[1];
+      startNum = parseInt(prefixMatch[2], 10);
+    }
 
     const createdBy = localStorage.getItem('user-id') || null;
     const importBatchId = crypto.randomUUID();
@@ -227,8 +237,13 @@ export async function importIndentRows(parsedRows) {
       const evaluated = formulaVal ? evaluateFormula(formulaVal) : null;
       const isZero = evaluated === 0;
       const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
+      
+      const currentNum = startNum + i;
+      const paddedNum = String(currentNum).padStart(4, '0');
+      const currentUniqueNo = prefix + paddedNum;
+
       return {
-        unique_no: reserved[i].unique_no,
+        unique_no: currentUniqueNo,
         import_batch_id: importBatchId,
         created_by: createdBy,
         item_details: r.itemDetails,
@@ -252,8 +267,8 @@ export async function importIndentRows(parsedRows) {
     if (error) throw error;
 
     insertedRows = data || [];
-    firstNo = reserved[0].unique_no;
-    lastNo = reserved[reserved.length - 1].unique_no;
+    firstNo = payload[0].unique_no;
+    lastNo = payload[payload.length - 1].unique_no;
 
     // Start Indent Approval stage for newly imported indents
     try {
