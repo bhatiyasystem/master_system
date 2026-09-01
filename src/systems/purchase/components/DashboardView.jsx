@@ -181,7 +181,7 @@ export default function DashboardView({ onTabChange }) {
 
   return (
     <div>
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-4 grid auto-cols-[minmax(240px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200">
         <StatCard label="Total Indent" value={statIndent} foot="Items imported" accent="bg-[#C99A3E]" />
         <StatCard label="Pending Approvals" value={statApproval} foot="Order Formula > 0" accent="bg-amber-500" />
         <StatCard label="Pending PO" value={statPending} foot="Approved, no PO yet" accent="bg-emerald-600" />
@@ -199,10 +199,10 @@ export default function DashboardView({ onTabChange }) {
           />
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-500">
+        <div className="overflow-x-auto overflow-y-auto max-h-[400px] rounded-xl border border-gray-200 scrollbar-thin scrollbar-thumb-gray-200">
+          <table className="w-full text-left text-xs relative">
+            <thead className="sticky top-0 z-10 bg-gray-50 shadow-sm">
+              <tr className="border-b border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-500">
                 <th className="px-4 py-2.5">Indent Name</th>
                 <th className="px-4 py-2.5">Vendor</th>
                 <th className="px-4 py-2.5">Approval</th>
