@@ -2,7 +2,7 @@ import { CardPanel, BarChart } from './ui';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { fmt } from '../utils/helpers';
-import { fetchIndents, fetchPOs, fetchDeliveries, fetchPaymentApprovals, fetchPayments } from '../services/purchaseService';
+import { fetchIndents, fetchPOs, fetchDeliveries, fetchPaymentApprovals } from '../services/purchaseService';
 
 function aggregateVendors(indents, pos) {
   const map = {};
@@ -42,7 +42,6 @@ export default function DashboardView({ onTabChange }) {
   const [pos, setPos] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
   const [paymentApprovals, setPaymentApprovals] = useState([]);
-  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -54,15 +53,13 @@ export default function DashboardView({ onTabChange }) {
       fetchPOs(),
       fetchDeliveries(),
       fetchPaymentApprovals(),
-      fetchPayments(),
     ])
-      .then(([indentRows, poRows, deliveryRows, approvalRows, paymentRows]) => {
+      .then(([indentRows, poRows, deliveryRows, approvalRows]) => {
         if (!cancelled) {
           setIndents(indentRows);
           setPos(poRows);
           setDeliveries(deliveryRows);
           setPaymentApprovals(approvalRows);
-          setPayments(paymentRows);
         }
       })
       .catch((err) => {
@@ -93,9 +90,9 @@ export default function DashboardView({ onTabChange }) {
 
       let approvalStatus = 'Waiting';
       let poStatus = 'Waiting';
+      let deliveryStatus = 'Waiting';
       let receivingStatus = 'Waiting';
       let paymentApprovalStatus = 'Waiting';
-      let paymentStatus = 'Waiting';
 
       let isActive = true;
 
@@ -113,29 +110,28 @@ export default function DashboardView({ onTabChange }) {
         } else {
           poStatus = 'Approved';
 
-          // Receiving stage
+          // Delivery stage
           const delivery = deliveries.find((d) => d.poId === indent.poId);
-          if (!delivery || !delivery.received) {
-            receivingStatus = 'Pending';
+          if (!delivery) {
+            deliveryStatus = 'Pending';
           } else {
-            receivingStatus = 'Approved';
+            deliveryStatus = 'Approved';
 
-            // Payment Approval stage
-            const approval = paymentApprovals.find((a) => a.poId === indent.poId);
-            if (!approval || approval.status === 'Pending') {
-              paymentApprovalStatus = 'Pending';
-            } else if (approval.status === 'Rejected') {
-              isActive = false; // Rejected at payment approval stage
-            } else if (approval.status === 'Approved') {
-              paymentApprovalStatus = 'Approved';
+            // Receiving stage
+            if (!delivery.received) {
+              receivingStatus = 'Pending';
+            } else {
+              receivingStatus = 'Approved';
 
-              // Payment stage
-              const payment = payments.find((p) => p.poId === indent.poId);
-              if (!payment) {
-                paymentStatus = 'Pending';
-              } else {
-                paymentStatus = 'Approved';
-                isActive = false; // Fully paid, drop from active list
+              // Payment Approval stage
+              const approval = paymentApprovals.find((a) => a.poId === indent.poId);
+              if (!approval || approval.status === 'Pending') {
+                paymentApprovalStatus = 'Pending';
+              } else if (approval.status === 'Rejected') {
+                isActive = false; // Rejected at payment approval stage
+              } else if (approval.status === 'Approved') {
+                paymentApprovalStatus = 'Approved';
+                isActive = false; // Drop from active list after payment approval
               }
             }
           }
@@ -149,14 +145,14 @@ export default function DashboardView({ onTabChange }) {
           vendor: indent.vendor || '—',
           approvalStatus,
           poStatus,
+          deliveryStatus,
           receivingStatus,
           paymentApprovalStatus,
-          paymentStatus,
         });
       }
     });
     return list;
-  }, [indents, deliveries, paymentApprovals, payments]);
+  }, [indents, deliveries, paymentApprovals]);
 
   const filteredIndentStatusList = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -207,9 +203,9 @@ export default function DashboardView({ onTabChange }) {
                 <th className="px-4 py-2.5">Vendor</th>
                 <th className="px-4 py-2.5">Approval</th>
                 <th className="px-4 py-2.5">Purchase Order</th>
+                <th className="px-4 py-2.5">Delivery</th>
                 <th className="px-4 py-2.5">Receiving</th>
                 <th className="px-4 py-2.5">Payment Approval</th>
-                <th className="px-4 py-2.5">Payment</th>
               </tr>
             </thead>
             <tbody>
@@ -226,9 +222,9 @@ export default function DashboardView({ onTabChange }) {
                     <td className="px-4 py-2.5 text-gray-600">{item.vendor}</td>
                     <td className="px-4 py-2.5"><StatusBadge status={item.approvalStatus} /></td>
                     <td className="px-4 py-2.5"><StatusBadge status={item.poStatus} /></td>
+                    <td className="px-4 py-2.5"><StatusBadge status={item.deliveryStatus} /></td>
                     <td className="px-4 py-2.5"><StatusBadge status={item.receivingStatus} /></td>
                     <td className="px-4 py-2.5"><StatusBadge status={item.paymentApprovalStatus} /></td>
-                    <td className="px-4 py-2.5"><StatusBadge status={item.paymentStatus} /></td>
                   </tr>
                 ))
               )}
