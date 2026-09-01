@@ -35,7 +35,7 @@ systemRegistry.register({
       href: '/dashboard/purchase/approval',
       label: 'Approvals',
       icon: 'CheckCircle2',
-      showFor: ['admin', 'HOD'],
+      showFor: ['admin', 'HOD', 'user'],
     },
     {
       href: '/dashboard/purchase/polist',
@@ -59,13 +59,13 @@ systemRegistry.register({
       href: '/dashboard/purchase/payment-approval',
       label: 'Payment Approval',
       icon: 'CheckCircle2',
-      showFor: ['admin', 'HOD'],
+      showFor: ['admin', 'HOD', 'user'],
     },
     {
       href: '/dashboard/purchase/payment',
       label: 'Payment',
       icon: 'Wallet',
-      showFor: ['admin', 'HOD'],
+      showFor: ['admin', 'HOD', 'user'],
     },
   ],
 
@@ -90,13 +90,13 @@ systemRegistry.register({
       path: '/dashboard/purchase/approval',
       element: <ApprovalPage />,
       protected: true,
-      allowedRoles: ['admin', 'HOD'],
+      allowedRoles: ['admin', 'HOD', 'user'],
     },
     {
       path: '/dashboard/purchase/pocreate',
       element: <PoCreatePage />,
       protected: true,
-      allowedRoles: ['admin', 'HOD'],
+      allowedRoles: ['admin', 'HOD', 'user'],
     },
     {
       path: '/dashboard/purchase/polist',
@@ -117,13 +117,13 @@ systemRegistry.register({
       path: '/dashboard/purchase/payment-approval',
       element: <PaymentApprovalPage />,
       protected: true,
-      allowedRoles: ['admin', 'HOD'],
+      allowedRoles: ['admin', 'HOD', 'user'],
     },
     {
       path: '/dashboard/purchase/payment',
       element: <PaymentPage />,
       protected: true,
-      allowedRoles: ['admin', 'HOD'],
+      allowedRoles: ['admin', 'HOD', 'user'],
     },
   ],
 });

@@ -80,17 +80,33 @@ const LoginPage = () => {
         // Process systems & pages permissions
         let systemSlugs = [];
         if (systemAccess === "all") {
-          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"];
+          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"];
         } else if (systemAccess === "none") {
           systemSlugs = [];
         } else if (systemAccess) {
           systemSlugs = systemAccess.split(",").map(s => s.trim()).filter(Boolean);
         } else {
-          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"]; // legacy fallback
+          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"]; // legacy fallback
         }
 
         const roleLower = roleName.toLowerCase();
         const isLegacyAdmin = roleLower === "admin" || roleLower === "super admin" || roleLower === "superadmin" || (userData.user_name || "").toLowerCase() === "admin";
+
+        const allPurchaseRoutes = [
+          "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
+          "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
+          "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
+          "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment"
+        ];
+        const allInventoryRoutes = [
+          "/dashboard/inventory", "/dashboard/inventory/dashboard", "/dashboard/inventory/stock",
+          "/dashboard/inventory/transactions", "/dashboard/inventory/reorder", "/dashboard/inventory/indent",
+          "/dashboard/inventory/settings"
+        ];
+        const allNewPeteRoutes = [
+          "/dashboard/newpete", "/dashboard/newpete-add-case", "/dashboard/newpete-expenses",
+          "/dashboard/newpete-ledger", "/dashboard/newpete-settings"
+        ];
 
         let potentialRoutes = [];
         if (isLegacyAdmin) {
@@ -111,11 +127,10 @@ const LoginPage = () => {
             "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
             "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
             "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", "/dashboard/hr-misreport",
-            "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
-            "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
-            "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
-            "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment",
-            "/dashboard/inventory"
+            ...allPurchaseRoutes,
+            ...allInventoryRoutes,
+            ...allNewPeteRoutes,
+            "/dashboard/greetings-birthdays", "/dashboard/greetings-festival-scheduler"
           ];
         } else if (roleLower === "hod") {
           potentialRoutes = [
@@ -130,7 +145,10 @@ const LoginPage = () => {
             "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
             "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
             "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
-            "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", "/dashboard/hr-misreport"
+            "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", "/dashboard/hr-misreport",
+            ...allPurchaseRoutes,
+            ...allInventoryRoutes,
+            ...allNewPeteRoutes
           ];
         } else {
           potentialRoutes = [
@@ -139,7 +157,10 @@ const LoginPage = () => {
             "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra",
             "/dashboard/whatsapp-history",
             "/dashboard/hr-dashboard", "/dashboard/hr-my-profile", "/dashboard/hr-my-attendance",
-            "/dashboard/hr-leave-request", "/dashboard/hr-my-salary", "/dashboard/hr-company-calendar"
+            "/dashboard/hr-leave-request", "/dashboard/hr-my-salary", "/dashboard/hr-company-calendar",
+            ...allPurchaseRoutes,
+            ...allInventoryRoutes,
+            ...allNewPeteRoutes
           ];
         }
 
@@ -168,6 +189,12 @@ const LoginPage = () => {
             }
             if (route.startsWith("/dashboard/inventory")) {
               return systemSlugs.includes("inventory");
+            }
+            if (route.startsWith("/dashboard/newpete")) {
+              return systemSlugs.includes("newpete");
+            }
+            if (route.startsWith("/dashboard/greetings")) {
+              return systemSlugs.includes("greetings");
             }
             if (route === "/dashboard" || route === "/dashboard/setting" || route === "/dashboard/global-settings") {
               return true;

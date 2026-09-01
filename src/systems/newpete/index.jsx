@@ -41,7 +41,7 @@ function NewPeteWrapper({ Component }) {
 
 systemRegistry.register({
     id: 'newpete',
-    name: 'Pete Cash',
+    name: 'Petty Cash',
     icon: 'FolderKanban',
     menuItems: [
         {
@@ -51,7 +51,7 @@ systemRegistry.register({
             showFor: ['admin', 'HOD', 'user']
         },
         {
-            label: 'Add Case',
+            label: 'Add Cash',
             href: '/dashboard/newpete-add-case',
             icon: 'PlusCircle',
             showFor: ['admin', 'HOD', 'user']
@@ -72,7 +72,7 @@ systemRegistry.register({
         //     label: 'Settings',
         //     href: '/dashboard/newpete-settings',
         //     icon: 'Settings',
-        //     showFor: ['admin', 'HOD']
+        //     showFor: ['admin', 'HOD', 'user]
         // }
     ],
     routes: [

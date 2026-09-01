@@ -526,15 +526,31 @@ export default function GlobalSettings() {
           // Re-serialize slugs for local verification
           let slugs = [];
           if (payload.system_access === "all") {
-            slugs = ["checklist-delegation", "mis-summary"];
+            slugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"];
           } else if (payload.system_access === "none") {
             slugs = [];
           } else if (payload.system_access) {
             slugs = payload.system_access.split(",").map(s => s.trim()).filter(Boolean);
           } else {
-            slugs = ["checklist-delegation", "mis-summary"];
+            slugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"];
           }
           localStorage.setItem("allowed-systems", JSON.stringify(slugs));
+
+          const allPurchaseRoutes = [
+            "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
+            "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
+            "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
+            "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment"
+          ];
+          const allInventoryRoutes = [
+            "/dashboard/inventory", "/dashboard/inventory/dashboard", "/dashboard/inventory/stock",
+            "/dashboard/inventory/transactions", "/dashboard/inventory/reorder", "/dashboard/inventory/indent",
+            "/dashboard/inventory/settings"
+          ];
+          const allNewPeteRoutes = [
+            "/dashboard/newpete", "/dashboard/newpete-add-case", "/dashboard/newpete-expenses",
+            "/dashboard/newpete-ledger", "/dashboard/newpete-settings"
+          ];
 
           // Calculate allowed page paths
           let allowedRts = [];
@@ -551,7 +567,12 @@ export default function GlobalSettings() {
                 "/dashboard/data", "/dashboard/admin-data", "/dashboard/delegation",
                 "/dashboard/delegation-data", "/dashboard/admin-approval",
                 "/dashboard/mis-report", "/dashboard/setting", "/dashboard/global-settings",
-                "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra"
+                "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra",
+                "/dashboard/whatsapp-history",
+                ...allPurchaseRoutes,
+                ...allInventoryRoutes,
+                ...allNewPeteRoutes,
+                "/dashboard/greetings-birthdays", "/dashboard/greetings-festival-scheduler"
               ];
             } else if (roleLower === "hod") {
               allowedRts = [
@@ -559,13 +580,21 @@ export default function GlobalSettings() {
                 "/dashboard/delegation", "/dashboard/task", "/dashboard/calendar",
                 "/dashboard/training-video", "/dashboard/bulk-import", "/dashboard/delegation-data",
                 "/dashboard/admin-approval",
-                "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra"
+                "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra",
+                "/dashboard/whatsapp-history",
+                ...allPurchaseRoutes,
+                ...allInventoryRoutes,
+                ...allNewPeteRoutes
               ];
             } else {
               allowedRts = [
                 "/dashboard/admin", "/dashboard/notifications", "/dashboard/delegation",
                 "/dashboard/task", "/dashboard/calendar", "/dashboard/training-video",
-                "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra"
+                "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra",
+                "/dashboard/whatsapp-history",
+                ...allPurchaseRoutes,
+                ...allInventoryRoutes,
+                ...allNewPeteRoutes
               ];
             }
           } else if (payload.page_access === "none") {
@@ -578,6 +607,7 @@ export default function GlobalSettings() {
             allowedRts = ["/dashboard", "/dashboard/notifications"];
           }
           localStorage.setItem("allowed-pages", JSON.stringify(allowedRts));
+          window.dispatchEvent(new Event("permissions-updated"));
         }
 
         showToast(`User "${userForm.user_name}" updated successfully!`, "success");

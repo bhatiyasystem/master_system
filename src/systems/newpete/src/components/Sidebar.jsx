@@ -25,7 +25,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const adminMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/add-case', icon: Plus, label: 'Add Case' },
+    { path: '/add-cash', icon: Plus, label: 'Add Cash' },
     { path: '/expenses', icon: TrendingDown, label: 'Expenses' },
     { path: '/ledger', icon: BookOpen, label: 'Ledger' },
     { path: '/settings', icon: Settings, label: 'Settings' },
@@ -33,7 +33,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const employeeMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/add-case', icon: Plus, label: 'Add Case' },
+    { path: '/add-cash', icon: Plus, label: 'Add Cash' },
     { path: '/expenses', icon: TrendingDown, label: 'Expenses' },
   ];
 

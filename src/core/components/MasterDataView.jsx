@@ -110,7 +110,7 @@ export default function MasterDataView() {
                             }`}
                     >
                         <Lucide.Settings size={14} />
-                        Pete Setting
+                        Petty Setting
                     </button>
                 </div>
             </div>

@@ -78,20 +78,36 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
           // Parse allowed systems from database
           let systemSlugs = [];
           if (userProfile.system_access === "all") {
-          systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"];
+            systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"];
           } else if (userProfile.system_access === "none") {
             systemSlugs = [];
           } else if (userProfile.system_access) {
             systemSlugs = userProfile.system_access.split(",").map(s => s.trim()).filter(Boolean);
           } else {
             // Fallback to active systems
-            systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory"];
+            systemSlugs = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"];
           }
 
           setAllowedSystems(systemSlugs);
           localStorage.setItem("allowed-systems", JSON.stringify(systemSlugs));
 
           // Define potential routes based on role
+          const allPurchaseRoutes = [
+            "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
+            "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
+            "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
+            "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment"
+          ];
+          const allInventoryRoutes = [
+            "/dashboard/inventory", "/dashboard/inventory/dashboard", "/dashboard/inventory/stock",
+            "/dashboard/inventory/transactions", "/dashboard/inventory/reorder", "/dashboard/inventory/indent",
+            "/dashboard/inventory/settings"
+          ];
+          const allNewPeteRoutes = [
+            "/dashboard/newpete", "/dashboard/newpete-add-case", "/dashboard/newpete-expenses",
+            "/dashboard/newpete-ledger", "/dashboard/newpete-settings"
+          ];
+
           let potentialRoutes = [];
           if (isLegacyAdmin) {
             potentialRoutes = [
@@ -112,11 +128,10 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
               "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll",
               "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
-              "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
-              "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
-              "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
-              "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment",
-              "/dashboard/inventory"
+              ...allPurchaseRoutes,
+              ...allInventoryRoutes,
+              ...allNewPeteRoutes,
+              "/dashboard/greetings-birthdays", "/dashboard/greetings-festival-scheduler"
             ];
           } else if (roleLower === "hod") {
             potentialRoutes = [
@@ -125,22 +140,30 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               "/dashboard/training-video", "/dashboard/bulk-import", "/dashboard/delegation-data",
               "/dashboard/admin-approval",
               "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra",
+              "/dashboard/whatsapp-history",
               "/dashboard/hr-dashboard", "/dashboard/hr-indent", "/dashboard/hr-find-enquiry",
               "/dashboard/hr-call-tracker", "/dashboard/hr-after-joining-work", "/dashboard/hr-leaving",
               "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
               "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
               "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
               "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
-              "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport"
+              "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
+              ...allPurchaseRoutes,
+              ...allInventoryRoutes,
+              ...allNewPeteRoutes
             ];
           } else {
             potentialRoutes = [
               "/dashboard/admin", "/dashboard/notifications", "/dashboard/delegation",
               "/dashboard/task", "/dashboard/calendar", "/dashboard/training-video",
               "/dashboard/mis-summary", "/dashboard/mis-history", "/dashboard/mis-kpi-kra",
+              "/dashboard/whatsapp-history",
               "/dashboard/hr-dashboard", "/dashboard/hr-my-profile", "/dashboard/hr-my-attendance",
               "/dashboard/hr-leave-request", "/dashboard/hr-my-salary", "/dashboard/hr-company-calendar",
-              "/dashboard/hr-advance", "/dashboard/hr-puttha"
+              "/dashboard/hr-advance", "/dashboard/hr-puttha",
+              ...allPurchaseRoutes,
+              ...allInventoryRoutes,
+              ...allNewPeteRoutes
             ];
           }
 
@@ -173,6 +196,12 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               if (route.startsWith("/dashboard/inventory")) {
                 return systemSlugs.includes("inventory");
               }
+              if (route.startsWith("/dashboard/newpete")) {
+                return systemSlugs.includes("newpete");
+              }
+              if (route.startsWith("/dashboard/greetings")) {
+                return systemSlugs.includes("greetings");
+              }
               if (route === "/dashboard" || route === "/dashboard/setting" || route === "/dashboard/global-settings") {
                 return true;
               }
@@ -183,6 +212,7 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
 
           setAllowedPages(finalAllowedPages);
           localStorage.setItem("allowed-pages", JSON.stringify(finalAllowedPages));
+          window.dispatchEvent(new Event("permissions-updated"));
         }
       } catch (err) {
         console.warn("⚠️ Profile sync failed, falling back to legacy localStorage permissions:", err.message);
@@ -193,10 +223,27 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
 
         setIsSuperAdmin(isLegacyAdmin);
         localStorage.setItem("is-super-admin", isLegacyAdmin ? "true" : "false");
+        const sysList = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms", "purchase", "inventory", "newpete", "greetings"];
+        setAllowedSystems(sysList);
+        localStorage.setItem("allowed-systems", JSON.stringify(sysList));
+
+        const allPurchaseRoutes = [
+          "/dashboard/purchase", "/dashboard/purchase/dashboard", "/dashboard/purchase/indent",
+          "/dashboard/purchase/approval", "/dashboard/purchase/pocreate", "/dashboard/purchase/polist",
+          "/dashboard/purchase/delivery", "/dashboard/purchase/receiving",
+          "/dashboard/purchase/payment-approval", "/dashboard/purchase/payment"
+        ];
+        const allInventoryRoutes = [
+          "/dashboard/inventory", "/dashboard/inventory/dashboard", "/dashboard/inventory/stock",
+          "/dashboard/inventory/transactions", "/dashboard/inventory/reorder", "/dashboard/inventory/indent",
+          "/dashboard/inventory/settings"
+        ];
+        const allNewPeteRoutes = [
+          "/dashboard/newpete", "/dashboard/newpete-add-case", "/dashboard/newpete-expenses",
+          "/dashboard/newpete-ledger", "/dashboard/newpete-settings"
+        ];
+
         if (isLegacyAdmin) {
-          const sysList = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"];
-          setAllowedSystems(sysList);
-          localStorage.setItem("allowed-systems", JSON.stringify(sysList));
           const allRts = [
             "/dashboard/admin", "/dashboard/notifications", "/dashboard/quick-task",
             "/dashboard/assign-task", "/dashboard/checklist", "/dashboard/maintenance",
@@ -214,15 +261,15 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
             "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
             "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
-            "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport"
+            "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
+            ...allPurchaseRoutes,
+            ...allInventoryRoutes,
+            ...allNewPeteRoutes,
+            "/dashboard/greetings-birthdays", "/dashboard/greetings-festival-scheduler"
           ];
           setAllowedPages(allRts);
           localStorage.setItem("allowed-pages", JSON.stringify(allRts));
         } else if (roleLower === "hod") {
-          const sysList = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"];
-          setAllowedSystems(sysList);
-          localStorage.setItem("allowed-systems", JSON.stringify(sysList));
-
           const hodRts = [
             "/dashboard/admin", "/dashboard/notifications", "/dashboard/assign-task",
             "/dashboard/delegation", "/dashboard/task", "/dashboard/calendar",
@@ -236,15 +283,14 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
             "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
             "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
-            "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport"
+            "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
+            ...allPurchaseRoutes,
+            ...allInventoryRoutes,
+            ...allNewPeteRoutes
           ];
           setAllowedPages(hodRts);
           localStorage.setItem("allowed-pages", JSON.stringify(hodRts));
         } else {
-          const sysList = ["checklist-delegation", "mis-summary", "whatsapp-management", "hr-fms"];
-          setAllowedSystems(sysList);
-          localStorage.setItem("allowed-systems", JSON.stringify(sysList));
-
           const userRts = [
             "/dashboard/admin", "/dashboard/notifications", "/dashboard/delegation",
             "/dashboard/task", "/dashboard/calendar", "/dashboard/training-video",
@@ -252,11 +298,15 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             "/dashboard/whatsapp-history",
             "/dashboard/hr-dashboard", "/dashboard/hr-my-profile", "/dashboard/hr-my-attendance",
             "/dashboard/hr-leave-request", "/dashboard/hr-my-salary", "/dashboard/hr-company-calendar",
-            "/dashboard/hr-advance", "/dashboard/hr-puttha"
+            "/dashboard/hr-advance", "/dashboard/hr-puttha",
+            ...allPurchaseRoutes,
+            ...allInventoryRoutes,
+            ...allNewPeteRoutes
           ];
           setAllowedPages(userRts);
           localStorage.setItem("allowed-pages", JSON.stringify(userRts));
         }
+        window.dispatchEvent(new Event("permissions-updated"));
       }
     };
 
@@ -364,17 +414,6 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
 
     return menuItems
       .filter((item) => {
-        // Filter based on showFor roles if specified
-        if (item.showFor) {
-          const roles = item.showFor.map(r => r.toLowerCase());
-          const userRoles = [roleNormalized];
-          if (isSuperAdmin && !userRoles.includes("admin")) {
-            userRoles.push("admin");
-          }
-          const hasMatchingRole = userRoles.some(r => roles.includes(r));
-          if (!hasMatchingRole) return false;
-        }
-
         if (isSuperAdmin) return true;
 
         // Special dynamic guard for assign-task
@@ -383,15 +422,27 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
         }
 
         // Verify page-level permission
-        if (item.href) {
-          const isAllowed = allowedPages.some(route => {
-            if (route.includes("/:")) {
-              const cleanRoute = route.split("/:")[0];
-              return item.href === cleanRoute || item.href.startsWith(cleanRoute + "/");
-            }
-            return item.href === route;
-          });
-          if (!isAllowed) return false;
+        const isExplicitlyAllowed = item.href ? allowedPages.some(route => {
+          if (route.includes("/:")) {
+            const cleanRoute = route.split("/:")[0];
+            return item.href === cleanRoute || item.href.startsWith(cleanRoute + "/");
+          }
+          return item.href === route;
+        }) : false;
+
+        if (item.href && !isExplicitlyAllowed) {
+          return false;
+        }
+
+        // Filter based on showFor roles if specified
+        if (item.showFor) {
+          const roles = item.showFor.map(r => r.toLowerCase());
+          const userRoles = [roleNormalized];
+          if (isSuperAdmin && !userRoles.includes("admin")) {
+            userRoles.push("admin");
+          }
+          const hasMatchingRole = userRoles.some(r => roles.includes(r));
+          if (!hasMatchingRole && !isExplicitlyAllowed) return false;
         }
 
         return true;
