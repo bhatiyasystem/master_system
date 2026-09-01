@@ -123,9 +123,8 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               "/dashboard/whatsapp-history",
               "/dashboard/hr-dashboard", "/dashboard/hr-indent", "/dashboard/hr-find-enquiry",
               "/dashboard/hr-call-tracker", "/dashboard/hr-after-joining-work", "/dashboard/hr-leaving",
-              "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
-              "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
-              "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
+              "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", 
+              "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
               "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll",
               "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
               ...allPurchaseRoutes,
@@ -143,9 +142,8 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
               "/dashboard/whatsapp-history",
               "/dashboard/hr-dashboard", "/dashboard/hr-indent", "/dashboard/hr-find-enquiry",
               "/dashboard/hr-call-tracker", "/dashboard/hr-after-joining-work", "/dashboard/hr-leaving",
-              "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
-              "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
-              "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
+              "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee",
+              "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
               "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
               "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
               ...allPurchaseRoutes,
@@ -257,9 +255,8 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             "/dashboard/whatsapp-history",
             "/dashboard/hr-dashboard", "/dashboard/hr-indent", "/dashboard/hr-find-enquiry",
             "/dashboard/hr-call-tracker", "/dashboard/hr-after-joining-work", "/dashboard/hr-leaving",
-            "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
-            "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
-            "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
+            "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", 
+            "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
             "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
             "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
             ...allPurchaseRoutes,
@@ -279,9 +276,8 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
             "/dashboard/whatsapp-history",
             "/dashboard/hr-dashboard", "/dashboard/hr-indent", "/dashboard/hr-find-enquiry",
             "/dashboard/hr-call-tracker", "/dashboard/hr-after-joining-work", "/dashboard/hr-leaving",
-            "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee", "/dashboard/hr-my-profile",
-            "/dashboard/hr-my-attendance", "/dashboard/hr-leave-request", "/dashboard/hr-my-salary",
-            "/dashboard/hr-company-calendar", "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
+            "/dashboard/hr-after-leaving-work", "/dashboard/hr-employee",
+            "/dashboard/hr-leave-management", "/dashboard/hr-attendance",
             "/dashboard/hr-attendancedaily", "/dashboard/hr-report", "/dashboard/hr-payroll", 
             "/dashboard/hr-salary-config", "/dashboard/hr-advance", "/dashboard/hr-puttha", "/dashboard/hr-misreport",
             ...allPurchaseRoutes,
@@ -414,7 +410,12 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
 
     return menuItems
       .filter((item) => {
-        if (isSuperAdmin) return true;
+        if (isSuperAdmin) {
+          if (item.showFor && !item.showFor.map(r => r.toLowerCase()).includes('admin') && !item.showFor.map(r => r.toLowerCase()).includes('hod')) {
+            return false;
+          }
+          return true;
+        }
 
         // Special dynamic guard for assign-task
         if (item.href === "/dashboard/assign-task" && roleNormalized === "user" && !canSelfAssign) {
@@ -452,7 +453,12 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
           return {
             ...item,
             subItems: item.subItems.filter((sub) => {
-              if (isSuperAdmin) return true;
+              if (isSuperAdmin) {
+                if (sub.showFor && !sub.showFor.map(r => r.toLowerCase()).includes('admin') && !sub.showFor.map(r => r.toLowerCase()).includes('hod')) {
+                  return false;
+                }
+                return true;
+              }
               return allowedPages.some(route => {
                 if (route.includes("/:")) {
                   const cleanRoute = route.split("/:")[0];

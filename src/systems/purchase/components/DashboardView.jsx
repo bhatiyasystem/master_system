@@ -87,58 +87,75 @@ export default function DashboardView({ onTabChange }) {
   const products = useMemo(() => aggregateProducts(pos), [pos]);
 
   const indentStatusList = useMemo(() => {
-    return indents.map((indent) => {
-      let stage = 'Indent Approval';
-      let status = indent.status; // 'Pending', 'Approved', 'Rejected'
+    const list = [];
+    indents.forEach((indent) => {
+      if (indent.status === 'Rejected') return; // Do not show rejected indents
 
+      let approvalStatus = 'Waiting';
+      let poStatus = 'Waiting';
+      let receivingStatus = 'Waiting';
+      let paymentApprovalStatus = 'Waiting';
+      let paymentStatus = 'Waiting';
+
+      let isActive = true;
+
+      // Approval stage
       if (indent.status === 'Approved') {
+        approvalStatus = 'Approved';
+      } else {
+        approvalStatus = 'Pending';
+      }
+
+      // Purchase Order stage
+      if (approvalStatus === 'Approved') {
         if (!indent.poId) {
-          stage = 'PO Creation';
-          status = 'Pending';
+          poStatus = 'Pending';
         } else {
-          // Find delivery
+          poStatus = 'Approved';
+
+          // Receiving stage
           const delivery = deliveries.find((d) => d.poId === indent.poId);
-          if (!delivery) {
-            stage = 'Delivery';
-            status = 'Pending';
-          } else if (!delivery.received) {
-            stage = 'Receiving';
-            status = 'Pending';
+          if (!delivery || !delivery.received) {
+            receivingStatus = 'Pending';
           } else {
-            // Find payment approval
+            receivingStatus = 'Approved';
+
+            // Payment Approval stage
             const approval = paymentApprovals.find((a) => a.poId === indent.poId);
-            if (!approval) {
-              stage = 'Payment Approval';
-              status = 'Pending';
-            } else if (approval.status === 'Pending') {
-              stage = 'Payment Approval';
-              status = 'Pending';
+            if (!approval || approval.status === 'Pending') {
+              paymentApprovalStatus = 'Pending';
             } else if (approval.status === 'Rejected') {
-              stage = 'Payment Approval';
-              status = 'Rejected';
+              isActive = false; // Rejected at payment approval stage
             } else if (approval.status === 'Approved') {
-              // Find payment
+              paymentApprovalStatus = 'Approved';
+
+              // Payment stage
               const payment = payments.find((p) => p.poId === indent.poId);
               if (!payment) {
-                stage = 'Payment';
-                status = 'Pending';
+                paymentStatus = 'Pending';
               } else {
-                stage = 'Completed';
-                status = 'Paid';
+                paymentStatus = 'Approved';
+                isActive = false; // Fully paid, drop from active list
               }
             }
           }
         }
       }
 
-      return {
-        id: indent.id,
-        itemDetails: indent.itemDetails,
-        vendor: indent.vendor || '—',
-        stage,
-        status,
-      };
+      if (isActive) {
+        list.push({
+          id: indent.id,
+          itemDetails: indent.itemDetails,
+          vendor: indent.vendor || '—',
+          approvalStatus,
+          poStatus,
+          receivingStatus,
+          paymentApprovalStatus,
+          paymentStatus,
+        });
+      }
     });
+    return list;
   }, [indents, deliveries, paymentApprovals, payments]);
 
   const filteredIndentStatusList = useMemo(() => {
@@ -147,9 +164,7 @@ export default function DashboardView({ onTabChange }) {
     return indentStatusList.filter(
       (item) =>
         item.itemDetails.toLowerCase().includes(q) ||
-        item.vendor.toLowerCase().includes(q) ||
-        item.stage.toLowerCase().includes(q) ||
-        item.status.toLowerCase().includes(q)
+        item.vendor.toLowerCase().includes(q)
     );
   }, [indentStatusList, searchQuery]);
 
@@ -190,15 +205,18 @@ export default function DashboardView({ onTabChange }) {
               <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-black uppercase tracking-wider text-gray-500">
                 <th className="px-4 py-2.5">Indent Name</th>
                 <th className="px-4 py-2.5">Vendor</th>
-                <th className="px-4 py-2.5">Stage</th>
-                <th className="px-4 py-2.5">Status</th>
+                <th className="px-4 py-2.5">Approval</th>
+                <th className="px-4 py-2.5">Purchase Order</th>
+                <th className="px-4 py-2.5">Receiving</th>
+                <th className="px-4 py-2.5">Payment Approval</th>
+                <th className="px-4 py-2.5">Payment</th>
               </tr>
             </thead>
             <tbody>
               {filteredIndentStatusList.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500 font-semibold">
-                    No indent items found.
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-500 font-semibold">
+                    No active indent items found.
                   </td>
                 </tr>
               ) : (
@@ -206,28 +224,11 @@ export default function DashboardView({ onTabChange }) {
                   <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50/50 font-semibold text-gray-800">
                     <td className="px-4 py-2.5 text-gray-900">{item.itemDetails}</td>
                     <td className="px-4 py-2.5 text-gray-600">{item.vendor}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 border border-blue-100">
-                        {item.stage}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {item.status === 'Rejected' && (
-                        <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10.5px] font-bold text-rose-700 border border-rose-100">
-                          {item.status}
-                        </span>
-                      )}
-                      {(item.status === 'Approved' || item.status === 'Paid') && (
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700 border border-emerald-100">
-                          {item.status}
-                        </span>
-                      )}
-                      {item.status !== 'Rejected' && item.status !== 'Approved' && item.status !== 'Paid' && (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10.5px] font-bold text-amber-700 border border-amber-100">
-                          {item.status}
-                        </span>
-                      )}
-                    </td>
+                    <td className="px-4 py-2.5"><StatusBadge status={item.approvalStatus} /></td>
+                    <td className="px-4 py-2.5"><StatusBadge status={item.poStatus} /></td>
+                    <td className="px-4 py-2.5"><StatusBadge status={item.receivingStatus} /></td>
+                    <td className="px-4 py-2.5"><StatusBadge status={item.paymentApprovalStatus} /></td>
+                    <td className="px-4 py-2.5"><StatusBadge status={item.paymentStatus} /></td>
                   </tr>
                 ))
               )}
@@ -336,6 +337,38 @@ export default function DashboardView({ onTabChange }) {
       </div>
     </div>
   );
+}
+
+function StatusBadge({ status }) {
+  if (status === 'Approved') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700 border border-emerald-100">
+        <span className="text-emerald-500">✓</span> Approved
+      </span>
+    );
+  }
+  if (status === 'Pending') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10.5px] font-bold text-blue-700 border border-blue-100">
+        <span className="text-blue-500">●</span> Pending
+      </span>
+    );
+  }
+  if (status === 'Waiting') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-[10.5px] font-bold text-gray-500 border border-gray-200">
+        <span className="text-gray-400">○</span> Waiting
+      </span>
+    );
+  }
+  if (status === 'Rejected') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10.5px] font-bold text-rose-700 border border-rose-100">
+        <span className="text-rose-500">✗</span> Rejected
+      </span>
+    );
+  }
+  return null;
 }
 
 function StatCard({ label, value, foot, accent, small }) {
