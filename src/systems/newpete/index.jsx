@@ -4,7 +4,7 @@ import { initializeStorage } from './src/utils/storageManager';
 
 // Import NewPete pages
 import AdminDashboard from './src/pages/AdminDashboard';
-import AddCase from './src/pages/AddCase';
+import AddCash from './src/pages/AddCash';
 import Expenses from './src/pages/Expenses';
 import Settings from './src/pages/Settings';
 import Ledger from './src/pages/Ledger';
@@ -52,7 +52,7 @@ systemRegistry.register({
         },
         {
             label: 'Add Cash',
-            href: '/dashboard/newpete-add-case',
+            href: '/dashboard/newpete-add-cash',
             icon: 'PlusCircle',
             showFor: ['admin', 'HOD', 'user']
         },
@@ -82,8 +82,8 @@ systemRegistry.register({
             protected: true
         },
         {
-            path: '/dashboard/newpete-add-case',
-            element: <NewPeteWrapper Component={AddCase} />,
+            path: '/dashboard/newpete-add-cash',
+            element: <NewPeteWrapper Component={AddCash} />,
             protected: true
         },
         {

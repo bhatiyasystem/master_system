@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
-import AddCase from './pages/AddCase';
+import AddCash from './pages/AddCash';
 import Expenses from './pages/Expenses';
 // import Settings from './pages/Settings';
 import Ledger from './pages/Ledger';
@@ -30,7 +30,7 @@ function App() {
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="add-case" element={<AddCase />} />
+            <Route path="add-cash" element={<AddCash />} />
             <Route path="expenses" element={<Expenses />} />
             {/* <Route path="settings" element={<Settings />} /> */}
             <Route path="ledger" element={<Ledger />} />

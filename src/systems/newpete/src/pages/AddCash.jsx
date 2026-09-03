@@ -22,7 +22,7 @@ import {
 
 import { fetchEmployees } from '../../../HR_fms/src/services/supabaseHR';
 
-export default function AddCase() {
+export default function AddCash() {
   const { showToast } = useMagicToast();
   const toast = {
     error: (msg) => showToast(msg, 'error'),
