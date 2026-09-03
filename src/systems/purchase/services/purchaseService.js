@@ -815,7 +815,7 @@ export async function submitReceiving({ deliveryId, items, fullyReceived, receip
 
   // 5. Update delivery as received if all daggs are received
   const newTotalReceived = totalReceived + inputDagg;
-  const newFullyReceived = fullyReceived || (newTotalReceived >= (delivery.dagg_count || 0));
+  const newFullyReceived = fullyReceived && (newTotalReceived >= (delivery.dagg_count || 0));
 
   if (newFullyReceived) {
     const { error: updErr } = await supabase
@@ -958,7 +958,7 @@ export async function reviseReceiving({ receivingId, items, fullyReceived, recei
 
   // Update delivery
   const newTotalReceived = totalReceived + inputDagg;
-  const newFullyReceived = fullyReceived || (newTotalReceived >= (delivery.dagg_count || 0));
+  const newFullyReceived = fullyReceived && (newTotalReceived >= (delivery.dagg_count || 0));
 
   const { error: updErr } = await supabase
     .from('purchase_deliveries')
@@ -1458,10 +1458,7 @@ export async function createIndentsManualBulk(vendor, items) {
   return data;
 }
 
-export async function previewIndentsManualBulk(vendor, items) {
-  if (!items || items.length === 0) return { toCreate: [], toSkip: [] };
-
-  // Query existing pending or approved indents
+export async function fetchActiveIndentsPool() {
   const [indentsRes, deliveriesRes, approvalsRes] = await Promise.all([
     supabase.from('purchase_indents').select('id, item_details, status, po_id, unique_no').in('status', ['Pending', 'Approved']),
     supabase.from('purchase_deliveries').select('id, po_id, received'),
@@ -1476,7 +1473,6 @@ export async function previewIndentsManualBulk(vendor, items) {
   const deliveries = deliveriesRes.data || [];
   const approvals = approvalsRes.data || [];
 
-  // Group deliveries by PO
   const delsByPo = {};
   deliveries.forEach(d => {
     (delsByPo[d.po_id] = delsByPo[d.po_id] || []).push(d);
@@ -1484,27 +1480,14 @@ export async function previewIndentsManualBulk(vendor, items) {
 
   const decidedPoIds = new Set(approvals.map(a => a.po_id));
 
-  // Determine stage of each indent
   const getIndentStage = (row) => {
-    if (row.status === 'Pending') {
-      return 'Approvals';
-    }
+    if (row.status === 'Pending') return 'Approvals';
     if (row.status === 'Approved') {
-      if (!row.po_id) {
-        return 'Purchase Order';
-      }
-      // If decided in payment approval, it is in history
-      if (decidedPoIds.has(row.po_id)) {
-        return 'History';
-      }
-      // Otherwise, it is in Delivery, Receiving, or Payment Approval stage
+      if (!row.po_id) return 'Purchase Order';
+      if (decidedPoIds.has(row.po_id)) return 'History';
       const dels = delsByPo[row.po_id] || [];
-      if (dels.length === 0) {
-        return 'Delivery';
-      }
-      if (dels.every(d => d.received)) {
-        return 'Payment Approval';
-      }
+      if (dels.length === 0) return 'Delivery';
+      if (dels.every(d => d.received)) return 'Payment Approval';
       return 'Receiving';
     }
     return 'Unknown';
@@ -1522,6 +1505,14 @@ export async function previewIndentsManualBulk(vendor, items) {
       };
     }
   });
+
+  return { activePool, normalize };
+}
+
+export async function previewIndentsManualBulk(vendor, items) {
+  if (!items || items.length === 0) return { toCreate: [], toSkip: [] };
+
+  const { activePool, normalize } = await fetchActiveIndentsPool();
 
   const toCreate = [];
   const toSkip = [];

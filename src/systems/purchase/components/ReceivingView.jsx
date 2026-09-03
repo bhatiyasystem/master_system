@@ -355,19 +355,18 @@ function PendingReceivingPanel({ deliveries, deliveryDaggStatus, poMap, tatTrack
                     const list = groups[vendorName];
                     return (
                         <div key={vendorName} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                            <div className="flex flex-wrap items-center justify-between gap-2 p-4">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleVendor(vendorName)}
-                                    className="flex items-center gap-1.5 text-left"
-                                >
+                            <div 
+                                className="flex flex-wrap items-center justify-between gap-2 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                onClick={() => toggleVendor(vendorName)}
+                            >
+                                <div className="flex items-center gap-1.5 text-left flex-1">
                                     {expanded[vendorName] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
                                     <span className="text-[14px] font-bold text-[#173254]">{vendorName}</span>
                                     <span className="text-[11.5px] text-gray-500">— {list.length} pending delivery(s)</span>
-                                </button>
+                                </div>
                                 <button
                                     className="rounded-lg bg-[#173254] px-4 py-2 text-xs font-bold text-white hover:bg-[#10243e] flex items-center gap-1.5 transition-colors"
-                                    onClick={() => onUpdate(list)}
+                                    onClick={(e) => { e.stopPropagation(); onUpdate(list); }}
                                 >
                                     <PackageCheck size={14} /> Receive Items
                                 </button>
@@ -469,7 +468,7 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
             const delivery = deliveryMap.get(r.deliveryId);
             const po = delivery ? poMap.get(delivery.poId) : null;
             const poNo = po?.poNo || null;
-            (r.items || []).forEach((item) => {
+            if (!r.items || r.items.length === 0) {
                 flat.push({
                     receivingId: r.id,
                     deliveryId: r.deliveryId,
@@ -478,17 +477,38 @@ function ReceivingHistoryPanel({ receivings, deliveries, poMap, onRevise }) {
                     poNo: poNo || '—',
                     po: po,
                     transportName: delivery?.transportName || '—',
-                    productName: item.productName,
-                    productCode: item.productCode,
-                    orderedQty: item.orderedQty,
-                    receivedQty: item.receivedQty,
+                    productName: '— (Dagg Receipt Only)',
+                    productCode: '—',
+                    orderedQty: '0',
+                    receivedQty: '0',
                     receivedAt: r.receivedAt,
                     receiptDate: r.receiptDate,
                     receiptTime: r.receiptTime,
                     receivedDagg: r.receivedDagg,
                     receivedBy: r.receivedBy,
                 });
-            });
+            } else {
+                (r.items || []).forEach((item) => {
+                    flat.push({
+                        receivingId: r.id,
+                        deliveryId: r.deliveryId,
+                        delivery: delivery,
+                        receivingRow: r,
+                        poNo: poNo || '—',
+                        po: po,
+                        transportName: delivery?.transportName || '—',
+                        productName: item.productName,
+                        productCode: item.productCode,
+                        orderedQty: item.orderedQty,
+                        receivedQty: item.receivedQty,
+                        receivedAt: r.receivedAt,
+                        receiptDate: r.receiptDate,
+                        receiptTime: r.receiptTime,
+                        receivedDagg: r.receivedDagg,
+                        receivedBy: r.receivedBy,
+                    });
+                });
+            }
         });
         return flat;
     }, [receivings, deliveryMap, poMap]);
@@ -673,7 +693,6 @@ function ReceiveItemsModal({ deliveries, poMap, receivings, receivingToEdit, onC
         try {
             for (const del of deliveries) {
                 const delItems = items.filter(it => it.deliveryId === del.id);
-                if (delItems.length === 0 && !isEditing) continue;
                 
                 const totalRec = (receivings || [])
                     .filter(r => r.deliveryId === del.id && (!receivingToEdit || r.id !== receivingToEdit.id))
@@ -682,6 +701,8 @@ function ReceiveItemsModal({ deliveries, poMap, receivings, receivingToEdit, onC
                 
                 const clampedDagg = Math.min(inputDagg, remaining);
     
+                if (delItems.length === 0 && !isEditing && clampedDagg <= 0) continue;
+                
                 const fullyReceived = delItems.every(
                     (it) => it.alreadyReceived + Number(it.receivedQty || 0) >= Number(it.orderedQty)
                 );

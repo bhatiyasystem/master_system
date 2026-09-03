@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import supabase from '../../../SupabaseClient';
-import { createIndentsManualBulk, previewIndentsManualBulk } from '../services/purchaseService';
+import { createIndentsManualBulk, previewIndentsManualBulk, fetchActiveIndentsPool } from '../services/purchaseService';
 
 export default function CreateIndentFormModal({ onClose, onSaved }) {
     const [items, setItems] = useState([
-        { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
+        { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '', orderQtyRequired: false }
     ]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -13,6 +13,8 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     const [previewData, setPreviewData] = useState({ toCreate: [], toSkip: [] });
     const [existingItemsDB, setExistingItemsDB] = useState([]);
     const [vendorOptions, setVendorOptions] = useState([]);
+    const [activePool, setActivePool] = useState({});
+    const [normalizeFn, setNormalizeFn] = useState(() => (val) => String(val || '').trim().toLowerCase().replace(/\s+/g, ' '));
 
     useEffect(() => {
         let isMounted = true;
@@ -39,10 +41,13 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 });
 
                 const vNames = (vendorsRes.data || []).map(v => String(v.name || '').trim()).filter(Boolean);
+                const { activePool: pool, normalize } = await fetchActiveIndentsPool();
 
                 if (isMounted) {
                     setExistingItemsDB(Object.values(uniqueMap));
                     setVendorOptions(vNames);
+                    setActivePool(pool || {});
+                    setNormalizeFn(() => normalize);
                 }
             } catch (err) {
                 console.error('Error fetching existing items/vendors for prefill:', err);
@@ -70,6 +75,9 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 const exactVendor = vendorOptions.find(v => v.toLowerCase() === String(matched.vendor || '').trim().toLowerCase());
                 updatedVendor = exactVendor || matched.vendor || currentItem.vendor;
             }
+            // order_formula: if matched value is 0 or empty/null, leave blank and flag as required
+            const matchedOrderQty = matched ? matched.order_formula : null;
+            const orderQtyIsZeroOrEmpty = matched && (matchedOrderQty === 0 || matchedOrderQty === null || matchedOrderQty === undefined || String(matchedOrderQty).trim() === '' || String(matchedOrderQty).trim() === '0');
             copy[index] = {
                 ...currentItem,
                 item_details: val,
@@ -83,7 +91,9 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 rol_qty: matched ? (matched.rol_qty !== null ? String(matched.rol_qty) : currentItem.rol_qty) : currentItem.rol_qty,
                 cl_qty: matched ? (matched.cl_qty !== null ? String(matched.cl_qty) : currentItem.cl_qty) : currentItem.cl_qty,
                 conversion_unit: matched ? (matched.conversion_unit || currentItem.conversion_unit) : currentItem.conversion_unit,
-                order_formula: matched ? (matched.order_formula !== null ? String(matched.order_formula) : currentItem.order_formula) : currentItem.order_formula,
+                // If 0 or empty from DB: leave blank and mark as required so user must fill it
+                order_formula: orderQtyIsZeroOrEmpty ? '' : (matched ? String(matchedOrderQty) : currentItem.order_formula),
+                orderQtyRequired: orderQtyIsZeroOrEmpty,
             };
             return copy;
         });
@@ -92,7 +102,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     const addItem = () => {
         setItems((prev) => [
             ...prev,
-            { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '' }
+            { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '', orderQtyRequired: false }
         ]);
     };
 
@@ -114,6 +124,14 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
             const invalidItem = items.find(it => !it.item_details || !it.item_details.trim());
             if (invalidItem) {
                 const errMsg = 'Item Name is required for all items.';
+                setError(errMsg);
+                setShowErrorPopup(true);
+                return;
+            }
+            // Validate Order Qty — must be filled and non-zero
+            const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
+            if (missingQty) {
+                const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
                 setError(errMsg);
                 setShowErrorPopup(true);
                 return;
@@ -200,6 +218,8 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         onChange={(val) => handleItemNameChange(index, val)}
                                                         label="Item Name"
                                                         placeholder="Select or enter item name"
+                                                        activePool={activePool}
+                                                        normalize={normalizeFn}
                                                     />
                                                 </div>
 
@@ -284,13 +304,33 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                     />
                                                 </div>
                                                 <div className="space-y-1 text-gray-800">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Order Qty</label>
+                                                    <label className="text-[10px] font-bold uppercase tracking-wider block flex items-center gap-1"
+                                                        style={{ color: item.orderQtyRequired && !item.order_formula ? '#ef4444' : '#9ca3af' }}
+                                                    >
+                                                        Order Qty <span className="text-rose-500">*</span>
+                                                        {item.orderQtyRequired && !item.order_formula && (
+                                                            <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full">
+                                                                ⚠ Required — was 0 in records
+                                                            </span>
+                                                        )}
+                                                    </label>
                                                     <input
-                                                        type="text"
+                                                        type="number"
+                                                        min="0"
                                                         value={item.order_formula}
-                                                        onChange={(e) => updateItem(index, 'order_formula', e.target.value)}
-                                                        placeholder="Order Qty"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        onChange={(e) => {
+                                                            updateItem(index, 'order_formula', e.target.value);
+                                                            // Clear the required flag once user starts typing
+                                                            if (e.target.value && Number(e.target.value) > 0) {
+                                                                updateItem(index, 'orderQtyRequired', false);
+                                                            }
+                                                        }}
+                                                        placeholder="Enter order quantity"
+                                                        className={`w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all ${
+                                                            item.orderQtyRequired && !item.order_formula
+                                                                ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50 focus:ring-rose-400'
+                                                                : 'border-gray-150 focus:ring-blue-500'
+                                                        }`}
                                                     />
                                                 </div>
                                             </div>
@@ -454,7 +494,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
         </div>
     );
 }
-function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom }) {
+function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom, activePool, normalize }) {
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
@@ -552,7 +592,19 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
             {isOpen && (
                 <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto py-1">
                     {filtered.length > 0 ? (
-                        filtered.map((opt) => (
+                        filtered.map((opt) => {
+                            let isUnderProcess = false;
+                            if (activePool && normalize) {
+                                const norm = normalize(opt);
+                                if (activePool[norm]) isUnderProcess = true;
+                            }
+                            
+                            let textColorClass = 'text-gray-700';
+                            if (activePool && normalize) {
+                                textColorClass = isUnderProcess ? 'text-rose-600' : 'text-emerald-600';
+                            }
+
+                            return (
                             <button
                                 key={opt}
                                 type="button"
@@ -562,12 +614,17 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                                     setIsOpen(false);
                                 }}
                                 className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 ${
-                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-700'
+                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : textColorClass
                                 }`}
                             >
                                 {opt}
+                                {activePool && normalize && (
+                                    <span className={`ml-2 text-[9px] italic ${isUnderProcess ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                        {isUnderProcess ? '(Under Process)' : '(Can Create Indent)'}
+                                    </span>
+                                )}
                             </button>
-                        ))
+                        )})
                     ) : (
                         <div className="px-4 py-3 text-xs text-gray-400 font-medium italic">
                             {disableCustom ? 'No matching records' : 'No matches (press Enter to use custom value)'}

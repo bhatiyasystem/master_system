@@ -13,6 +13,8 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { getExpenses } from '../utils/storageManager';
+import { getPendingCount } from '../utils/helpers';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -23,10 +25,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     navigate('/login', { replace: true });
   };
 
+  const expenses = getExpenses();
+  const pendingExpenses = getPendingCount(expenses);
+
   const adminMenuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/add-cash', icon: Plus, label: 'Add Cash' },
-    { path: '/expenses', icon: TrendingDown, label: 'Expenses' },
+    { path: '/expenses', icon: TrendingDown, label: 'Expenses', badge: pendingExpenses > 0 ? pendingExpenses : null },
     { path: '/ledger', icon: BookOpen, label: 'Ledger' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
@@ -108,14 +113,19 @@ const Sidebar = ({ isOpen, onClose }) => {
                     to={item.path}
                     onClick={onClose}
                     className={({ isActive }) => `
-                      flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
+                      flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group relative
                       ${isActive 
                         ? 'bg-sky-100 text-sky-600 border-l-4 border-sky-600' 
                         : 'text-gray-700 hover:bg-sky-50 hover:text-sky-600 border-l-4 border-transparent'}
                     `}
                   >
                     <item.icon size={20} className="group-hover:scale-110 transition-transform" />
-                    <span className="font-medium">{item.label}</span>
+                    <span className="font-medium flex-1 text-left">{item.label}</span>
+                    {item.badge && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ml-auto">
+                        {item.badge}
+                      </span>
+                    )}
                   </NavLink>
                 )}
               </React.Fragment>

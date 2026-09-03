@@ -363,7 +363,6 @@ function DecideModal({ po, approvalToEdit, onClose, onSuccess }) {
     const [taxableAmount, setTaxableAmount] = useState(po.total || '');
     const [gstAmount, setGstAmount] = useState(po.taxAmount || '');
     const [billAmount, setBillAmount] = useState(po.grandTotal || '');
-    const [seal, setSeal] = useState('Available');
 
     // Verification Checkbox States
     const [chkBillDate, setChkBillDate] = useState(approvalToEdit ? !!approvalToEdit.checkBillDate : false);
@@ -490,7 +489,7 @@ function DecideModal({ po, approvalToEdit, onClose, onSuccess }) {
                         <CheckRow label="GST Amount" val={gstAmount} setVal={setGstAmount} checked={chkGstAmount} setChecked={setChkGstAmount} type="number" />
                         <CheckRow label="Bill Amount" val={billAmount} setVal={setBillAmount} checked={chkBillAmount} setChecked={setChkBillAmount} type="number" />
                         <div className="md:col-span-2">
-                            <CheckRow label="Seal" val={seal} setVal={setSeal} checked={chkSeal} setChecked={setChkSeal} />
+                            <CheckRow label="Seal" checked={chkSeal} setChecked={setChkSeal} hideInput />
                         </div>
                     </div>
                 </div>
@@ -521,7 +520,7 @@ function DecideModal({ po, approvalToEdit, onClose, onSuccess }) {
     );
 }
 
-function CheckRow({ label, val, setVal, checked, setChecked, type = 'text', readOnly = false }) {
+function CheckRow({ label, val, setVal, checked, setChecked, type = 'text', readOnly = false, hideInput = false }) {
     return (
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between py-1 text-[12.5px] border-b border-gray-50 last:border-0 pb-2 w-full">
             <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700 shrink-0">
@@ -533,14 +532,16 @@ function CheckRow({ label, val, setVal, checked, setChecked, type = 'text', read
                 />
                 <span>{label}</span>
             </label>
-            <input
-                type={type}
-                className="input py-1 px-3 h-[36px] border border-gray-300 rounded-lg text-xs font-semibold w-full sm:max-w-[160px]"
-                value={val}
-                onChange={(e) => setVal(e.target.value)}
-                readOnly={readOnly}
-                placeholder={readOnly ? '' : `Enter ${label}`}
-            />
+            {!hideInput && (
+                <input
+                    type={type}
+                    className="input py-1 px-3 h-[36px] border border-gray-300 rounded-lg text-xs font-semibold w-full sm:max-w-[160px]"
+                    value={val}
+                    onChange={(e) => setVal(e.target.value)}
+                    readOnly={readOnly}
+                    placeholder={readOnly ? '' : `Enter ${label}`}
+                />
+            )}
         </div>
     );
 }

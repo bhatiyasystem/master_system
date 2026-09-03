@@ -1,11 +1,12 @@
 import { Loader2, Wallet, ImageIcon, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { CardPanel, EmptyState, FilterBar } from './ui';
-import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment, revisePayment } from '../services/purchaseService';
+import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment, revisePayment, fetchDeliveries } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 import { sendWhatsAppTemplateMessage, sendWhatsAppTextMessage } from '../../../services/whatsappService';
+import supabase from '../../../SupabaseClient';
 
 export default function PaymentView() {
     const [tab, setTab] = useState('pending');
@@ -30,10 +31,22 @@ export default function PaymentView() {
         setLoading(true);
         setError('');
         try {
-            const [approvalsData, paymentsData, posData] = await Promise.all([fetchPaymentApprovals(), fetchPayments(), fetchPOs()]);
+            const [approvalsData, paymentsData, posData, deliveriesData] = await Promise.all([
+                fetchPaymentApprovals(), fetchPayments(), fetchPOs(), fetchDeliveries()
+            ]);
+            // Attach deliveries to each PO
+            const deliveriesByPoId = {};
+            (deliveriesData || []).forEach(d => {
+                if (!deliveriesByPoId[d.poId]) deliveriesByPoId[d.poId] = [];
+                deliveriesByPoId[d.poId].push(d);
+            });
+            const posWithDeliveries = (posData || []).map(p => ({
+                ...p,
+                deliveries: deliveriesByPoId[p.id] || []
+            }));
             setApprovals(approvalsData || []);
             setPayments(paymentsData || []);
-            setPos(posData || []);
+            setPos(posWithDeliveries);
 
             const approvalIds = (approvalsData || []).map(a => a.id);
             if (approvalIds.length > 0) {
@@ -162,62 +175,61 @@ function PendingPaymentsPanel({ approvals, poMap, tatTracking, tatMins, onPay })
                     onChange={(e) => setSearch(e.target.value)}
                 />
             </FilterBar>
-
             <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">Action</th>
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Vendor</th>
-                                
-                                <th className="px-3 py-2.5">Approved At</th>
-                                <th className="px-3 py-2.5">Planned Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                             {approvals.length === 0 ? (
-                                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No approved POs waiting for payment.</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
-                            ) : filtered.map((a) => {
-                                const po = poMap.get(a.poId);
-                                return (
-                                    <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                        <td className="px-3 py-2.5">
-                                            <button
-                                                className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
-                                                onClick={() => onPay(a)}
-                                            >
-                                                <Wallet size={14} /> Pay
-                                            </button>
-                                        </td>
-                                        <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
-                                        <td className="px-3 py-2.5 text-gray-800">
-                                            <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
-                                            {po?.vendor && (
-                                                <div className="text-[11px] text-gray-500 mt-0.5">
-                                                    {po.vendor.city && <span>{po.vendor.city}</span>}
-                                                    {po.vendor.contact && <span> • {po.vendor.contact}</span>}
-                                                    {po.vendor.paymentTerms && (
-                                                        <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
-                                                            {po.vendor.paymentTerms}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </td>
-                                        
-                                        <td className="px-3 py-2.5 text-gray-500">
-                                            {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
-                                        </td>
-                                         <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[a.id], a.decidedAt, tatMins)}</td>
-                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                <table className="w-full text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Vendor</th>
+
+                            <th className="px-3 py-2.5">Approved At</th>
+                            <th className="px-3 py-2.5">Planned Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {approvals.length === 0 ? (
+                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No approved POs waiting for payment.</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                        ) : filtered.map((a) => {
+                            const po = poMap.get(a.poId);
+                            return (
+                                <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
+                                    <td className="px-3 py-2.5">
+                                        <button
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#10243e]"
+                                            onClick={() => onPay(a)}
+                                        >
+                                            <Wallet size={14} /> Pay
+                                        </button>
+                                    </td>
+                                    <td className="px-3 py-2.5 font-semibold text-gray-900">{po?.poNo || '—'}</td>
+                                    <td className="px-3 py-2.5 text-gray-800">
+                                        <div className="font-semibold text-gray-900">{po?.vendor?.name || '—'}</div>
+                                        {po?.vendor && (
+                                            <div className="text-[11px] text-gray-500 mt-0.5">
+                                                {po.vendor.city && <span>{po.vendor.city}</span>}
+                                                {po.vendor.contact && <span> • {po.vendor.contact}</span>}
+                                                {po.vendor.paymentTerms && (
+                                                    <span className="ml-1.5 inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9.5px] font-medium text-blue-700">
+                                                        {po.vendor.paymentTerms}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </td>
+
+                                    <td className="px-3 py-2.5 text-gray-500">
+                                        {a.decidedAt ? new Date(a.decidedAt).toLocaleString('en-IN') : '—'}
+                                    </td>
+                                    <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[a.id], a.decidedAt, tatMins)}</td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -245,27 +257,27 @@ function PaymentHistoryPanel({ payments, poMap, onRevise }) {
                 />
             </FilterBar>
 
-           <div className="overflow-x-auto rounded-xl border border-gray-200">
-                    <table className="w-full min-w-[760px] text-left text-[12.5px]">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
-                                <th className="px-3 py-2.5">Action</th>
-                                <th className="px-3 py-2.5">PO No.</th>
-                                <th className="px-3 py-2.5">Vendor</th>
-                                <th className="px-3 py-2.5">Amount Paid</th>
-                                <th className="px-3 py-2.5">Remark</th>
-                                <th className="px-3 py-2.5">Payment Proof</th>
-                                <th className="px-3 py-2.5">Paid At</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {payments.length === 0 ? (
-                                <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No payments recorded yet.</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
-                            ) : filtered.map((p) => {
-                                const po = poMap.get(p.poId);
-                                return (
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full min-w-[760px] text-left text-[12.5px]">
+                    <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200 text-[10.3px] font-bold uppercase tracking-wide text-gray-500">
+                            <th className="px-3 py-2.5">Action</th>
+                            <th className="px-3 py-2.5">PO No.</th>
+                            <th className="px-3 py-2.5">Vendor</th>
+                            <th className="px-3 py-2.5">Amount Paid</th>
+                            <th className="px-3 py-2.5">Remark</th>
+                            <th className="px-3 py-2.5">Payment Proof</th>
+                            <th className="px-3 py-2.5">Paid At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {payments.length === 0 ? (
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No payments recorded yet.</td></tr>
+                        ) : filtered.length === 0 ? (
+                            <tr><td colSpan={7} className="px-3 py-10 text-center text-gray-500">No entries match the search.</td></tr>
+                        ) : filtered.map((p) => {
+                            const po = poMap.get(p.poId);
+                            return (
                                 <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="px-3 py-2.5">
                                         <button
@@ -305,10 +317,11 @@ function PaymentHistoryPanel({ payments, poMap, onRevise }) {
                                         {p.paidAt ? new Date(p.paidAt).toLocaleString('en-IN') : '—'}
                                     </td>
                                 </tr>
-                            )})}
-                       </tbody>
-                    </table>
-                </div>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
@@ -319,6 +332,21 @@ function RecordPaymentModal({ approval, paymentToEdit, po, onClose, onSuccess })
     const [proofFile, setProofFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    // Pre-fill bill number/date from delivery — user can correct before sending
+    const existingDeliveries = po?.deliveries || [];
+    const existingBillNos = Array.from(new Set(existingDeliveries.map(d => d.billNumber).filter(v => v && v !== '—')));
+    const defaultBillNo = approval?.editedVchNo || (existingBillNos.length > 0 ? existingBillNos.join(', ') : '');
+    // Normalize date to YYYY-MM-DD for input[type=date]
+    const toDateInput = (val) => {
+        if (!val) return '';
+        try { return new Date(val).toISOString().split('T')[0]; } catch { return val; }
+    };
+    const existingBillDates = existingDeliveries.map(d => d.billDate).filter(Boolean);
+    const defaultBillDate = toDateInput(existingBillDates[existingBillDates.length - 1] || '');
+
+    const [billNo, setBillNo] = useState(defaultBillNo);
+    const [billDate, setBillDate] = useState(defaultBillDate);
 
     function handleFileChange(e) {
         setProofFile(e.target.files?.[0] || null);
@@ -347,17 +375,17 @@ function RecordPaymentModal({ approval, paymentToEdit, po, onClose, onSuccess })
             if (po?.vendor?.contact) {
                 const processedDate = new Date().toLocaleDateString('en-IN');
                 try {
-                    const billNos = Array.from(new Set(po?.deliveries?.map(d => d.billNumber).filter(Boolean)));
-                    const billNo = approval?.editedVchNo || (billNos.length > 0 ? billNos.join(', ') : '—');
+                    // Use user-confirmed bill number from modal field
+                    const finalBillNo = (billNo && billNo.trim()) ? billNo.trim() : (po?.vendor?.paymentTerms === 'Advance' ? 'Advance Payment' : 'N/A');
                     const templateSent = await sendWhatsAppTemplateMessage(
                         po.vendor.contact,
                         'payment_verification',
-                        [po.vendor.name || 'Vendor', billNo, processedDate, remarks || 'Processed'],
+                        [po.vendor.name || 'Vendor', finalBillNo, processedDate, remarks || 'Processed'],
                         'en',
                         { recipientName: po.vendor.name, stage: 'Payment Approved Alert', referenceId: po.poNo }
                     );
                     if (!templateSent) {
-                        const text = `Dear *${po.vendor.name}*, This is to inform you that the payment against Bill No. *${billNo}* has been processed on *${processedDate}*. *Remarks:* ${remarks || 'Processed'} Kindly verify the payment and confirm receipt at your earliest convenience. Thank you.`;
+                        const text = `Dear *${po.vendor.name}*, This is to inform you that the payment against Bill No. *${finalBillNo}* has been processed on *${processedDate}*. *Remarks:* ${remarks || 'Processed'} Kindly verify the payment and confirm receipt at your earliest convenience. Thank you.`;
                         await sendWhatsAppTextMessage(
                             po.vendor.contact,
                             text,
@@ -386,6 +414,32 @@ function RecordPaymentModal({ approval, paymentToEdit, po, onClose, onSuccess })
                 <div>
                     <label className="mb-1 block text-[12px] font-bold text-gray-600">Amount Paid (₹)</label>
                     <input type="number" step="0.01" className="input" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" />
+                </div>
+
+                {/* Bill details — used in WhatsApp notification, user can correct here */}
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-3">
+                    <p className="text-[11.5px] font-semibold text-amber-700">📋 Bill details for WhatsApp notification — verify or correct before submitting:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="mb-1 block text-[12px] font-bold text-gray-600">Bill No.</label>
+                            <input
+                                type="text"
+                                className="input"
+                                value={billNo}
+                                onChange={(e) => setBillNo(e.target.value)}
+                                placeholder="e.g. INV-2026-001"
+                            />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-[12px] font-bold text-gray-600">Bill Date</label>
+                            <input
+                                type="date"
+                                className="input"
+                                value={billDate}
+                                onChange={(e) => setBillDate(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div>
