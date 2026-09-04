@@ -6,12 +6,9 @@ import { fetchIndents } from '../services/purchaseService';
 import supabase from '../../../SupabaseClient';
 import ImportView from './ImportView';
 import CreateIndentFormModal from './CreateIndentFormModal';
-import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function IndentView({ onTabChange, refreshKey, onImported }) {
   const [indents, setIndents] = useState([]);
-  const [tatTracking, setTatTracking] = useState({});
-  const [tatMins, setTatMins] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -20,12 +17,6 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
   const [status, setStatus] = useState('');
   const [expanded, setExpanded] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 10000);
-    return () => clearInterval(timer);
-  }, []);
 
   const toggleVendor = (v) => {
     setExpanded((prev) => ({ ...prev, [v]: !prev[v] }));
@@ -35,33 +26,9 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
     let cancelled = false;
     setLoading(true);
     fetchIndents()
-      .then(async (rows) => {
+      .then((rows) => {
         if (cancelled) return;
         setIndents(rows);
-
-        const dbIds = rows.map(r => r.dbId);
-        if (dbIds.length > 0) {
-          try {
-            const trackings = await fetchTatTracking('indent_approval', dbIds);
-            const trackingMap = {};
-            trackings.forEach(t => {
-              trackingMap[t.entity_id] = t;
-            });
-            if (!cancelled) setTatTracking(trackingMap);
-          } catch (tatErr) {
-            console.error('Failed to load TAT tracking:', tatErr);
-          }
-        }
-
-        try {
-          const settingsData = await fetchTatSettings();
-          const setting = settingsData.find(s => s.stage_key === 'indent_approval');
-          if (setting && setting.is_active) {
-            setTatMins(setting.tat_minutes);
-          }
-        } catch (settingsErr) {
-          console.error('Failed to load TAT settings:', settingsErr);
-        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || 'Failed to load indent data.');
@@ -73,6 +40,7 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
       cancelled = true;
     };
   }, [refreshKey]);
+
 
   const categories = useMemo(() => uniqueValues(indents, 'category'), [indents]);
   const vendors = useMemo(() => uniqueValues(indents, 'vendor'), [indents]);
@@ -183,7 +151,7 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
                     <table className="w-full text-[12.6px]">
                       <thead>
                         <tr className="bg-gray-50 text-gray-500">
-                          {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Unit', 'Parent Group', 'Shelf Cap.', 'Max Level', 'ROL Qty', 'Cl. Qty', 'Conv. Unit', 'Order Formula', 'Status', 'Planned Date'].map((h) => (
+                          {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Unit', 'Parent Group', 'Shelf Cap.', 'Max Level', 'ROL Qty', 'Cl. Qty', 'Conv. Unit', 'Order Formula', 'Status'].map((h) => (
                             <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                               {h}
                             </th>
@@ -206,7 +174,6 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
                             <td className="px-2.5 py-2">{i.conversionUnit}</td>
                             <td className="px-2.5 py-2 font-semibold">{i.orderFormula}</td>
                             <td className="px-2.5 py-2"><StatusBadge status={i.status} /></td>
-                            <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId], i.createdAt, tatMins)}</td>
                           </tr>
                         ))}
                       </tbody>

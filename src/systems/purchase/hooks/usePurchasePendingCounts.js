@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { fetchPurchasePendingCounts } from '../services/purchaseService';
 
 const EMPTY_COUNTS = {
@@ -19,7 +18,6 @@ const EMPTY_COUNTS = {
  */
 export function usePurchasePendingCounts(pollMs = 60000) {
   const [counts, setCounts] = useState(EMPTY_COUNTS);
-  const location = useLocation();
 
   const refresh = useCallback(() => {
     fetchPurchasePendingCounts()
@@ -32,7 +30,7 @@ export function usePurchasePendingCounts(pollMs = 60000) {
     if (!pollMs) return undefined;
     const id = setInterval(refresh, pollMs);
     return () => clearInterval(id);
-  }, [refresh, pollMs, location.pathname]);
+  }, [refresh, pollMs]);
 
   return counts;
 }
