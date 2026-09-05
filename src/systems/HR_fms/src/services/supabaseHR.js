@@ -33,11 +33,11 @@ export const STATUS_PAY_VALUE = {
   'p': 1,
   'P(OD)': 1,
   'HP': 1,
-  'H': 1,
-  'L': 1,
+  'H': 0.5,
+  'L': 0,
   'WOP': 1,
   '½P': 0.5,
-  'WO': 0,
+  'WO': 1,
   'A': 0,
 };
 
@@ -472,8 +472,8 @@ export function parseAttendanceExcel(rawRows) {
     const totalOtherLeave = parseFloat(row[summaryMap.totalOtherLeave] || 0) || 0;
     const totalLeave = parseFloat(row[summaryMap.totalLeave] !== undefined && row[summaryMap.totalLeave] !== '' ? row[summaryMap.totalLeave] : (totalCL + totalPL + totalSL + totalOtherLeave)) || 0;
 
-    // Attendance / Payable Days calculation logic: P + WO + H + HP + WOP (+ Leave)
-    const formulaDays = totalPresent + totalWO + totalHoliday + totalHalfPresent + totalWOP + totalLeave;
+    // Attendance / Payable Days calculation logic: P + (0.5 * H) + HP + WO + WOP
+    const formulaDays = totalPresent + (0.5 * totalHoliday) + totalHalfPresent + totalWO + totalWOP;
 
     let payableDays = formulaDays;
     if (summaryMap.totalPayDays !== -1 && row[summaryMap.totalPayDays] !== undefined && String(row[summaryMap.totalPayDays]).trim() !== '') {
