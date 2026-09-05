@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import Modal from './Modal';
 import PreviewModal from './PreviewModal';
 import { CardPanel, EmptyState, FilterBar, RevisionChip } from './ui';
@@ -9,6 +10,8 @@ import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../..
 
 
 export default function PoListView({ onRevise }) {
+  const location = useLocation();
+  const hasData = useRef(false);
   const [pos, setPos] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
   const [tatMins, setTatMins] = useState(60);
@@ -18,43 +21,34 @@ export default function PoListView({ onRevise }) {
   const [vendor, setVendor] = useState('');
   const [versionsPO, setVersionsPO] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [, setTick] = useState(0);
 
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 10000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
+  const reload = useCallback(() => {
     let cancelled = false;
-    setLoading(true);
-    fetchPOs()
-      .then(async (rows) => {
+    if (!hasData.current) setLoading(true);
+
+    // Fire fetchPOs and fetchTatSettings in parallel
+    Promise.all([fetchPOs(), fetchTatSettings()])
+      .then(async ([rows, settingsData]) => {
         if (cancelled) return;
         setPos(rows);
+        hasData.current = true;
 
+        const deliverySetting = settingsData.find(s => s.stage_key === 'delivery');
+        if (deliverySetting && deliverySetting.is_active) setTatMins(deliverySetting.tat_minutes);
+
+        // Fetch TAT tracking with PO IDs we just received
         const poIds = rows.map(r => r.id);
         if (poIds.length > 0) {
           try {
             const trackings = await fetchTatTracking('delivery', poIds);
-            const trackingMap = {};
-            trackings.forEach(t => {
-              trackingMap[t.entity_id] = t;
-            });
-            if (!cancelled) setTatTracking(trackingMap);
+            if (!cancelled) {
+              const trackingMap = {};
+              trackings.forEach(t => { trackingMap[t.entity_id] = t; });
+              setTatTracking(trackingMap);
+            }
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
-        }
-
-        try {
-          const settingsData = await fetchTatSettings();
-          const deliverySetting = settingsData.find(s => s.stage_key === 'delivery');
-          if (deliverySetting && deliverySetting.is_active) {
-            setTatMins(deliverySetting.tat_minutes);
-          }
-        } catch (settingsErr) {
-          console.error('Failed to load TAT settings:', settingsErr);
         }
       })
       .catch((err) => {
@@ -63,10 +57,20 @@ export default function PoListView({ onRevise }) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
+
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const timer = setInterval(() => reload(), 10000);
+    return () => clearInterval(timer);
+  }, [reload]);
+
+  // Re-fetch whenever this page becomes active
+  useEffect(() => {
+    const cancel = reload();
+    return cancel;
+  }, [location.pathname, reload]);
 
   const openPreview = (po, note) => setPreview({ po, note });
 

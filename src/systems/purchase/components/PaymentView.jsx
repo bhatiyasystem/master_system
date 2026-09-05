@@ -1,5 +1,6 @@
 import { Loader2, Wallet, ImageIcon, Upload } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPaymentApprovals, fetchPayments, fetchPOs, submitPayment, revisePayment, fetchDeliveries } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
@@ -9,6 +10,8 @@ import { sendWhatsAppTemplateMessage, sendWhatsAppTextMessage } from '../../../s
 import supabase from '../../../SupabaseClient';
 
 export default function PaymentView() {
+    const location = useLocation();
+    const hasData = useRef(false);
     const [tab, setTab] = useState('pending');
     const [approvals, setApprovals] = useState([]);
     const [payments, setPayments] = useState([]);
@@ -20,20 +23,14 @@ export default function PaymentView() {
     const [success, setSuccess] = useState('');
     const [selectedApproval, setSelectedApproval] = useState(null);
     const [selectedPayment, setSelectedPayment] = useState(null);
-    const [, setTick] = useState(0);
 
-    useEffect(() => {
-        const timer = setInterval(() => setTick(t => t + 1), 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    async function loadData() {
-        setLoading(true);
+    const loadData = useCallback(() => {
+        if (!hasData.current) setLoading(true);
         setError('');
-        try {
-            const [approvalsData, paymentsData, posData, deliveriesData] = await Promise.all([
-                fetchPaymentApprovals(), fetchPayments(), fetchPOs(), fetchDeliveries()
-            ]);
+        // Fire all independent fetches in parallel
+        Promise.all([
+            fetchPaymentApprovals(), fetchPayments(), fetchPOs(), fetchDeliveries(), fetchTatSettings()
+        ]).then(async ([approvalsData, paymentsData, posData, deliveriesData, settingsData]) => {
             // Attach deliveries to each PO
             const deliveriesByPoId = {};
             (deliveriesData || []).forEach(d => {
@@ -47,40 +44,41 @@ export default function PaymentView() {
             setApprovals(approvalsData || []);
             setPayments(paymentsData || []);
             setPos(posWithDeliveries);
+            hasData.current = true;
 
+            // Apply TAT settings immediately
+            const paymentSetting = settingsData.find(s => s.stage_key === 'payment');
+            if (paymentSetting && paymentSetting.is_active) setTatMins(paymentSetting.tat_minutes);
+
+            // Fetch TAT tracking with approval IDs
             const approvalIds = (approvalsData || []).map(a => a.id);
             if (approvalIds.length > 0) {
                 try {
                     const trackings = await fetchTatTracking('payment', approvalIds);
                     const trackingMap = {};
-                    trackings.forEach(t => {
-                        trackingMap[t.entity_id] = t;
-                    });
+                    trackings.forEach(t => { trackingMap[t.entity_id] = t; });
                     setTatTracking(trackingMap);
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
             }
-
-            try {
-                const settingsData = await fetchTatSettings();
-                const paymentSetting = settingsData.find(s => s.stage_key === 'payment');
-                if (paymentSetting && paymentSetting.is_active) {
-                    setTatMins(paymentSetting.tat_minutes);
-                }
-            } catch (settingsErr) {
-                console.error('Failed to load TAT settings:', settingsErr);
-            }
-        } catch (err) {
+        }).catch(err => {
             setError(err.message || 'Failed to load payment data.');
-        } finally {
+        }).finally(() => {
             setLoading(false);
-        }
-    }
+        });
+    }, []);
 
+    // Auto-refresh every 10 seconds
+    useEffect(() => {
+        const timer = setInterval(() => loadData(), 10000);
+        return () => clearInterval(timer);
+    }, [loadData]);
+
+    // Re-fetch whenever this page becomes active
     useEffect(() => {
         loadData();
-    }, []);
+    }, [location.pathname, loadData]);
 
     const poMap = useMemo(() => {
         const map = new Map();

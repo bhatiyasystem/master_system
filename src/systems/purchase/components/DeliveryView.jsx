@@ -1,5 +1,6 @@
 import { Loader2, Truck, ImageIcon, Plus, AlertTriangle, ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fmt, uniqueValues } from '../utils/helpers';
 import { createDelivery, createTransporter, fetchDeliveries, fetchIndents, fetchPOs, fetchTransporters, updateDelivery, fetchPaymentApprovals, fetchPayments } from '../services/purchaseService';
@@ -33,6 +34,8 @@ function distinctIndentValues(po, indentMap, field) {
 }
 
 export default function DeliveryView() {
+    const location = useLocation();
+    const hasData = useRef(false);
     const [tab, setTab] = useState('pending');
     const [pos, setPos] = useState([]);
     const [deliveries, setDeliveries] = useState([]);
@@ -48,63 +51,59 @@ export default function DeliveryView() {
     const [warningPo, setWarningPo] = useState(null);
     const [tatTracking, setTatTracking] = useState({});
     const [tatMins, setTatMins] = useState(60);
-    const [, setTick] = useState(0);
 
-    useEffect(() => {
-        const timer = setInterval(() => setTick(t => t + 1), 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    const loadData = async () => {
-        setLoading(true);
+    const loadData = useCallback(() => {
+        if (!hasData.current) setLoading(true);
         setError('');
-        try {
-            const [posData, delData, indentsData, approvalsData, paymentsData] = await Promise.all([
-                fetchPOs(),
-                fetchDeliveries(),
-                fetchIndents(),
-                fetchPaymentApprovals(),
-                fetchPayments()
-            ]);
+        // Fire all independent fetches in parallel
+        Promise.all([
+            fetchPOs(),
+            fetchDeliveries(),
+            fetchIndents(),
+            fetchPaymentApprovals(),
+            fetchPayments(),
+            fetchTatSettings(),
+        ]).then(async ([posData, delData, indentsData, approvalsData, paymentsData, settingsData]) => {
             setPos(posData || []);
             setDeliveries(delData || []);
             setIndents(indentsData || []);
             setApprovals(approvalsData || []);
             setPayments(paymentsData || []);
+            hasData.current = true;
 
+            // Apply TAT settings immediately
+            const deliverySetting = settingsData.find(s => s.stage_key === 'delivery');
+            if (deliverySetting && deliverySetting.is_active) setTatMins(deliverySetting.tat_minutes);
+
+            // Fetch TAT tracking with PO IDs
             const poIds = (posData || []).map(p => p.id);
             if (poIds.length > 0) {
                 try {
                     const trackings = await fetchTatTracking('delivery', poIds);
                     const trackingMap = {};
-                    trackings.forEach(t => {
-                        trackingMap[t.entity_id] = t;
-                    });
+                    trackings.forEach(t => { trackingMap[t.entity_id] = t; });
                     setTatTracking(trackingMap);
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
             }
-
-            try {
-                const settingsData = await fetchTatSettings();
-                const deliverySetting = settingsData.find(s => s.stage_key === 'delivery');
-                if (deliverySetting && deliverySetting.is_active) {
-                    setTatMins(deliverySetting.tat_minutes);
-                }
-            } catch (settingsErr) {
-                console.error('Failed to load TAT settings:', settingsErr);
-            }
-        } catch (err) {
+        }).catch(err => {
             setError(err.message || 'Failed to load delivery data.');
-        } finally {
+        }).finally(() => {
             setLoading(false);
-        }
-    };
+        });
+    }, []);
 
+    // Auto-refresh every 10 seconds
+    useEffect(() => {
+        const timer = setInterval(() => loadData(), 10000);
+        return () => clearInterval(timer);
+    }, [loadData]);
+
+    // Re-fetch whenever this page becomes active
     useEffect(() => {
         loadData();
-    }, []);
+    }, [location.pathname, loadData]);
 
     const isPaymentCompleted = (po) => {
         if (!po) return true;

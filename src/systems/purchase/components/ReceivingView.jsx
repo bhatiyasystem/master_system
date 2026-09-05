@@ -1,5 +1,6 @@
 import { Loader2, PackageCheck, ImageIcon, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchDeliveries, fetchPOs, fetchReceivings, submitReceiving, reviseReceiving } from '../services/purchaseService';
 import Modal from './Modal';
@@ -22,6 +23,8 @@ const formatDelay = (biltyDate) => {
 };
 
 export default function ReceivingView() {
+    const location = useLocation();
+    const hasData = useRef(false);
     const [tab, setTab] = useState('pending');
     const [deliveries, setDeliveries] = useState([]);
     const [pos, setPos] = useState([]);
@@ -34,55 +37,51 @@ export default function ReceivingView() {
 
     const [selectedDeliveries, setSelectedDeliveries] = useState(null);
     const [selectedReceivingToEdit, setSelectedReceivingToEdit] = useState(null);
-    const [, setTick] = useState(0);
 
-    useEffect(() => {
-        const timer = setInterval(() => setTick(t => t + 1), 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    async function loadData() {
-        setLoading(true);
+    const loadData = useCallback(() => {
+        if (!hasData.current) setLoading(true);
         setError('');
-        try {
-            const [delData, posData, recData] = await Promise.all([fetchDeliveries(), fetchPOs(), fetchReceivings()]);
+        // Fire all independent fetches in parallel
+        Promise.all([fetchDeliveries(), fetchPOs(), fetchReceivings(), fetchTatSettings()])
+          .then(async ([delData, posData, recData, settingsData]) => {
             setDeliveries(delData || []);
             setPos(posData || []);
             setReceivings(recData || []);
+            hasData.current = true;
 
+            // Apply TAT settings immediately
+            const receivingSetting = settingsData.find(s => s.stage_key === 'receiving');
+            if (receivingSetting && receivingSetting.is_active) setTatMins(receivingSetting.tat_minutes);
+
+            // Fetch TAT tracking with delivery IDs
             const delIds = (delData || []).map(d => d.id);
             if (delIds.length > 0) {
                 try {
                     const trackings = await fetchTatTracking('receiving', delIds);
                     const trackingMap = {};
-                    trackings.forEach(t => {
-                        trackingMap[t.entity_id] = t;
-                    });
+                    trackings.forEach(t => { trackingMap[t.entity_id] = t; });
                     setTatTracking(trackingMap);
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
             }
-
-            try {
-                const settingsData = await fetchTatSettings();
-                const receivingSetting = settingsData.find(s => s.stage_key === 'receiving');
-                if (receivingSetting && receivingSetting.is_active) {
-                    setTatMins(receivingSetting.tat_minutes);
-                }
-            } catch (settingsErr) {
-                console.error('Failed to load TAT settings:', settingsErr);
-            }
-        } catch (err) {
+        }).catch(err => {
             setError(err.message || 'Failed to load receiving data.');
-        } finally {
+        }).finally(() => {
             setLoading(false);
-        }
-    }
+        });
+    }, []);
 
+    // Auto-refresh every 10 seconds
+    useEffect(() => {
+        const timer = setInterval(() => loadData(), 10000);
+        return () => clearInterval(timer);
+    }, [loadData]);
+
+    // Re-fetch whenever this page becomes active
     useEffect(() => {
         loadData();
-    }, []);
+    }, [location.pathname, loadData]);
 
     const poMap = useMemo(() => {
         const map = new Map();

@@ -1,5 +1,6 @@
 import { Loader2, CheckCircle2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { fetchPayablePOs, fetchPaymentApprovals, submitPaymentApproval, revisePaymentApproval } from '../services/purchaseService';
 import { fmt } from '../utils/helpers';
@@ -7,6 +8,8 @@ import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function PaymentApprovalView() {
+    const location = useLocation();
+    const hasData = useRef(false);
     const [tab, setTab] = useState('pending');
     const [payablePOs, setPayablePOs] = useState([]);
     const [approvals, setApprovals] = useState([]);
@@ -17,54 +20,53 @@ export default function PaymentApprovalView() {
     const [success, setSuccess] = useState('');
     const [selectedPo, setSelectedPo] = useState(null);
     const [selectedApproval, setSelectedApproval] = useState(null);
-    const [, setTick] = useState(0);
 
-    useEffect(() => {
-        const timer = setInterval(() => setTick(t => t + 1), 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    async function loadData() {
-        setLoading(true);
+    const loadData = useCallback(() => {
+        if (!hasData.current) setLoading(true);
         setError('');
-        try {
-            const [posData, approvalsData] = await Promise.all([fetchPayablePOs(), fetchPaymentApprovals()]);
+        // Fire all fetches in parallel
+        Promise.all([
+            fetchPayablePOs(),
+            fetchPaymentApprovals(),
+            fetchTatSettings(),
+        ]).then(async ([posData, approvalsData, settingsData]) => {
             setPayablePOs(posData || []);
             setApprovals(approvalsData || []);
+            hasData.current = true;
 
+            // Apply TAT settings immediately
+            const approvalSetting = settingsData.find(s => s.stage_key === 'payment_approval');
+            if (approvalSetting && approvalSetting.is_active) setTatMins(approvalSetting.tat_minutes);
+
+            // Fetch TAT tracking with PO IDs
             const poIds = (posData || []).map(p => p.id);
             if (poIds.length > 0) {
                 try {
                     const trackings = await fetchTatTracking('payment_approval', poIds);
                     const trackingMap = {};
-                    trackings.forEach(t => {
-                        trackingMap[t.entity_id] = t;
-                    });
+                    trackings.forEach(t => { trackingMap[t.entity_id] = t; });
                     setTatTracking(trackingMap);
                 } catch (tatErr) {
                     console.error('Failed to load TAT tracking:', tatErr);
                 }
             }
-
-            try {
-                const settingsData = await fetchTatSettings();
-                const approvalSetting = settingsData.find(s => s.stage_key === 'payment_approval');
-                if (approvalSetting && approvalSetting.is_active) {
-                    setTatMins(approvalSetting.tat_minutes);
-                }
-            } catch (settingsErr) {
-                console.error('Failed to load TAT settings:', settingsErr);
-            }
-        } catch (err) {
+        }).catch(err => {
             setError(err.message || 'Failed to load payment approval data.');
-        } finally {
+        }).finally(() => {
             setLoading(false);
-        }
-    }
+        });
+    }, []);
 
+    // Auto-refresh every 10 seconds
+    useEffect(() => {
+        const timer = setInterval(() => loadData(), 10000);
+        return () => clearInterval(timer);
+    }, [loadData]);
+
+    // Re-fetch whenever this page becomes active
     useEffect(() => {
         loadData();
-    }, []);
+    }, [location.pathname, loadData]);
 
     const decidedPoIds = useMemo(() => new Set(approvals.map((a) => a.poId)), [approvals]);
     const pendingPOs = useMemo(() => payablePOs.filter((p) => !decidedPoIds.has(p.id)), [payablePOs, decidedPoIds]);

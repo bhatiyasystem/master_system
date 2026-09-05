@@ -1,5 +1,6 @@
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import Modal from './Modal';
 import { CardPanel, EmptyState, FilterBar } from './ui';
 import { uniqueValues } from '../utils/helpers';
@@ -7,6 +8,8 @@ import { fetchIndents, fixIndentVendor, deleteIndents } from '../services/purcha
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function PoPendingView({ onCreatePO }) {
+  const location = useLocation();
+  const hasData = useRef(false);
   const [indents, setIndents] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
   const [tatMins, setTatMins] = useState(30);
@@ -18,45 +21,55 @@ export default function PoPendingView({ onCreatePO }) {
   const [checkedByVendor, setCheckedByVendor] = useState({});
   const [expanded, setExpanded] = useState({});
   const [fixingVendorGroup, setFixingVendorGroup] = useState(null);
-  const [, setTick] = useState(0);
 
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 10000);
-    return () => clearInterval(timer);
-  }, []);
+  const reload = useCallback(() => {
+    let cancelled = false;
+    if (!hasData.current) setLoading(true);
+    setError(null);
 
-  function reload() {
-    setLoading(true);
-    fetchIndents()
-      .then(async (rows) => {
+    Promise.all([fetchIndents(), fetchTatSettings()])
+      .then(async ([rows, settingsData]) => {
+        if (cancelled) return;
         setIndents(rows);
+        hasData.current = true;
+
+        const setting = settingsData.find(s => s.stage_key === 'purchase_order');
+        if (setting && setting.is_active) setTatMins(setting.tat_minutes);
+
         const dbIds = rows.map(r => r.dbId);
         if (dbIds.length > 0) {
           try {
             const trackings = await fetchTatTracking('purchase_order', dbIds);
-            const trackingMap = {};
-            trackings.forEach(t => {
-              trackingMap[t.entity_id] = t;
-            });
-            setTatTracking(trackingMap);
+            if (!cancelled) {
+              const trackingMap = {};
+              trackings.forEach(t => { trackingMap[t.entity_id] = t; });
+              setTatTracking(trackingMap);
+            }
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
         }
-
-        try {
-          const settingsData = await fetchTatSettings();
-          const setting = settingsData.find(s => s.stage_key === 'purchase_order');
-          if (setting && setting.is_active) {
-            setTatMins(setting.tat_minutes);
-          }
-        } catch (settingsErr) {
-          console.error('Failed to load TAT settings:', settingsErr);
-        }
       })
-      .catch((err) => setError(err.message || 'Failed to load indent data.'))
-      .finally(() => setLoading(false));
-  }
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Failed to load indent data.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const timer = setInterval(() => reload(), 10000);
+    return () => clearInterval(timer);
+  }, [reload]);
+
+  // Re-fetch whenever this page becomes active (navigation or initial mount)
+  useEffect(() => {
+    const cancel = reload();
+    return cancel;
+  }, [location.pathname, reload]);
 
   async function handleDeleteSelected(v, items) {
     const checkedItems = items.filter((i) => isChecked(v, i.id));
@@ -84,38 +97,7 @@ function DiffCell({ orderQty, approvedQty }) {
     </span>
   );
 }
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchIndents()
-      .then(async (rows) => {
-        if (cancelled) return;
-        setIndents(rows);
 
-        const dbIds = rows.map(r => r.dbId);
-        if (dbIds.length > 0) {
-          try {
-            const trackings = await fetchTatTracking('purchase_order', dbIds);
-            const trackingMap = {};
-            trackings.forEach(t => {
-              trackingMap[t.entity_id] = t;
-            });
-            if (!cancelled) setTatTracking(trackingMap);
-          } catch (tatErr) {
-            console.error('Failed to load TAT tracking:', tatErr);
-          }
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message || 'Failed to load indent data.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const allPending = useMemo(() => indents.filter((i) => i.status === 'Approved' && !i.poId), [indents]);
   const categories = useMemo(() => uniqueValues(allPending, 'category'), [allPending]);

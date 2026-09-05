@@ -1,6 +1,7 @@
 import { CardPanel, BarChart } from './ui';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { fmt } from '../utils/helpers';
 import { fetchIndents, fetchPOs, fetchDeliveries, fetchPaymentApprovals } from '../services/purchaseService';
 
@@ -38,6 +39,8 @@ function aggregateProducts(pos) {
 }
 
 export default function DashboardView({ onTabChange }) {
+  const location = useLocation();
+  const hasData = useRef(false);
   const [indents, setIndents] = useState([]);
   const [pos, setPos] = useState([]);
   const [deliveries, setDeliveries] = useState([]);
@@ -45,9 +48,9 @@ export default function DashboardView({ onTabChange }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     let cancelled = false;
-    setLoading(true);
+    if (!hasData.current) setLoading(true);
     Promise.all([
       fetchIndents(),
       fetchPOs(),
@@ -60,6 +63,7 @@ export default function DashboardView({ onTabChange }) {
           setPos(poRows);
           setDeliveries(deliveryRows);
           setPaymentApprovals(approvalRows);
+          hasData.current = true;
         }
       })
       .catch((err) => {
@@ -72,6 +76,12 @@ export default function DashboardView({ onTabChange }) {
       cancelled = true;
     };
   }, []);
+
+  // Re-fetch whenever this page becomes active
+  useEffect(() => {
+    const cancel = loadData();
+    return cancel;
+  }, [location.pathname, loadData]);
 
   const statIndent = indents.length;
   const statApproval = indents.filter((i) => i.orderFormula > 0 && i.status === 'Rejected').length;

@@ -1,5 +1,6 @@
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, decideCategory, fetchIndentHistory, findOutstandingConflicts } from '../services/purchaseService';
@@ -7,56 +8,63 @@ import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
 export default function ApprovalView() {
+  const location = useLocation();
+  const hasData = useRef(false);
   const [tab, setTab] = useState('pending');
   const [indents, setIndents] = useState([]);
   const [tatTracking, setTatTracking] = useState({});
   const [tatMins, setTatMins] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [, setTick] = useState(0);
 
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 10000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const load = () => {
-    setLoading(true);
+  const load = useCallback(() => {
+    let cancelled = false;
+    if (!hasData.current) setLoading(true);
     setError(null);
-    return fetchIndents()
-      .then(async (rows) => {
+
+    Promise.all([fetchIndents(), fetchTatSettings()])
+      .then(async ([rows, settingsData]) => {
+        if (cancelled) return;
         setIndents(rows);
+        hasData.current = true;
+
+        const setting = settingsData.find(s => s.stage_key === 'indent_approval');
+        if (setting && setting.is_active) setTatMins(setting.tat_minutes);
+
         const dbIds = rows.map(r => r.dbId);
         if (dbIds.length > 0) {
           try {
             const trackings = await fetchTatTracking('indent_approval', dbIds);
-            const trackingMap = {};
-            trackings.forEach(t => {
-              trackingMap[t.entity_id] = t;
-            });
-            setTatTracking(trackingMap);
+            if (!cancelled) {
+              const trackingMap = {};
+              trackings.forEach(t => { trackingMap[t.entity_id] = t; });
+              setTatTracking(trackingMap);
+            }
           } catch (tatErr) {
             console.error('Failed to load TAT tracking:', tatErr);
           }
         }
-
-        try {
-          const settingsData = await fetchTatSettings();
-          const setting = settingsData.find(s => s.stage_key === 'indent_approval');
-          if (setting && setting.is_active) {
-            setTatMins(setting.tat_minutes);
-          }
-        } catch (settingsErr) {
-          console.error('Failed to load TAT settings:', settingsErr);
-        }
       })
-      .catch((err) => setError(err.message || 'Failed to load indent data.'))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    load();
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Failed to load indent data.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
+
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const timer = setInterval(() => load(), 10000);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  // Re-fetch whenever this page becomes active
+  useEffect(() => {
+    const cancel = load();
+    return cancel;
+  }, [location.pathname, load]);
 
   const pendingCount = useMemo(() => (indents || []).filter((i) => i.orderFormula > 0 && i.status === 'Pending').length, [indents]);
 
