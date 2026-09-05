@@ -504,7 +504,8 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
     const presentDays = parseFloat(r.payable_days) || 0;
     const baseSalary = parseFloat(r.basic_salary) || 0;
     const earnedBasic = parseFloat(((baseSalary / totalDaysInMonth) * presentDays).toFixed(2));
-    const parsedOt = parseOtHours(r.ot_hours || r.total_ot || 0);
+    const rawOt = r.ot_hours || r.total_ot || '00:00';
+    const parsedOt = parseOtHours(rawOt);
     const otAmount = parseFloat((parsedOt * 50).toFixed(2));
     const putthaStatus = r.puttha_status || 'Yes';
     const isPutthaEligible = putthaStatus !== 'No' && presentDays >= 15;
@@ -517,7 +518,8 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
 
     return {
       ...r,
-      ot_hours: parsedOt,
+      ot_hours: rawOt,
+      ot_hours_decimal: parsedOt,
       ot_amount: otAmount,
       puttha_status: putthaStatus,
       puttha_price: putthaPrice,
@@ -1013,7 +1015,8 @@ const Payroll = () => {
     const presentDays = parseFloat(r.payable_days) || 0;
     const baseSalary = parseFloat(r.basic_salary) || 0;
     const earnedBasic = parseFloat(((baseSalary / totalDaysInMonth) * presentDays).toFixed(2));
-    const parsedOt = parseOtHours(r.ot_hours || r.total_ot || 0);
+    const rawOt = r.ot_hours || r.total_ot || '00:00';
+    const parsedOt = parseOtHours(rawOt);
     const otAmount = parseFloat((parsedOt * 50).toFixed(2));
     const putthaStatus = r.puttha_status || 'Yes';
     const isPutthaEligible = putthaStatus !== 'No' && presentDays >= 15;
@@ -1026,7 +1029,8 @@ const Payroll = () => {
 
     return {
       ...r,
-      ot_hours: parsedOt,
+      ot_hours: rawOt,
+      ot_hours_decimal: parsedOt,
       ot_amount: otAmount,
       puttha_status: putthaStatus,
       puttha_price: putthaPrice,

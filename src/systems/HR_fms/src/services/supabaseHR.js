@@ -864,10 +864,12 @@ export function parseOtHours(otValue) {
 
   if (typeof otValue === 'number') {
     if (isNaN(otValue) || otValue <= 0) return 0;
+    // If it's a small decimal fraction (like 0.1319), it might be an Excel time fraction representing days
     if (otValue < 5 && String(otValue).includes('.') && String(otValue).split('.')[1].length > 3) {
-      return otValue * 24;
+      return otValue * 24; // convert days to hours
     }
-    return otValue;
+    // Otherwise, treat the numeric value as minutes
+    return otValue / 60; // return as hours
   }
 
   const str = String(otValue).trim();
@@ -894,7 +896,8 @@ export function parseOtHours(otValue) {
   if (num < 5 && str.includes('.') && str.split('.')[1].length > 3) {
     return num * 24;
   }
-  return num;
+  // If parsing a raw string number, assume minutes
+  return num / 60;
 }
 
 export function formatOtDisplay(otValue) {
@@ -902,9 +905,19 @@ export function formatOtDisplay(otValue) {
   if (typeof otValue === 'string' && otValue.includes(':')) return otValue;
   const num = typeof otValue === 'number' ? otValue : parseFloat(otValue);
   if (isNaN(num) || num <= 0) return '00:00';
-  const hrs = Math.floor(num);
-  const mins = Math.round((num - hrs) * 60);
-  return `${hrs}:${String(mins).padStart(2, '0')}`;
+
+  let totalMinutes = 0;
+  // If it's a small decimal fraction (like 0.1319), it might be an Excel time fraction representing days
+  if (num < 5 && String(num).includes('.') && String(num).split('.')[1].length > 3) {
+    totalMinutes = Math.round(num * 24 * 60);
+  } else {
+    // Otherwise, treat the numeric value as minutes
+    totalMinutes = Math.round(num);
+  }
+
+  const hrs = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
 export function calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice = 0, advance = 0, loanDeduction = 0, salaryAdvanceDeduction = 0, otHours = 0) {
