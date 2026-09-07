@@ -2,7 +2,7 @@ import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Sear
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { getPreviousProcessingPeriod } from '../utils/dateUtils.js';
-import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, updateEmployeePutthaStatus, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, fetchEmployeeLoanBalance, fetchEmployeeAdvanceBalance, } from '../services/supabaseHR';
+import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, fetchEmployeeLoanBalance, fetchEmployeeAdvanceBalance, } from '../services/supabaseHR';
 import EnvelopePDF from '../components/EnvelopePDF';
 import PayslipPDF from '../components/PayslipPDF';
 import { PayEnvelopeCard, generatePayEnvelopeHTML } from '../components/PayEnvelopeTemplate';
@@ -952,27 +952,6 @@ const Payroll = () => {
     await loadPayroll();
   };
 
-  const handleTogglePutthaStatus = async (row) => {
-    if (row.status === 'paid') {
-      notify('Cannot change Puttha status for an employee already marked as Paid.', 'warn');
-      return;
-    }
-
-    const currentStatus = row.puttha_status || 'Yes';
-    const newStatus = currentStatus === 'Yes' ? 'No' : 'Yes';
-    try {
-      // 1. Update employee master record in backend database
-      await updateEmployeePutthaStatus(row.emp_code, newStatus);
-
-      // 2. Recalculate Puttha amount per eligible employee & update all payroll rows for this month
-      await recalculateMonthPutthaAndPayroll(row.year, row.month);
-
-      notify(`✓ Puttha status updated to "${newStatus}" for ${row.emp_name}`);
-      await loadPayroll();
-    } catch (err) {
-      setError(`Failed to update Puttha status: ${err.message}`);
-    }
-  };
 
 
 
@@ -1280,16 +1259,14 @@ const Payroll = () => {
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-700">{fmt(row.puttha_price)}</td>
                           <td className="px-4 py-3 text-center text-sm">
-                            <button
-                              onClick={() => handleTogglePutthaStatus(row)}
-                              title="Click to toggle Puttha Status (Yes / No)"
-                              className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer shadow-sm ${(row.puttha_status || 'Yes') === 'Yes'
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300'
-                                : 'bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300'
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-bold shadow-sm ${(row.puttha_status || 'Yes') === 'Yes'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-rose-100 text-rose-800 border border-rose-300'
                                 }`}
                             >
                               {row.puttha_status || 'Yes'}
-                            </button>
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{fmt(row.gross_salary)}</td>
                           <td className="px-4 py-3 text-right text-sm text-red-600">{fmt(row.advance)}</td>
