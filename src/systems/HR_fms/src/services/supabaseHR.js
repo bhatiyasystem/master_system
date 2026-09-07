@@ -1803,9 +1803,14 @@ export async function updatePayrollRow(id, updates) {
     }
   }
 
+  const payload = { ...updates, updated_at: new Date().toISOString() };
+  if (payload.ot_hours !== undefined) {
+    payload.ot_hours = parseOtHours(payload.ot_hours);
+  }
+
   const { data, error } = await supabase
     .from('payroll')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', id)
     .select()
     .single();

@@ -922,7 +922,7 @@ const Payroll = () => {
               status: 'paid',
               basic_salary: r.basic_salary,
               payable_days: r.payable_days,
-              ot_hours: r.ot_hours,
+              ot_hours: r.ot_hours_decimal !== undefined ? r.ot_hours_decimal : parseOtHours(r.ot_hours),
               ot_amount: r.ot_amount,
               puttha_price: r.puttha_price,
               puttha_status: r.puttha_status,
