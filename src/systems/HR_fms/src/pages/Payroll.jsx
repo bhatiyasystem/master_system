@@ -2,7 +2,7 @@ import { X, RefreshCw, Download, Loader2, FileText, Eye, Play, AlertCircle, Sear
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { getPreviousProcessingPeriod } from '../utils/dateUtils.js';
-import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, fetchEmployeeLoanBalance, fetchEmployeeAdvanceBalance, } from '../services/supabaseHR';
+import { fetchAttendanceMonthly, fetchEmployees, fetchPayroll, fetchPayrollPaginated, generatePayrollBatch, updatePayrollStatus, updatePayrollRow, savePayslip, fetchPayslips, fetchPayslipData, recalculateMonthPutthaAndPayroll, parseOtHours, formatOtDisplay, MONTHS, fetchEmployeeLoanBalance, fetchEmployeeAdvanceBalance, isEmployeeEligibleForPayroll } from '../services/supabaseHR';
 import EnvelopePDF from '../components/EnvelopePDF';
 import PayslipPDF from '../components/PayslipPDF';
 import { PayEnvelopeCard, generatePayEnvelopeHTML } from '../components/PayEnvelopeTemplate';
@@ -17,10 +17,11 @@ const statusStyle = {
 };
 
 const StatusBadge = ({ status }) => {
-  const s = statusStyle[status] || statusStyle.draft;
+  const displayStatus = status || 'draft';
+  const s = statusStyle[displayStatus] || statusStyle.draft;
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${s.bg} ${s.text}`}>
-      {status}
+      {displayStatus}
     </span>
   );
 };
@@ -505,8 +506,13 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
     const baseSalary = parseFloat(r.basic_salary) || 0;
     const earnedBasic = parseFloat(((baseSalary / totalDaysInMonth) * presentDays).toFixed(2));
     const rawOt = r.ot_hours || r.total_ot || '00:00';
-    const parsedOt = parseOtHours(rawOt);
-    const otAmount = parseFloat((parsedOt * 50).toFixed(2));
+    let parsedOt = parseOtHours(rawOt);
+    let otAmount = r.ot_amount !== undefined && r.ot_amount !== null && parseFloat(r.ot_amount) > 0
+      ? parseFloat(r.ot_amount)
+      : parseFloat((parsedOt * 50).toFixed(2));
+    if (otAmount > 0 && parsedOt <= 0) {
+      parsedOt = parseFloat((otAmount / 50).toFixed(2));
+    }
     const putthaStatus = r.puttha_status || 'Yes';
     const isPutthaEligible = putthaStatus !== 'No' && presentDays >= 15;
     const putthaPrice = isPutthaEligible ? (perYesPutthaPrice > 0 ? perYesPutthaPrice : parseFloat(r.puttha_price || 0)) : 0;
@@ -583,28 +589,23 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
   const handleDownloadSingle = async (row) => {
     setDownloadingId(row.emp_code);
     try {
-      const slip = payslipMap[row.emp_code];
-      if (slip && slip.pdf_url) {
-        window.open(slip.pdf_url, '_blank');
+      const { employee, attendance } = await fetchPayslipData(row.emp_code, row.year, row.month);
+      const blob = await pdf(<PayslipPDF row={row} employee={employee} attendance={attendance} />).toBlob();
+      const saved = await savePayslip({
+        payrollId: row.id,
+        empCode: row.emp_code,
+        empName: row.emp_name,
+        year: row.year,
+        month: row.month,
+        pdfBlob: blob,
+      });
+      if (saved?.pdf_url) {
+        window.open(saved.pdf_url, '_blank');
       } else {
-        const { employee, attendance } = await fetchPayslipData(row.emp_code, row.year, row.month);
-        const blob = await pdf(<PayslipPDF row={row} employee={employee} attendance={attendance} />).toBlob();
-        const saved = await savePayslip({
-          payrollId: row.id,
-          empCode: row.emp_code,
-          empName: row.emp_name,
-          year: row.year,
-          month: row.month,
-          pdfBlob: blob,
-        });
-        if (saved?.pdf_url) {
-          window.open(saved.pdf_url, '_blank');
-        } else {
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-        }
-        await loadPayslips();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
       }
+      await loadPayslips();
     } catch (err) {
       notify(`Failed to load payslip PDF: ${err.message}`, 'error');
     } finally {
@@ -881,7 +882,11 @@ const Payroll = () => {
       const employees = await fetchEmployees();
 
       const activeEmployees = employees
-        ? employees.filter(e => !e.status || String(e.status).trim().toLowerCase() === 'active')
+        ? employees.filter(e => {
+            const isActive = !e.status || String(e.status).trim().toLowerCase() === 'active';
+            const isEligible = isEmployeeEligibleForPayroll(e, targetYear, targetMonth);
+            return isActive && isEligible;
+          })
         : [];
 
       if (!attendance.length && !activeEmployees.length) {
@@ -1008,6 +1013,7 @@ const Payroll = () => {
 
     return {
       ...r,
+      status: r.status || 'draft',
       ot_hours: rawOt,
       ot_hours_decimal: parsedOt,
       ot_amount: otAmount,

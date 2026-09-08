@@ -857,19 +857,57 @@ export async function deactivateSalaryConfig(id) {
   if (error) throw error;
 }
 
-// ─── PAYROLL ──────────────────────────────────────────────────────────────────
+// ─── PAYROLL ELIGIBILITY VALIDATION (JOINING DATE) ─────────────────────────
+export function isEmployeeEligibleForPayroll(employee, year, month) {
+  if (!employee || !year || !month) return true;
+
+  const dojRaw = employee.date_of_joining || employee.joining_date || employee.date_joining || employee.doj;
+  if (!dojRaw) return true; // Default to eligible if joining date is unrecorded
+
+  // Last day of the payroll month (e.g. 2026-08-31 for August 2026)
+  const lastDayNum = new Date(year, month, 0).getDate();
+  const monthPadded = String(month).padStart(2, '0');
+  const lastDayPadded = String(lastDayNum).padStart(2, '0');
+  const payrollMonthEndDateStr = `${year}-${monthPadded}-${lastDayPadded}`;
+
+  let dojStr = '';
+  if (typeof dojRaw === 'string') {
+    const trimmed = dojRaw.trim();
+    if (trimmed.match(/^\d{4}-\d{2}-\d{2}/)) {
+      dojStr = trimmed.slice(0, 10);
+    } else if (trimmed.includes('-') || trimmed.includes('/')) {
+      const parts = trimmed.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD or YYYY/MM/DD
+          dojStr = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+        } else if (parts[2].length === 4) {
+          // DD-MM-YYYY or MM-DD-YYYY -> assume DD-MM-YYYY in IN locale format
+          dojStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+    }
+  } else if (dojRaw instanceof Date && !isNaN(dojRaw)) {
+    dojStr = dojRaw.toISOString().slice(0, 10);
+  }
+
+  if (!dojStr) return true;
+
+  // Eligibility condition: joining_date <= last_day_of_payroll_month
+  return dojStr <= payrollMonthEndDateStr;
+}
 
 export function parseOtHours(otValue) {
   if (otValue === null || otValue === undefined || otValue === '') return 0;
 
   if (typeof otValue === 'number') {
     if (isNaN(otValue) || otValue <= 0) return 0;
-    // If it's a small decimal fraction (like 0.1319), it might be an Excel time fraction representing days
-    if (otValue < 5 && String(otValue).includes('.') && String(otValue).split('.')[1].length > 3) {
-      return otValue * 24; // convert days to hours
+    // If numeric value is >= 100 (e.g. 481 or 714 minutes from attendance), convert minutes to hours
+    if (otValue >= 100) {
+      return otValue / 60;
     }
-    // Otherwise, treat the numeric value as minutes
-    return otValue / 60; // return as hours
+    // Otherwise, treat numeric value directly as decimal hours
+    return otValue;
   }
 
   const str = String(otValue).trim();
@@ -880,11 +918,15 @@ export function parseOtHours(otValue) {
     const h = parseFloat(parts[0]) || 0;
     const m = parseFloat(parts[1]) || 0;
     const s = parseFloat(parts[2]) || 0;
+    // If h >= 100 and m === 0 (e.g. "481:00" or "714:00"), h represents total OT minutes from portal attendance export
+    if (h >= 100 && m === 0) {
+      return h / 60;
+    }
     return h + (m / 60) + (s / 3600);
   }
 
-  const hMatch = str.match(/(\d+)\s*(?:h|hr|hrs|hour|hours)/i);
-  const mMatch = str.match(/(\d+)\s*(?:m|min|mins|minute|minutes)/i);
+  const hMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)/i);
+  const mMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:m|min|mins|minute|minutes)/i);
   if (hMatch || mMatch) {
     const h = hMatch ? parseFloat(hMatch[1]) : 0;
     const m = mMatch ? parseFloat(mMatch[1]) : 0;
@@ -893,28 +935,20 @@ export function parseOtHours(otValue) {
 
   const num = parseFloat(str);
   if (isNaN(num) || num <= 0) return 0;
-  if (num < 5 && str.includes('.') && str.split('.')[1].length > 3) {
-    return num * 24;
+  if (num >= 100) {
+    return num / 60;
   }
-  // If parsing a raw string number, assume minutes
-  return num / 60;
+  return num;
 }
 
 export function formatOtDisplay(otValue) {
   if (otValue === null || otValue === undefined || otValue === '' || otValue === 0) return '00:00';
   if (typeof otValue === 'string' && otValue.includes(':')) return otValue;
-  const num = typeof otValue === 'number' ? otValue : parseFloat(otValue);
-  if (isNaN(num) || num <= 0) return '00:00';
 
-  let totalMinutes = 0;
-  // If it's a small decimal fraction (like 0.1319), it might be an Excel time fraction representing days
-  if (num < 5 && String(num).includes('.') && String(num).split('.')[1].length > 3) {
-    totalMinutes = Math.round(num * 24 * 60);
-  } else {
-    // Otherwise, treat the numeric value as minutes
-    totalMinutes = Math.round(num);
-  }
+  const parsedHours = parseOtHours(otValue);
+  if (parsedHours <= 0) return '00:00';
 
+  const totalMinutes = Math.round(parsedHours * 60);
   const hrs = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
   return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
@@ -1163,6 +1197,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
   const fullAttendanceRows = [...(attendanceRows || [])];
   Object.values(employeeMap || {}).forEach(emp => {
     if (!emp.employee_id) return;
+    if (!isEmployeeEligibleForPayroll(emp, year, month)) return;
     const empCodeKey = String(emp.employee_id).trim().toLowerCase();
     if (!existingEmpCodes.has(empCodeKey)) {
       existingEmpCodes.add(empCodeKey);
@@ -1248,6 +1283,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const code = String(att.emp_code || '').trim();
     const emp = employeeMap[code] || employeeMap[code.toLowerCase()] || employeeMap[code.toUpperCase()];
     if (!emp || (emp.puttha_status || 'Yes') === 'No') return false;
+    if (!isEmployeeEligibleForPayroll(emp, year, month)) return false;
 
     const dbAtt = dbAttMap[code.toLowerCase()] || dbAttMap[code] || att;
     const rawOverride = dbAtt?.payable_days_override ?? att?.payable_days_override;
@@ -1275,6 +1311,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const empCodeKey = code.toLowerCase();
     const employee = employeeMap[code] || employeeMap[empCodeKey] || employeeMap[code.toUpperCase()];
     if (!employee) continue;
+    if (!isEmployeeEligibleForPayroll(employee, year, month)) continue;
 
     const existingRow = (existingPayrolls || []).find(ep => String(ep.emp_code || '').trim().toLowerCase() === empCodeKey);
     if (existingRow && existingRow.status === 'paid') continue;
@@ -1319,15 +1356,9 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
     const otHours = att.total_ot || att.ot_hours || 0;
 
     // Final payroll calculation:
-    // advance               = totalOriginalAdvance  (Advance col: original full amount)
-    // loanDeduction          = loansDeductionAmount
-    // salaryAdvanceDeduction = totalRemainingAdvance (Adv. Ded. col: current remaining balance)
     const calc = calculatePayroll(employee, payableDays, totalDaysInMonth, putthaPrice, totalOriginalAdvance, loansDeductionAmount, totalRemainingAdvance, otHours);
 
     console.log(`[Payroll Debug] emp_id: ${att.emp_code || employee.employee_id} (${employee.name || att.emp_name})`);
-    console.log(`  table: advances -> original: ₹${totalOriginalAdvance}, remaining: ₹${totalRemainingAdvance}`);
-    console.log(`  table: salary_advances -> loan monthly deduction: ₹${loansDeductionAmount}`);
-    console.log(`  Payroll Advance: ₹${calc.advance}, Payroll Adv Ded: ₹${calc.salary_advance_deduction}, Payroll Loan Ded: ₹${calc.loan_deduction}, Total Ded: ₹${calc.total_deductions}, Net Salary: ₹${calc.net_salary}`);
 
     payrollRows.push({
       emp_code: att.emp_code || employee.employee_id,
@@ -1339,6 +1370,21 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
       ...calc,
       status: 'draft'
     });
+  }
+
+  // Cleanup draft payroll rows for employees who joined after this payroll month
+  const ineligibleEmpCodes = Object.values(employeeMap || {})
+    .filter(emp => !isEmployeeEligibleForPayroll(emp, year, month))
+    .map(emp => String(emp.employee_id).trim());
+
+  if (ineligibleEmpCodes.length > 0) {
+    await supabase
+      .from('payroll')
+      .delete()
+      .in('emp_code', ineligibleEmpCodes)
+      .eq('year', year)
+      .eq('month', month)
+      .neq('status', 'paid');
   }
 
   if (payrollRows.length === 0) return [];
@@ -1440,9 +1486,13 @@ export async function fetchAttendanceMonthlyPaginated({ year, month, page = 1, p
   // Fetch active employees to include any newly created employee missing from attendance_monthly
   const { data: emps } = await supabase
     .from('employees')
-    .select('employee_id, name, status');
+    .select('employee_id, name, status, date_of_joining');
 
-  const activeEmps = (emps || []).filter(e => !e.status || String(e.status).trim().toLowerCase() === 'active');
+  const activeEmps = (emps || []).filter(e => {
+    const isActive = !e.status || String(e.status).trim().toLowerCase() === 'active';
+    const isEligible = isEmployeeEligibleForPayroll(e, year, month);
+    return isActive && isEligible;
+  });
 
   const fullList = [...(attData || [])];
   activeEmps.forEach(e => {
