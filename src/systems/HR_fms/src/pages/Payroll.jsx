@@ -404,6 +404,13 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [localSearch, setLocalSearch] = useState(search || '');
+
+  useEffect(() => {
+    if (search !== undefined) {
+      setLocalSearch(search);
+    }
+  }, [search]);
 
   const notifyRef = useRef(notify);
   useEffect(() => { notifyRef.current = notify; });
@@ -544,8 +551,8 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
   }, [paidRecords]);
 
   const filteredPaid = processedPaidRecords.filter(r => {
-    if (!search) return true;
-    const q = search.toLowerCase();
+    const q = (localSearch || '').toLowerCase().trim();
+    if (!q) return true;
     return (r.emp_name && r.emp_name.toLowerCase().includes(q)) ||
       (r.emp_code && r.emp_code.toLowerCase().includes(q));
   });
@@ -626,7 +633,17 @@ const PayslipsTab = ({ filterYear, filterMonth, search, notify, onPaidRecordsCha
           </p>
           <p className="text-xs text-gray-500">Paid employees with full breakdown ({filteredPaid.length} records)</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search employee by name..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64"
+            />
+          </div>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}

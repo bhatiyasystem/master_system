@@ -246,6 +246,13 @@ const Advance = () => {
       remainingAmount = fullAmount;
     }
 
+    let statusToUse = isEditing ? (existing?.status ?? "Approved") : "Approved";
+    if (remainingAmount <= 0) {
+      statusToUse = "Fully Paid";
+    } else if (statusToUse === "Fully Paid" && remainingAmount > 0) {
+      statusToUse = "Approved";
+    }
+
     const newRequest = {
       ...(isEditing ? { id: editingLoanId } : {}),
       employee_id: finalEmployeeId,
@@ -258,7 +265,7 @@ const Advance = () => {
       date: isEditing
         ? (existing?.date ?? `${prevPeriod.year}-${String(prevPeriod.month).padStart(2, "0")}-01`)
         : `${prevPeriod.year}-${String(prevPeriod.month).padStart(2, "0")}-01`,
-      status: isEditing ? (existing?.status ?? "Approved") : "Approved"
+      status: statusToUse
     };
 
     try {
@@ -473,6 +480,13 @@ const Advance = () => {
       remainingAmount = amount;
     }
 
+    let statusToUse = existingRecord ? (existingRecord.status ?? "Approved") : "Approved";
+    if (remainingAmount <= 0) {
+      statusToUse = "Fully Paid";
+    } else if (statusToUse === "Fully Paid" && remainingAmount > 0) {
+      statusToUse = "Approved";
+    }
+
     const newRequest = {
       ...(recordId ? { id: recordId } : {}),
       employee_id: finalEmployeeId,
@@ -483,7 +497,7 @@ const Advance = () => {
       deduction: newSalaryAdvance.deduction,
       reason: newSalaryAdvance.reason,
       date: existingRecord ? (existingRecord.date ?? advanceDateISO) : advanceDateISO,
-      status: existingRecord ? (existingRecord.status ?? "Approved") : "Approved"
+      status: statusToUse
     };
 
     try {

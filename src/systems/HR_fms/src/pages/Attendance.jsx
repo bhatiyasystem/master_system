@@ -26,7 +26,8 @@ import {
   STATUS_LABELS,
   MONTHS,
   syncAttendanceFromPortal,
-  fetchUploads
+  fetchUploads,
+  formatOtDisplay
 } from "../services/supabaseHR";
 import { fillDailyStatusFromSummary } from "../services/supabaseHR";
 import { getPreviousProcessingPeriod } from "../utils/dateUtils";
@@ -205,7 +206,7 @@ const DailyGridModal = ({ row, daysInMonth, onClose }) => {
               { label: "Holiday (H)", value: row.total_holiday, color: "#8b5cf6" },
               {
                 label: "Overtime (OT)",
-                value: row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : "00:00"),
+                value: formatOtDisplay(row.total_ot || row.ot_hours || "00:00"),
                 color: "#d97706"
               },
               { label: "Payable Days", value: row.payable_days_override ?? row.payable_days, color: "#6366f1" }
@@ -745,7 +746,7 @@ const AttendanceMonthly = () => {
                               {emp.payable_days ?? 0}
                             </td>
                             <td className="px-3 py-2.5 text-center text-amber-700 font-medium">
-                              {emp.total_ot || "00:00"}
+                              {formatOtDisplay(emp.total_ot)}
                             </td>
                             <td className="px-3 py-2.5 text-center text-red-600">{emp.total_late ?? 0}</td>
                             <td className="px-3 py-2.5 text-center text-orange-600">{emp.total_early ?? 0}</td>
@@ -985,7 +986,7 @@ const AttendanceMonthly = () => {
                               </span>
                             </td>
                             <td className="px-3 py-3 text-center text-sm text-amber-700 font-medium">
-                              {row.total_ot || (row.ot_hours ? `${row.ot_hours} hrs` : "00:00")}
+                              {formatOtDisplay(row.total_ot || row.ot_hours)}
                             </td>
                             <td className="px-3 py-3 text-center text-sm text-red-600">{lateVal}</td>
                             <td className="px-3 py-3 text-center text-sm text-orange-600">{earlyVal}</td>

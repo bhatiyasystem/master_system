@@ -902,8 +902,8 @@ export function parseOtHours(otValue) {
 
   if (typeof otValue === 'number') {
     if (isNaN(otValue) || otValue <= 0) return 0;
-    // If numeric value is >= 100 (e.g. 481 or 714 minutes from attendance), convert minutes to hours
-    if (otValue >= 100) {
+    // If numeric value is >= 60 (e.g. 63, 190 or 1514 minutes from attendance), convert minutes to hours
+    if (otValue >= 60) {
       return otValue / 60;
     }
     // Otherwise, treat numeric value directly as decimal hours
@@ -918,8 +918,8 @@ export function parseOtHours(otValue) {
     const h = parseFloat(parts[0]) || 0;
     const m = parseFloat(parts[1]) || 0;
     const s = parseFloat(parts[2]) || 0;
-    // If h >= 100 and m === 0 (e.g. "481:00" or "714:00"), h represents total OT minutes from portal attendance export
-    if (h >= 100 && m === 0) {
+    // If h >= 60 and m === 0 (e.g. "190:00", "63:00", "1514:00" from total minutes attendance export)
+    if ((m === 0 && s === 0 && h >= 60) || h >= 100) {
       return h / 60;
     }
     return h + (m / 60) + (s / 3600);
@@ -935,7 +935,7 @@ export function parseOtHours(otValue) {
 
   const num = parseFloat(str);
   if (isNaN(num) || num <= 0) return 0;
-  if (num >= 100) {
+  if (num >= 60) {
     return num / 60;
   }
   return num;
@@ -943,7 +943,6 @@ export function parseOtHours(otValue) {
 
 export function formatOtDisplay(otValue) {
   if (otValue === null || otValue === undefined || otValue === '' || otValue === 0) return '00:00';
-  if (typeof otValue === 'string' && otValue.includes(':')) return otValue;
 
   const parsedHours = parseOtHours(otValue);
   if (parsedHours <= 0) return '00:00';
@@ -2284,6 +2283,16 @@ export async function upsertAdvance(advance) {
       throw new Error(`Enforcement Error: Advances can only be processed for the previous processing month (${period.month}/${period.year})`);
     }
   }
+
+  if (advance.remaining_amount !== undefined && advance.remaining_amount !== null) {
+    const rem = parseFloat(advance.remaining_amount);
+    if (rem <= 0) {
+      advance.status = 'Fully Paid';
+    } else if (advance.status === 'Fully Paid' && rem > 0) {
+      advance.status = 'Approved';
+    }
+  }
+
   const { data, error } = await supabase
     .from('advances')
     .upsert(advance)
@@ -2456,6 +2465,16 @@ export async function upsertSalaryAdvance(advance) {
       throw new Error(`Enforcement Error: Loans can only be processed for the previous processing month (${period.month}/${period.year})`);
     }
   }
+
+  if (advance.remaining_amount !== undefined && advance.remaining_amount !== null) {
+    const rem = parseFloat(advance.remaining_amount);
+    if (rem <= 0) {
+      advance.status = 'Fully Paid';
+    } else if (advance.status === 'Fully Paid' && rem > 0) {
+      advance.status = 'Approved';
+    }
+  }
+
   const { data, error } = await supabase
     .from('salary_advances')
     .upsert(advance)
@@ -2704,8 +2723,8 @@ export async function syncAttendanceFromPortal(year, month) {
   const employeesMap = {};
 
   esslRows.forEach(row => {
-    const empCode = String(row['Emp Code']).trim();
-    const empName = String(row['Emp Name']).trim();
+    const empCode = String(row['Emp Code'] || row['EmpCode'] || row['emp_code'] || '').trim();
+    const empName = String(row['Emp Name'] || row['EmpName'] || row['emp_name'] || '').trim();
     if (!empCode || !empName) return;
 
     if (!employeesMap[empCode]) {
@@ -2716,18 +2735,19 @@ export async function syncAttendanceFromPortal(year, month) {
       };
     }
 
-    const dateStr = row['Attendance Date'];
+    const dateStr = String(row['Attendance Date'] || row['AttendanceDate'] || row['Date'] || row['date'] || '').trim();
     const dayMatch = /^(\d+)/.exec(dateStr);
     if (dayMatch) {
       const dayNum = parseInt(dayMatch[1], 10);
-      employeesMap[empCode].daily_status[dayNum] = String(row.Status).trim();
+      const statusVal = String(row.Status || row.status || '').trim();
+      employeesMap[empCode].daily_status[dayNum] = statusVal;
       employeesMap[empCode].daily_status._meta[dayNum] = {
-        ot: row['Over Time'] || '00:00',
-        in_time: row.InTime || null,
-        late_by: parseInt(row.LateBy || '0', 10),
-        early_by: parseInt(row.EarlyBy || '0', 10),
-        out_time: row.OutTime || null,
-        punch_records: row.PunchRecords || null,
+        ot: row['Over Time'] || row['OverTime'] || row['OT'] || row['ot'] || '00:00',
+        in_time: row.InTime || row['In Time'] || row.in_time || null,
+        late_by: parseInt(row.LateBy || row['Late By'] || row.late_by || '0', 10),
+        early_by: parseInt(row.EarlyBy || row['Early By'] || row.early_by || '0', 10),
+        out_time: row.OutTime || row['Out Time'] || row.out_time || null,
+        punch_records: row.PunchRecords || row['Punch Records'] || row.punch_records || null,
       };
     }
   });
