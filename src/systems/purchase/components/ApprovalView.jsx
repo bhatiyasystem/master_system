@@ -1,9 +1,10 @@
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import Fuse from 'fuse.js';
 import { CardPanel, EmptyState, FilterBar, StatusBadge } from './ui';
 import { uniqueValues } from '../utils/helpers';
-import { fetchIndents, decideCategory, fetchIndentHistory, findOutstandingConflicts } from '../services/purchaseService';
+import { fetchIndents, decideCategory, fetchIndentHistory, findOutstandingConflicts, updateIndent } from '../services/purchaseService';
 import Modal from './Modal';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
@@ -66,7 +67,10 @@ export default function ApprovalView() {
     return cancel;
   }, [location.pathname, load]);
 
-  const pendingCount = useMemo(() => (indents || []).filter((i) => i.orderFormula > 0 && i.status === 'Pending').length, [indents]);
+  const pendingCount = useMemo(() => {
+    const pendingItems = (indents || []).filter((i) => i.orderFormula > 0 && i.status === 'Pending');
+    return new Set(pendingItems.map((i) => i.category || 'Uncategorized')).size;
+  }, [indents]);
 
   return (
     <CardPanel title="Second Stage Approval" desc="Items with Order Formula > 0, grouped by vendor — approve or reject a whole vendor's items in one action, and adjust quantity if needed.">
@@ -119,21 +123,32 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
   const categories = useMemo(() => uniqueValues(allPending, 'category'), [allPending]);
   const vendors = useMemo(() => uniqueValues(allPending, 'vendor'), [allPending]);
 
+  const fuse = useMemo(() => {
+    return new Fuse(allPending, {
+      keys: ['itemDetails', 'vendor', 'category'],
+      threshold: 0.38,
+      ignoreLocation: true,
+    });
+  }, [allPending]);
+
   const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    return allPending.filter((i) => {
-      if (term && !`${i.itemDetails} ${i.vendor}`.toLowerCase().includes(term)) return false;
+    const term = search.trim();
+    let result = allPending;
+    if (term) {
+      result = fuse.search(term).map((res) => res.item);
+    }
+    return result.filter((i) => {
       if (category && i.category !== category) return false;
       if (vendor && i.vendor !== vendor) return false;
       return true;
     });
-  }, [allPending, search, category, vendor]);
+  }, [allPending, fuse, search, category, vendor]);
 
   const groups = useMemo(() => {
     const g = {};
     filtered.forEach((i) => {
-      const v = i.vendor || 'Unknown Vendor';
-      (g[v] = g[v] || []).push(i);
+      const cat = i.category || 'Uncategorized';
+      (g[cat] = g[cat] || []).push(i);
     });
     return g;
   }, [filtered]);
@@ -208,6 +223,8 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
           .map((cat) => {
             const list = groups[cat];
             const totalQty = list.reduce((s, i) => s + i.orderFormula, 0);
+            const vendorsInGroup = Array.from(new Set(list.map((i) => i.vendor).filter(Boolean)));
+            const vendorsText = vendorsInGroup.length > 0 ? vendorsInGroup.join(', ') : 'No Vendor';
             return (
               <div key={cat} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <div className="flex flex-wrap items-center justify-between gap-2 p-4">
@@ -218,13 +235,14 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
                   >
                     {expanded[cat] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
                     <span className="text-[14px] font-bold text-[#173254]">{cat}</span>
-                    <span className="text-[11.5px] text-gray-500">— {list.length} item(s), total qty {totalQty}</span>
+                    <span className="text-[12.5px] font-medium text-gray-700">— {vendorsText}</span>
+                    <span className="text-[11.5px] text-gray-500">({list.length} item(s), total qty {totalQty})</span>
                   </button>
                   <button
                     className="rounded-lg bg-[#C99A3E] px-3 py-1.5 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
                     onClick={() => setActiveCategory(cat)}
                   >
-                    Review Vendor
+                    Review Category
                   </button>
                 </div>
                 {expanded[cat] && (
@@ -262,8 +280,10 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
       <CategoryApprovalModal
         category={activeCategory}
         items={activeCategory ? groups[activeCategory] || [] : []}
+        vendors={activeCategory ? Array.from(new Set((groups[activeCategory] || []).map((i) => i.vendor).filter(Boolean))) : []}
         saving={saving}
         error={saveError}
+        onDecided={onDecided}
         onClose={() => {
           setActiveCategory(null);
           setSaveError('');
@@ -309,13 +329,20 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
   );
 }
 
-function CategoryApprovalModal({ category, items, saving, error: submitError, onClose, onSubmit }) {
+function CategoryApprovalModal({ category, items, vendors = [], saving, error: submitError, onClose, onSubmit, onDecided }) {
   const [checked, setChecked] = useState({});
   const [qty, setQty] = useState({});
   const [status, setStatus] = useState('');
   const [remarks, setRemarks] = useState('');
   const [error, setError] = useState('');
   const [initedFor, setInitedFor] = useState(null);
+
+  // Inline editing state
+  const [editingRowIds, setEditingRowIds] = useState(() => new Set());
+  const [rowEdits, setRowEdits] = useState({});
+  const [rowSaving, setRowSaving] = useState({});
+  const [savingAll, setSavingAll] = useState(false);
+  const [inlineError, setInlineError] = useState('');
 
   if (category && initedFor !== category) {
     const initChecked = {};
@@ -330,13 +357,182 @@ function CategoryApprovalModal({ category, items, saving, error: submitError, on
     setRemarks('');
     setError('');
     setInitedFor(category);
+    setEditingRowIds(new Set());
+    setRowEdits({});
+    setRowSaving({});
+    setSavingAll(false);
+    setInlineError('');
   }
 
   const toggleAll = () => {
-    const allChecked = items.every((i) => checked[i.dbId]);
+    const allChecked = items.length > 0 && items.every((i) => checked[i.dbId]);
     const next = {};
     items.forEach((i) => (next[i.dbId] = !allChecked));
     setChecked(next);
+  };
+
+  const startEditRow = (item) => {
+    setInlineError('');
+    setRowEdits((prev) => ({
+      ...prev,
+      [item.dbId]: {
+        itemDetails: item.itemDetails || '',
+        category: item.category || '',
+        vendor: item.vendor || '',
+        parentGroup: item.parentGroup || '',
+        unit: item.unit || 'Pcs.',
+        altUnit: item.altUnit || '',
+        shelfCapacity: item.shelfCapacity || '',
+        maxLevelQty: item.maxLevelQty != null && item.maxLevelQty !== '' ? String(item.maxLevelQty) : '',
+        rolQty: item.rolQty != null && item.rolQty !== '' ? String(item.rolQty) : '',
+        orderFormula: item.orderFormula != null && item.orderFormula !== '' ? String(item.orderFormula) : '',
+      },
+    }));
+    setEditingRowIds((prev) => new Set(prev).add(item.dbId));
+  };
+
+  const cancelEditRow = (dbId) => {
+    setEditingRowIds((prev) => {
+      const next = new Set(prev);
+      next.delete(dbId);
+      return next;
+    });
+    setRowEdits((prev) => {
+      const next = { ...prev };
+      delete next[dbId];
+      return next;
+    });
+  };
+
+  const updateRowEditField = (dbId, field, val) => {
+    setRowEdits((prev) => ({
+      ...prev,
+      [dbId]: {
+        ...prev[dbId],
+        [field]: val,
+      },
+    }));
+  };
+
+  const startEditAll = () => {
+    setInlineError('');
+    const newEdits = {};
+    const allIds = new Set();
+    items.forEach((item) => {
+      allIds.add(item.dbId);
+      newEdits[item.dbId] = {
+        itemDetails: item.itemDetails || '',
+        category: item.category || '',
+        vendor: item.vendor || '',
+        parentGroup: item.parentGroup || '',
+        unit: item.unit || 'Pcs.',
+        altUnit: item.altUnit || '',
+        shelfCapacity: item.shelfCapacity || '',
+        maxLevelQty: item.maxLevelQty != null && item.maxLevelQty !== '' ? String(item.maxLevelQty) : '',
+        rolQty: item.rolQty != null && item.rolQty !== '' ? String(item.rolQty) : '',
+        orderFormula: item.orderFormula != null && item.orderFormula !== '' ? String(item.orderFormula) : '',
+      };
+    });
+    setRowEdits(newEdits);
+    setEditingRowIds(allIds);
+  };
+
+  const cancelEditAll = () => {
+    setEditingRowIds(new Set());
+    setRowEdits({});
+    setInlineError('');
+  };
+
+  const saveRow = async (dbId) => {
+    const edit = rowEdits[dbId];
+    if (!edit) return;
+    if (!edit.itemDetails?.trim()) {
+      setInlineError('Item Details is required.');
+      return;
+    }
+    if (!edit.vendor?.trim()) {
+      setInlineError('Vendor is required.');
+      return;
+    }
+
+    setRowSaving((prev) => ({ ...prev, [dbId]: true }));
+    setInlineError('');
+    try {
+      await updateIndent(dbId, edit);
+      if (edit.orderFormula !== undefined && edit.orderFormula !== null && edit.orderFormula !== '') {
+        setQty((prev) => ({ ...prev, [dbId]: Number(edit.orderFormula) || 0 }));
+      }
+      cancelEditRow(dbId);
+      if (onDecided) await onDecided();
+    } catch (err) {
+      setInlineError(err.message || 'Failed to update item.');
+    } finally {
+      setRowSaving((prev) => ({ ...prev, [dbId]: false }));
+    }
+  };
+
+  const saveAllRows = async () => {
+    const ids = Array.from(editingRowIds);
+    if (ids.length === 0) return;
+
+    for (const id of ids) {
+      const edit = rowEdits[id];
+      if (edit) {
+        if (!edit.itemDetails?.trim()) {
+          setInlineError('Item Details is required for all edited items.');
+          return;
+        }
+        if (!edit.vendor?.trim()) {
+          setInlineError('Vendor is required for all edited items.');
+          return;
+        }
+      }
+    }
+
+    setSavingAll(true);
+    setInlineError('');
+    const failures = [];
+    let savedCount = 0;
+
+    for (const id of ids) {
+      const edit = rowEdits[id];
+      if (!edit) continue;
+      const original = items.find((i) => i.dbId === id);
+      const changed =
+        !original ||
+        edit.itemDetails !== (original.itemDetails || '') ||
+        edit.category !== (original.category || '') ||
+        edit.vendor !== (original.vendor || '') ||
+        edit.parentGroup !== (original.parentGroup || '') ||
+        edit.unit !== (original.unit || 'Pcs.') ||
+        edit.altUnit !== (original.altUnit || '') ||
+        edit.shelfCapacity !== (original.shelfCapacity || '') ||
+        edit.maxLevelQty !== (original.maxLevelQty != null && original.maxLevelQty !== '' ? String(original.maxLevelQty) : '') ||
+        edit.rolQty !== (original.rolQty != null && original.rolQty !== '' ? String(original.rolQty) : '') ||
+        edit.orderFormula !== (original.orderFormula != null && original.orderFormula !== '' ? String(original.orderFormula) : '');
+
+      if (changed) {
+        try {
+          await updateIndent(id, edit);
+          savedCount++;
+          if (edit.orderFormula !== undefined && edit.orderFormula !== null && edit.orderFormula !== '') {
+            setQty((prev) => ({ ...prev, [id]: Number(edit.orderFormula) || 0 }));
+          }
+        } catch (err) {
+          failures.push(err.message || `Failed to update ${id}`);
+        }
+      }
+    }
+
+    if (failures.length > 0) {
+      setInlineError(`Saved ${savedCount} item(s). Errors: ${failures.join('; ')}`);
+      if (savedCount > 0 && onDecided) await onDecided();
+    } else {
+      setEditingRowIds(new Set());
+      setRowEdits({});
+      if (onDecided) await onDecided();
+    }
+    setSavingAll(false);
   };
 
   const submit = () => {
@@ -356,12 +552,20 @@ function CategoryApprovalModal({ category, items, saving, error: submitError, on
     onSubmit(ids, qty, status, remarks.trim());
   };
 
+  const vendorsSubtitle = vendors && vendors.length > 0 ? vendors.join(', ') : '';
+  const isAllEditing = items.length > 0 && editingRowIds.size === items.length;
+
   return (
     <Modal
       open={!!category}
       onClose={onClose}
-      title={<>Review Vendor: {category}</>}
-      size="lg"
+      title={
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span>Review Category: {category}</span>
+          {vendorsSubtitle && <span className="text-xs font-normal text-gray-200">— {vendorsSubtitle}</span>}
+        </div>
+      }
+      size="3xl"
       footer={
         <>
           <button className="rounded-lg border border-[#173254] px-4 py-2 text-sm font-semibold text-[#173254]" onClick={onClose} disabled={saving}>
@@ -373,42 +577,276 @@ function CategoryApprovalModal({ category, items, saving, error: submitError, on
         </>
       }
     >
-      <div className="mb-2 flex items-center justify-between">
-        <label className="text-[11.2px] font-bold uppercase tracking-wide text-gray-500">Items in this batch (uncheck to exclude)</label>
-        <span className="cursor-pointer text-[11.8px] text-gray-500 underline" onClick={toggleAll}>
-          toggle all
-        </span>
-      </div>
-      <div className="mb-3.5 max-h-[220px] overflow-y-auto rounded-lg border border-gray-200 px-3 py-2">
-        {items.map((i) => (
-          <div key={i.dbId} className="flex items-center gap-2 border-b border-gray-100 py-1.5 last:border-b-0">
-            <input
-              type="checkbox"
-              checked={!!checked[i.dbId]}
-              onChange={(e) => setChecked((prev) => ({ ...prev, [i.dbId]: e.target.checked }))}
-              className="h-4 w-4 flex-shrink-0"
-            />
-            <label className="flex-grow text-[13px]">
-              {i.itemDetails} — <span className="text-gray-500">{i.vendor}</span>
-            </label>
-            <input
-              type="number"
-              className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm"
-              value={qty[i.dbId] ?? ''}
-              onChange={(e) => setQty((prev) => ({ ...prev, [i.dbId]: Number(e.target.value) || 0 }))}
-              title="Qty to order"
-            />
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <label className="text-[11.2px] font-bold uppercase tracking-wide text-gray-500">
+          Items in this category (uncheck to exclude from batch decision)
+        </label>
+        {isAllEditing || editingRowIds.size > 0 ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 shadow-xs"
+              onClick={cancelEditAll}
+              disabled={savingAll}
+            >
+              Cancel Edit
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs disabled:opacity-60"
+              onClick={saveAllRows}
+              disabled={savingAll}
+            >
+              {savingAll ? 'Saving…' : 'Save Changes'}
+            </button>
           </div>
-        ))}
+        ) : (
+          <button
+            type="button"
+            className="rounded-md border border-[#173254] bg-white px-2.5 py-1 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white transition shadow-xs"
+            onClick={startEditAll}
+          >
+            Edit All
+          </button>
+        )}
       </div>
+
+      {inlineError && (
+        <div className="mb-2 rounded-lg bg-rose-50 p-2.5 text-xs font-semibold text-rose-600 border border-rose-200 whitespace-pre-line">
+          {inlineError}
+        </div>
+      )}
+
+      <div className="mb-3.5 max-h-[420px] overflow-x-auto overflow-y-auto rounded-lg border border-gray-200">
+        <table className="w-full border-collapse text-[12px]">
+          <thead>
+            <tr className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-gray-600">
+              <th className="w-8 px-2.5 py-2 text-center">
+                <input
+                  type="checkbox"
+                  checked={items.length > 0 && items.every((i) => checked[i.dbId])}
+                  onChange={toggleAll}
+                  className="h-4 w-4 rounded"
+                  title="Toggle all"
+                />
+              </th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide">Unique No.</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[150px]">Item Details</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[110px]">Category</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[110px]">Vendor</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[95px]">Parent Group</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[65px]">Unit</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[70px]">Alt Unit</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[80px]">Shelf Capacity</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[65px]">Max Level Qty</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[65px]">ROL Qty</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[70px]">Order Qty</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide">Qty to Order</th>
+              <th className="whitespace-nowrap px-2.5 py-2 text-center text-[10.5px] font-bold uppercase tracking-wide min-w-[105px]">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={14} className="px-4 py-8 text-center text-xs text-gray-500">
+                  No items in this category.
+                </td>
+              </tr>
+            ) : (
+              items.map((i) => {
+                const isEditing = editingRowIds.has(i.dbId);
+                const cur = rowEdits[i.dbId] || {};
+                return (
+                  <tr key={i.dbId} className={`border-b border-gray-100 transition ${isEditing ? 'bg-amber-50/40' : 'hover:bg-gray-50/80'}`}>
+                    <td className="px-2.5 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={!!checked[i.dbId]}
+                        onChange={(e) => setChecked((prev) => ({ ...prev, [i.dbId]: e.target.checked }))}
+                        className="h-4 w-4 rounded"
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-2.5 py-2 font-semibold text-gray-900">{i.id}</td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[150px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.itemDetails ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'itemDetails', e.target.value)}
+                        />
+                      ) : (
+                        <span className="min-w-[140px] font-medium text-gray-800">{i.itemDetails}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[110px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.category ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'category', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.category}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[110px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.vendor ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'vendor', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.vendor}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[95px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.parentGroup ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'parentGroup', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.parentGroup || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[65px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.unit ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'unit', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.unit || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[70px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.altUnit ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'altUnit', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.altUnit || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full min-w-[80px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.shelfCapacity ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'shelfCapacity', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.shelfCapacity || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="w-full min-w-[65px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.maxLevelQty ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'maxLevelQty', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.maxLevelQty != null && i.maxLevelQty !== '' ? i.maxLevelQty : '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="w-full min-w-[65px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.rolQty ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'rolQty', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600">{i.rolQty != null && i.rolQty !== '' ? i.rolQty : '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full min-w-[70px] rounded border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-900 focus:border-blue-500 focus:outline-none"
+                          value={cur.orderFormula ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'orderFormula', e.target.value)}
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap font-semibold text-gray-900">{i.orderFormula}</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2.5 py-2">
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold focus:border-blue-500 focus:outline-none"
+                        value={qty[i.dbId] ?? ''}
+                        onChange={(e) => setQty((prev) => ({ ...prev, [i.dbId]: Number(e.target.value) || 0 }))}
+                        title="Qty to order"
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-2.5 py-2 text-center">
+                      {isEditing ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            className="rounded bg-[#173254] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs disabled:opacity-60"
+                            onClick={() => saveRow(i.dbId)}
+                            disabled={rowSaving[i.dbId]}
+                          >
+                            {rowSaving[i.dbId] ? '…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 shadow-xs"
+                            onClick={() => cancelEditRow(i.dbId)}
+                            disabled={rowSaving[i.dbId]}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
+                          onClick={() => startEditRow(i)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
       <div className="mb-3">
-        <label className="mb-1 block text-[11.2px] font-bold uppercase tracking-wide text-gray-500">Status (applies to all checked items)</label>
+        <label className="mb-1 block text-[11.2px] font-bold uppercase tracking-wide text-gray-500">
+          Status (applies to all checked items)
+        </label>
         <select className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Select status</option>
           <option value="Approved">Approved</option>
           <option value="Rejected">Rejected</option>
         </select>
       </div>
+
       <div className="mb-1">
         <label className="mb-1 block text-[11.2px] font-bold uppercase tracking-wide text-gray-500">Remarks</label>
         <textarea
@@ -445,16 +883,27 @@ function HistoryPanel({ indents }) {
   const categories = useMemo(() => uniqueValues(indents, 'category'), [indents]);
   const vendors = useMemo(() => uniqueValues(indents, 'vendor'), [indents]);
 
+  const fuse = useMemo(() => {
+    return new Fuse(base, {
+      keys: ['itemDetails', 'vendor', 'category'],
+      threshold: 0.38,
+      ignoreLocation: true,
+    });
+  }, [base]);
+
   const rows = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    return base.filter((i) => {
-      if (term && !`${i.itemDetails} ${i.vendor}`.toLowerCase().includes(term)) return false;
+    const term = search.trim();
+    let result = base;
+    if (term) {
+      result = fuse.search(term).map((res) => res.item);
+    }
+    return result.filter((i) => {
       if (category && i.category !== category) return false;
       if (vendor && i.vendor !== vendor) return false;
       if (status && i.status !== status) return false;
       return true;
     });
-  }, [base, search, category, vendor, status]);
+  }, [base, fuse, search, category, vendor, status]);
 
   const clear = () => {
     setSearch('');

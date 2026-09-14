@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import Fuse from 'fuse.js';
 import supabase from '../../../SupabaseClient';
 import { createIndentsManualBulk, previewIndentsManualBulk, fetchActiveIndentsPool } from '../services/purchaseService';
 
@@ -24,6 +25,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                     supabase
                         .from('purchase_indents')
                         .select('item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula')
+                        .or('hide_in_master.eq.false,hide_in_master.is.null')
                         .order('created_at', { ascending: false }),
                     supabase
                         .from('vendors')
@@ -66,7 +68,8 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     };
 
     const handleItemNameChange = (index, val) => {
-        const matched = existingItemsDB.find(dbItem => String(dbItem.item_details || '').trim().toLowerCase() === String(val || '').trim().toLowerCase());
+        const trimmedVal = String(val || '').trim();
+        const matched = existingItemsDB.find(dbItem => String(dbItem.item_details || '').trim().toLowerCase() === trimmedVal.toLowerCase());
         setItems((prev) => {
             const copy = [...prev];
             const currentItem = copy[index];
@@ -94,6 +97,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 // If 0 or empty from DB: leave blank and mark as required so user must fill it
                 order_formula: orderQtyIsZeroOrEmpty ? '' : (matched ? String(matchedOrderQty) : currentItem.order_formula),
                 orderQtyRequired: orderQtyIsZeroOrEmpty,
+                isNewItem: !matched && !!trimmedVal,
             };
             return copy;
         });
@@ -205,7 +209,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* Left half UI section */}
+                                            {/* Left half UI section: Identification & Units */}
                                             <div className="space-y-4">
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
@@ -221,6 +225,19 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         activePool={activePool}
                                                         normalize={normalizeFn}
                                                     />
+                                                    {item.item_details && item.item_details.trim() && (
+                                                        <div className="pt-0.5">
+                                                            {item.isNewItem ? (
+                                                                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-lg shadow-xs">
+                                                                    ✨ New item — will be saved to Master automatically
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg shadow-xs">
+                                                                    ✓ Existing item from Master (details auto-filled)
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="space-y-1">
@@ -231,7 +248,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         value={item.category}
                                                         onChange={(val) => updateItem(index, 'category', val)}
                                                         label="Category"
-                                                        disableCustom={true}
+                                                        placeholder="Select or enter category"
                                                     />
                                                 </div>
                                                 <div className="space-y-1">
@@ -244,8 +261,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         value={item.vendor}
                                                         onChange={(val) => updateItem(index, 'vendor', val)}
                                                         label="Vendor"
-                                                        placeholder="Select vendor name"
-                                                        disableCustom={true}
+                                                        placeholder="Select or enter vendor name"
                                                     />
                                                 </div>
                                                 <div className="space-y-1">
@@ -256,42 +272,57 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         value={item.parent_group}
                                                         onChange={(val) => updateItem(index, 'parent_group', val)}
                                                         label="Parent Group"
-                                                        disableCustom={true}
+                                                        placeholder="Select or enter parent group"
                                                     />
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
-                                                    <ComboSelect
-                                                        table="purchase_indents"
-                                                        column="unit"
-                                                        value={item.unit}
-                                                        onChange={(val) => updateItem(index, 'unit', val)}
-                                                        label="Unit"
-                                                    />
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
+                                                        <ComboSelect
+                                                            table="purchase_indents"
+                                                            column="unit"
+                                                            value={item.unit}
+                                                            onChange={(val) => updateItem(index, 'unit', val)}
+                                                            label="Unit"
+                                                            placeholder="Unit"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Alt Unit</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.alt_unit || ''}
+                                                            onChange={(e) => updateItem(index, 'alt_unit', e.target.value)}
+                                                            placeholder="Alt Unit (optional)"
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* Right half UI section */}
+                                            {/* Right half UI section: Quantities & Specs */}
                                             <div className="space-y-4">
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
-                                                    <input
-                                                        type="text"
-                                                        value={item.shelf_capacity || ''}
-                                                        onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
-                                                        placeholder="Shelf Capacity"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
-                                                    <input
-                                                        type="text"
-                                                        value={item.max_level_qty || ''}
-                                                        onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
-                                                        placeholder="Max Level Qty"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                    />
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.shelf_capacity || ''}
+                                                            onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
+                                                            placeholder="Shelf Capacity"
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.max_level_qty || ''}
+                                                            onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
+                                                            placeholder="Max Level Qty"
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
@@ -537,7 +568,7 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
             if (containerRef.current && !containerRef.current.contains(e.target)) {
                 setIsOpen(false);
                 if (disableCustom) {
-                    const exactMatch = options.find(opt => opt.toLowerCase() === search.toLowerCase());
+                    const exactMatch = options.find(opt => opt.toLowerCase() === search.trim().toLowerCase());
                     if (exactMatch) {
                         onChange(exactMatch);
                         setSearch(exactMatch);
@@ -545,20 +576,55 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                         onChange('');
                         setSearch('');
                     }
+                } else {
+                    const trimmed = search.trim();
+                    if (trimmed && trimmed !== value) {
+                        onChange(trimmed);
+                    }
                 }
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [search, options, disableCustom, onChange]);
+    }, [search, options, disableCustom, onChange, value]);
 
-    const filtered = options.filter(opt =>
-        String(opt).toLowerCase().includes(search.toLowerCase())
-    );
+    const trimmedSearch = search.trim();
+    const hasExactMatch = options.some(opt => opt.toLowerCase() === trimmedSearch.toLowerCase());
+
+    const fuse = useMemo(() => {
+        return new Fuse(options, {
+            threshold: 0.4,
+            ignoreLocation: true,
+        });
+    }, [options]);
+
+    const filtered = useMemo(() => {
+        if (!trimmedSearch) return options;
+
+        const lowerSearch = trimmedSearch.toLowerCase();
+        const sub = options.filter(opt => String(opt).toLowerCase().includes(lowerSearch));
+        const fuz = fuse.search(trimmedSearch).map(r => r.item);
+
+        const words = trimmedSearch.split(/\s+/).filter(Boolean);
+        let tokenMatches = [];
+        if (words.length > 1) {
+            const wordResults = words.map(w => new Set(fuse.search(w).map(r => r.item)));
+            tokenMatches = options.filter(opt => wordResults.every(set => set.has(opt)));
+        }
+
+        return Array.from(new Set([...sub, ...tokenMatches, ...fuz]));
+    }, [options, fuse, trimmedSearch]);
 
     if (loading) {
         return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-155 rounded-2xl animate-pulse">Loading options...</div>;
     }
+
+    const handleSelectCustom = () => {
+        if (!trimmedSearch) return;
+        onChange(trimmedSearch);
+        setSearch(trimmedSearch);
+        setIsOpen(false);
+    };
 
     return (
         <div ref={containerRef} className="relative w-full">
@@ -567,6 +633,21 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                     type="text"
                     value={search}
                     onFocus={() => setIsOpen(true)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!disableCustom && trimmedSearch) {
+                                handleSelectCustom();
+                            } else if (filtered.length > 0) {
+                                onChange(filtered[0]);
+                                setSearch(filtered[0]);
+                                setIsOpen(false);
+                            }
+                        } else if (e.key === 'Escape') {
+                            setIsOpen(false);
+                        }
+                    }}
                     onChange={(e) => {
                         const val = e.target.value;
                         setSearch(val);
@@ -591,6 +672,23 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
 
             {isOpen && (
                 <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto py-1">
+                    {/* Add / Use Custom Value Action */}
+                    {!disableCustom && trimmedSearch && !hasExactMatch && (
+                        <button
+                            type="button"
+                            onClick={handleSelectCustom}
+                            className="w-full text-left px-4 py-2.5 text-xs font-bold text-blue-600 hover:bg-blue-50 border-b border-gray-100 flex items-center justify-between transition-colors bg-blue-50/40"
+                        >
+                            <span className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-blue-500 font-bold shrink-0">➕</span>
+                                <span className="truncate">Use "<strong>{trimmedSearch}</strong>"</span>
+                            </span>
+                            <span className="text-[9.5px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full shrink-0 ml-2">
+                                New {label || 'Value'}
+                            </span>
+                        </button>
+                    )}
+
                     {filtered.length > 0 ? (
                         filtered.map((opt) => {
                             let isUnderProcess = false;
@@ -598,37 +696,44 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                                 const norm = normalize(opt);
                                 if (activePool[norm]) isUnderProcess = true;
                             }
-                            
+
                             let textColorClass = 'text-gray-700';
                             if (activePool && normalize) {
                                 textColorClass = isUnderProcess ? 'text-rose-600' : 'text-emerald-600';
                             }
 
                             return (
-                            <button
-                                key={opt}
-                                type="button"
-                                onClick={() => {
-                                    onChange(opt);
-                                    setSearch(opt);
-                                    setIsOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 ${
-                                    value === opt ? 'bg-blue-50 text-blue-600 font-bold' : textColorClass
-                                }`}
-                            >
-                                {opt}
-                                {activePool && normalize && (
-                                    <span className={`ml-2 text-[9px] italic ${isUnderProcess ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                        {isUnderProcess ? '(Under Process)' : '(Can Create Indent)'}
-                                    </span>
-                                )}
-                            </button>
-                        )})
+                                <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(opt);
+                                        setSearch(opt);
+                                        setIsOpen(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-blue-50/60 ${
+                                        value === opt ? 'bg-blue-50 text-blue-600 font-bold' : textColorClass
+                                    }`}
+                                >
+                                    {opt}
+                                    {activePool && normalize && (
+                                        <span className={`ml-2 text-[9px] italic ${isUnderProcess ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                            {isUnderProcess ? '(Under Process)' : '(Can Create Indent)'}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })
                     ) : (
-                        <div className="px-4 py-3 text-xs text-gray-400 font-medium italic">
-                            {disableCustom ? 'No matching records' : 'No matches (press Enter to use custom value)'}
-                        </div>
+                        !disableCustom && trimmedSearch ? (
+                            <div className="px-4 py-2 text-[11px] text-gray-500 italic">
+                                No existing matches. Click above or press Enter to use "{trimmedSearch}".
+                            </div>
+                        ) : (
+                            <div className="px-4 py-3 text-xs text-gray-400 font-medium italic">
+                                {disableCustom ? 'No matching records' : 'No matches'}
+                            </div>
+                        )
                     )}
                 </div>
             )}

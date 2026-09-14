@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 
 export default function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   if (!open) return null;
-  const widths = { md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+  const widths = { md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl', '2xl': 'max-w-6xl', '3xl': 'max-w-7xl' };
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div

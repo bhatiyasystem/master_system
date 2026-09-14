@@ -64,6 +64,59 @@ export async function fetchIndents() {
   return (data || []).map(mapIndentRow);
 }
 
+export async function updateIndent(dbId, fields) {
+  if (!dbId) throw new Error('Indent ID is required for update.');
+
+  const payload = {};
+  if (fields.itemDetails !== undefined) payload.item_details = fields.itemDetails;
+  else if (fields.item_details !== undefined) payload.item_details = fields.item_details;
+
+  if (fields.category !== undefined) payload.category = fields.category;
+  if (fields.vendor !== undefined) payload.vendor = fields.vendor;
+  if (fields.unit !== undefined) payload.unit = fields.unit;
+
+  if (fields.altUnit !== undefined) payload.alt_unit = fields.altUnit;
+  else if (fields.alt_unit !== undefined) payload.alt_unit = fields.alt_unit;
+
+  if (fields.parentGroup !== undefined) payload.parent_group = fields.parentGroup;
+  else if (fields.parent_group !== undefined) payload.parent_group = fields.parent_group;
+
+  if (fields.shelfCapacity !== undefined) payload.shelf_capacity = fields.shelfCapacity;
+  else if (fields.shelf_capacity !== undefined) payload.shelf_capacity = fields.shelf_capacity;
+
+  if (fields.maxLevelQty !== undefined) payload.max_level_qty = fields.maxLevelQty !== '' && fields.maxLevelQty !== null ? Number(fields.maxLevelQty) : 0;
+  else if (fields.max_level_qty !== undefined) payload.max_level_qty = fields.max_level_qty !== '' && fields.max_level_qty !== null ? Number(fields.max_level_qty) : 0;
+
+  if (fields.rolQty !== undefined) payload.rol_qty = fields.rolQty !== '' && fields.rolQty !== null ? Number(fields.rolQty) : 0;
+  else if (fields.rol_qty !== undefined) payload.rol_qty = fields.rol_qty !== '' && fields.rol_qty !== null ? Number(fields.rol_qty) : 0;
+
+  if (fields.clQty !== undefined) payload.cl_qty = fields.clQty !== '' && fields.clQty !== null ? Number(fields.clQty) : 0;
+  else if (fields.cl_qty !== undefined) payload.cl_qty = fields.cl_qty !== '' && fields.cl_qty !== null ? Number(fields.cl_qty) : 0;
+
+  if (fields.conversionUnit !== undefined) payload.conversion_unit = fields.conversionUnit;
+  else if (fields.conversion_unit !== undefined) payload.conversion_unit = fields.conversion_unit;
+
+  if (fields.orderFormula !== undefined) {
+    const val = String(fields.orderFormula).trim();
+    payload.order_formula = val ? evaluateFormula(val) : null;
+  } else if (fields.order_formula !== undefined) {
+    const val = String(fields.order_formula).trim();
+    payload.order_formula = val ? evaluateFormula(val) : null;
+  }
+
+  payload.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('purchase_indents')
+    .update(payload)
+    .eq('id', dbId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapIndentRow(data);
+}
+
 function mapHistoryRow(row) {
   return {
     status: row.status,
@@ -222,11 +275,41 @@ export async function importIndentRows(parsedRows) {
     const createdBy = localStorage.getItem('user-id') || null;
     const importBatchId = crypto.randomUUID();
 
+    // Query last edited master values for shelf_capacity, max_level_qty, rol_qty
+    const { data: masterHistoryRows } = await supabase
+      .from('purchase_indents')
+      .select('item_details, shelf_capacity, max_level_qty, rol_qty')
+      .or('hide_in_master.eq.false,hide_in_master.is.null')
+      .order('created_at', { ascending: false });
+
+    const masterLookup = {};
+    (masterHistoryRows || []).forEach((row) => {
+      const norm = normalizeName(row.item_details);
+      if (norm && !masterLookup[norm]) {
+        masterLookup[norm] = row;
+      }
+    });
+
     const payload = newRowsToInsert.map((r, i) => {
       const formulaVal = (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '') ? String(r.orderFormula).trim() : null;
       const evaluated = formulaVal ? evaluateFormula(formulaVal) : null;
       const isZero = evaluated === 0;
       const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
+
+      const norm = normalizeName(r.itemDetails);
+      const masterRecord = masterLookup[norm];
+
+      const shelfCapacity = (masterRecord && masterRecord.shelf_capacity !== null && masterRecord.shelf_capacity !== undefined && String(masterRecord.shelf_capacity).trim() !== '')
+        ? masterRecord.shelf_capacity
+        : (r.shelfCapacity || '');
+
+      const maxLevelQty = (masterRecord && masterRecord.max_level_qty !== null && masterRecord.max_level_qty !== undefined && String(masterRecord.max_level_qty).trim() !== '')
+        ? Number(masterRecord.max_level_qty)
+        : ((r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '') ? Number(r.maxLevelQty) : 0);
+
+      const rolQty = (masterRecord && masterRecord.rol_qty !== null && masterRecord.rol_qty !== undefined && String(masterRecord.rol_qty).trim() !== '')
+        ? Number(masterRecord.rol_qty)
+        : ((r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0);
 
       return {
         unique_no: reserved[i].unique_no,
@@ -238,9 +321,9 @@ export async function importIndentRows(parsedRows) {
         unit: r.unit || 'Pcs.',
         alt_unit: r.altUnit || '',
         parent_group: r.parentGroup || '',
-        shelf_capacity: r.shelfCapacity || '',
-        max_level_qty: (r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '') ? Number(r.maxLevelQty) : 0,
-        rol_qty: (r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0,
+        shelf_capacity: shelfCapacity,
+        max_level_qty: maxLevelQty,
+        rol_qty: rolQty,
         cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '') ? Number(r.clQty) : 0,
         conversion_unit: r.conversionUnit || '',
         order_formula: dbOrderFormula,
@@ -973,7 +1056,7 @@ export async function reviseReceiving({ receivingId, items, fullyReceived, recei
 // from the sidebar without the cost of the full fetch* functions above.
 export async function fetchPurchasePendingCounts() {
   const [indentsRes, posRes, deliveriesRes, payablePOsRaw, approvalsRes, paymentsRes, receivingsRes] = await Promise.all([
-    supabase.from('purchase_indents').select('id, status, order_formula, po_id'),
+    supabase.from('purchase_indents').select('id, status, order_formula, po_id, category'),
     supabase.from('purchase_pos').select('id'),
     supabase.from('purchase_deliveries').select('id, po_id, received, dagg_count'),
     fetchPayablePOs(),
@@ -996,10 +1079,12 @@ export async function fetchPurchasePendingCounts() {
   const payments = paymentsRes.data || [];
   const receivings = receivingsRes.data || [];
 
-  // Indents awaiting an approve/reject decision
-  const approvalPending = indents.filter(
-    (i) => i.status === 'Pending' && evaluateFormula(i.order_formula) > 0
-  ).length;
+  // Indents awaiting an approve/reject decision (distinct categories)
+  const approvalPending = new Set(
+    indents
+      .filter((i) => i.status === 'Pending' && evaluateFormula(i.order_formula) > 0)
+      .map((i) => i.category || 'Uncategorized')
+  ).size;
 
   // Indents approved but not yet attached to a PO
   const poPending = indents.filter((i) => i.status === 'Approved' && !i.po_id).length;
@@ -1435,6 +1520,7 @@ export async function createIndentsManualBulk(vendor, items) {
       order_formula: dbOrderFormula,
       status: isZero ? 'Rejected' : 'Pending',
       remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
+      hide_in_master: false,
     };
   });
 
@@ -1444,6 +1530,38 @@ export async function createIndentsManualBulk(vendor, items) {
       throw new Error('A sequence conflict occurred (duplicate indent number). Please try submitting again.');
     }
     throw new Error(error.message || 'Failed to create indents.');
+  }
+
+  // 1. Unhide any previously hidden records for these items on the master side
+  try {
+    const itemNames = Array.from(new Set(itemsToCreate.map(it => String(it.item_details || '').trim()).filter(Boolean)));
+    if (itemNames.length > 0) {
+      await supabase
+        .from('purchase_indents')
+        .update({ hide_in_master: false })
+        .in('item_details', itemNames);
+    }
+  } catch (unhideErr) {
+    console.error('Error unhiding items in master:', unhideErr);
+  }
+
+  // 2. Automatically save any new vendors to the vendors master table
+  try {
+    const enteredVendors = Array.from(new Set(itemsToCreate.map(it => String(it.vendor || '').trim()).filter(Boolean)));
+    if (enteredVendors.length > 0) {
+      const { data: existingV } = await supabase
+        .from('vendors')
+        .select('name');
+      const existingVNames = new Set((existingV || []).map(v => String(v.name || '').trim().toLowerCase()));
+      const newVendors = enteredVendors.filter(v => !existingVNames.has(v.toLowerCase()));
+      if (newVendors.length > 0) {
+        await supabase
+          .from('vendors')
+          .insert(newVendors.map(v => ({ name: v })));
+      }
+    }
+  } catch (vendorErr) {
+    console.error('Error auto-saving new vendors to master:', vendorErr);
   }
 
   try {

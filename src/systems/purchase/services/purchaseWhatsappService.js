@@ -27,6 +27,9 @@ const ACCESS_TOKEN    = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN;
 // ─── Master toggle ────────────────────────────────────────────────────────────
 const IS_ENABLED = true; // set to true to enable PO WhatsApp messages
 
+// ─── Admin Notification Recipient ─────────────────────────────────────────────
+const ADMIN_PO_PHONE = '9028105766';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -258,22 +261,6 @@ export const sendPOCreatedNotification = async ({ vendorName, poNo, poDate, docu
             }
         }
 
-        if (!recipientPhone) {
-            console.warn(`[PurchaseWA] ⚠️ No contact number found for vendor "${vendorName}". Cannot send WhatsApp notification.`);
-            await insertLog({
-                recipientName  : vendorName || 'Vendor',
-                phone          : null,
-                messageType    : 'Purchase Order',
-                stage          : 'PO Created',
-                referenceId    : poNo || '-',
-                senderName     : 'Purchase Team',
-                messageContent : `PO ${poNo} issued to ${vendorName} (No contact number available)`,
-                status         : 'Failed',
-                errorMessage   : `No contact number found for vendor "${vendorName}" in vendors table or form.`,
-            });
-            return false;
-        }
-
         const formattedDate = poDate
             ? new Date(poDate).toLocaleDateString('en-IN', {
                 day   : '2-digit',
@@ -288,25 +275,75 @@ export const sendPOCreatedNotification = async ({ vendorName, poNo, poDate, docu
         //   {{3}} → formattedDate (formatted date, e.g. "19 Aug 2026")
         const templateParams = [vendorName || 'Vendor', poNo || 'N/A', formattedDate];
 
-        return await sendPurchaseTemplate(
-            recipientPhone,
-            'purchase_po',
-            templateParams,
-            'en',
-            {
+        const sendPromises = [];
+
+        // 1. Send to vendor (if contact number is available)
+        if (recipientPhone) {
+            sendPromises.push(
+                sendPurchaseTemplate(
+                    recipientPhone,
+                    'purchase_po',
+                    templateParams,
+                    'en',
+                    {
+                        recipientName  : vendorName || 'Vendor',
+                        messageType    : 'purchase_po',
+                        stage          : 'PO Created',
+                        referenceId    : poNo || '-',
+                        senderName     : 'Purchase Team',
+                        // Use structured format so WhatsApp History can parse {{1}}, {{2}}, {{3}} correctly
+                        messageContent : `Template: purchase_po | Params: ${templateParams.join(' | ')}`,
+                        fileName       : `PO_${(poNo || 'Order').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+                        mimeType       : 'application/pdf',
+                        mediaUrl       : documentUrl,
+                    },
+                    documentUrl   // pass through — required by the purchase_po template header
+                )
+            );
+        } else {
+            console.warn(`[PurchaseWA] ⚠️ No contact number found for vendor "${vendorName}". Cannot send WhatsApp notification to vendor.`);
+            await insertLog({
                 recipientName  : vendorName || 'Vendor',
-                messageType    : 'purchase_po',
+                phone          : null,
+                messageType    : 'Purchase Order',
                 stage          : 'PO Created',
                 referenceId    : poNo || '-',
                 senderName     : 'Purchase Team',
-                // Use structured format so WhatsApp History can parse {{1}}, {{2}}, {{3}} correctly
-                messageContent : `Template: purchase_po | Params: ${templateParams.join(' | ')}`,
-                fileName       : `PO_${(poNo || 'Order').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
-                mimeType       : 'application/pdf',
-                mediaUrl       : documentUrl,
-            },
-            documentUrl   // pass through — required by the purchase_po template header
-        );
+                messageContent : `PO ${poNo} issued to ${vendorName} (No contact number available)`,
+                status         : 'Failed',
+                errorMessage   : `No contact number found for vendor "${vendorName}" in vendors table or form.`,
+            });
+        }
+
+        // 2. Also send the same WhatsApp notification to admin (9028105766)
+        const formattedAdminPhone = formatPhone(ADMIN_PO_PHONE);
+        const formattedVendorPhone = recipientPhone ? formatPhone(recipientPhone) : null;
+
+        if (formattedAdminPhone && formattedAdminPhone !== formattedVendorPhone) {
+            sendPromises.push(
+                sendPurchaseTemplate(
+                    ADMIN_PO_PHONE,
+                    'purchase_po',
+                    templateParams,
+                    'en',
+                    {
+                        recipientName  : `Admin (${vendorName || 'Vendor'} PO)`,
+                        messageType    : 'purchase_po',
+                        stage          : 'PO Created',
+                        referenceId    : poNo || '-',
+                        senderName     : 'Purchase Team',
+                        messageContent : `Template: purchase_po | Params: ${templateParams.join(' | ')}`,
+                        fileName       : `PO_${(poNo || 'Order').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+                        mimeType       : 'application/pdf',
+                        mediaUrl       : documentUrl,
+                    },
+                    documentUrl
+                )
+            );
+        }
+
+        const results = await Promise.all(sendPromises);
+        return results.some(Boolean);
     } catch (err) {
         console.error('[PurchaseWA] sendPOCreatedNotification error:', err);
         return false;

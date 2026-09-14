@@ -42,18 +42,14 @@ const CONFIG = {
     indent: {
         table: 'purchase_indents',
         fields: [
+            { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
             { key: 'vendor', label: 'Vendor Name', placeholder: 'Enter vendor name', comboTable: 'vendors', comboColumn: 'name' },
             { key: 'category', label: 'Category', placeholder: 'Enter category', comboTable: 'purchase_indents', comboColumn: 'category' },
             { key: 'unit', label: 'Unit', placeholder: 'Enter unit', comboTable: 'purchase_indents', comboColumn: 'unit' },
             { key: 'parent_group', label: 'Parent Group', placeholder: 'Enter parent group', comboTable: 'purchase_indents', comboColumn: 'parent_group' },
-            // { key: 'alt_unit', label: 'Alt Unit', placeholder: 'Enter alt unit' },
-            // { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
-            // { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
-            // { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
-            // { key: 'cl_qty', label: 'CL Qty', placeholder: 'Enter CL qty' },
-            // { key: 'conversion_unit', label: 'Conversion Unit', placeholder: 'Enter conversion unit', comboTable: 'purchase_indents', comboColumn: 'conversion_unit' },
-            // { key: 'order_formula', label: 'Order Formula', placeholder: 'Enter order formula' },
-            { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
+            { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
+            { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
+            { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
         ],
         label: 'Indent',
         pluralLabel: 'Indents'
@@ -277,7 +273,16 @@ function MasterDataPanel({ type }) {
     return (
         <div>
             <div className="mb-4 flex flex-wrap items-center gap-3">
-                {type !== 'indent' && (
+                {type === 'indent' ? (
+                    <button
+                        type="button"
+                        onClick={() => setShowForm(true)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:from-blue-700 hover:to-purple-700 transition"
+                    >
+                        <Lucide.Plus size={15} />
+                        Add Master Item Manually
+                    </button>
+                ) : (
                     <>
                         <button
                             type="button"

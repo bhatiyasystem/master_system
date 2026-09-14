@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { submitNewPO, revisePO } from '../services/purchaseService';
+import { submitNewPO, revisePO, updateIndent } from '../services/purchaseService';
 import { sendPOCreatedNotification } from '../services/purchaseWhatsappService';
 import { generatePOPdfBlob } from '../utils/generatePOPdf';
 import { uploadPOPdf } from '../utils/uploadPOPdf';
 import EntitySelectInput from './EntitySelectInput';
-import PreviewModal from './PreviewModal'
+import PreviewModal from './PreviewModal';
 import supabase from '../../../SupabaseClient';
 
 const DEFAULT_TERMS = `1. We deserve the right to cancel the purchase order anytime before product shipment.
@@ -19,6 +19,12 @@ function itemsFromIndents(items) {
     indentId: i.dbId,
     productCode: '',
     productName: i.itemDetails,
+    category: i.category || '',
+    vendor: i.vendor || '',
+    parentGroup: i.parentGroup || '',
+    shelfCapacity: i.shelfCapacity || '',
+    maxLevelQty: i.maxLevelQty != null && i.maxLevelQty !== '' ? i.maxLevelQty : '',
+    rolQty: i.rolQty != null && i.rolQty !== '' ? i.rolQty : '',
     hsn: '',
     qty: (i.approvedQty != null ? i.approvedQty : i.orderFormula) || 0,
     units: i.unit || 'Pcs.',
@@ -39,6 +45,10 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [vendors, setVendors] = useState([]);
+  const [editingRowIdx, setEditingRowIdx] = useState(null);
+  const [rowBackup, setRowBackup] = useState(null);
+  const [editAll, setEditAll] = useState(false);
+  const [allBackup, setAllBackup] = useState(null);
 
   useEffect(() => {
     supabase
@@ -90,7 +100,6 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
       fixTransporter: match.fix_transporter || '',
       vendorPaymentTerms: match.payment_terms || '',
     }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.vendorName, vendors]);
 
   useEffect(() => {
@@ -121,8 +130,89 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
     );
   };
   const removeItem = (idx) => setItems((prev) => prev.filter((_, i) => i !== idx));
-  const addExtra = () =>
-    setItems((prev) => [...prev, { indentId: null, productCode: '', productName: '', hsn: '', qty: 1, units: 'Pcs.', rate: 0, tax: 5, amount: 0, isExtra: true }]);
+
+  const saveIndentUpdate = (it) => {
+    if (!it?.indentId) return;
+    updateIndent(it.indentId, {
+      itemDetails: it.productName,
+      category: it.category,
+      vendor: it.vendor,
+      parentGroup: it.parentGroup,
+      shelfCapacity: it.shelfCapacity,
+      maxLevelQty: it.maxLevelQty,
+      rolQty: it.rolQty,
+      unit: it.units,
+      orderFormula: it.qty,
+    }).catch((err) => {
+      console.error('Failed to update indent in database:', err);
+    });
+  };
+
+  const startEditRow = (idx) => {
+    setEditingRowIdx(idx);
+    setRowBackup({ ...items[idx] });
+  };
+
+  const doneEditRow = (idx) => {
+    const it = items[idx];
+    if (it) {
+      saveIndentUpdate(it);
+    }
+    setEditingRowIdx(null);
+    setRowBackup(null);
+  };
+
+  const cancelEditRow = (idx) => {
+    if (rowBackup) {
+      setItems((prev) => prev.map((it, i) => (i === idx ? rowBackup : it)));
+    }
+    setEditingRowIdx(null);
+    setRowBackup(null);
+  };
+
+  const startEditAll = () => {
+    setAllBackup(items.map((it) => ({ ...it })));
+    setEditAll(true);
+    setEditingRowIdx(null);
+  };
+
+  const doneEditAll = () => {
+    items.forEach((it) => saveIndentUpdate(it));
+    setEditAll(false);
+    setAllBackup(null);
+  };
+
+  const cancelEditAll = () => {
+    if (allBackup) {
+      setItems(allBackup);
+    }
+    setEditAll(false);
+    setAllBackup(null);
+  };
+
+  const addExtra = () => {
+    const newItem = {
+      indentId: null,
+      productCode: '',
+      productName: '',
+      category: '',
+      vendor: form.vendorName || '',
+      parentGroup: '',
+      shelfCapacity: '',
+      maxLevelQty: '',
+      rolQty: '',
+      hsn: '',
+      qty: 1,
+      units: 'Pcs.',
+      rate: 0,
+      tax: 5,
+      amount: 0,
+      isExtra: true,
+    };
+    setItems((prev) => [...prev, newItem]);
+    setEditingRowIdx(items.length);
+    setRowBackup({ ...newItem });
+  };
 
   const buildPayload = () => ({
     poNo: form.poNo,
@@ -268,15 +358,49 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
       <hr className="my-4 border-gray-200" />
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="text-[13px] font-bold text-[#173254]">Items</div>
-        <button className="rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254]" onClick={addExtra}>
-          + Add Extra Material
-        </button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            editAll ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 shadow-xs"
+                  onClick={cancelEditAll}
+                >
+                  Cancel Edit
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md bg-[#173254] px-3 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs"
+                  onClick={doneEditAll}
+                >
+                  Save All
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="rounded-md border border-[#173254] bg-white px-2.5 py-1 text-xs font-semibold text-[#173254] hover:bg-[#173254] hover:text-white transition shadow-xs"
+                onClick={startEditAll}
+              >
+                Edit All
+              </button>
+            )
+          )}
+          <button
+            type="button"
+            className="rounded-lg border border-[#173254] px-3 py-1.5 text-xs font-semibold text-[#173254] hover:bg-blue-50"
+            onClick={addExtra}
+          >
+            + Add Extra Material
+          </button>
+        </div>
       </div>
       <div className="mb-2 overflow-x-auto rounded-xl border border-gray-200">
         <table className="w-full text-[12.6px]">
           <thead>
             <tr className="bg-gray-50 text-gray-500">
-              {['S.No', 'Product Name', 'Qty', 'Units', ''].map((h) => (
+              {['S.No', 'Product Name', 'Category', 'Vendor', 'Parent Group', 'Shelf Capacity', 'Max Level Qty', 'ROL Qty', 'Qty', 'Units', 'Actions'].map((h) => (
                 <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                   {h}
                 </th>
@@ -286,33 +410,176 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-2.5 py-4 text-center text-gray-500">
+                <td colSpan={11} className="px-2.5 py-4 text-center text-gray-500">
                   No items yet — add extra material or go back and select items.
                 </td>
               </tr>
             ) : (
-              items.map((it, idx) => (
-                <tr key={idx} className="border-t border-gray-100">
-                  <td className="whitespace-nowrap px-2.5 py-1.5">
-                    {idx + 1}
-                    {it.isExtra && <span className="ml-1.5 inline-block rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">Extra</span>}
-                  </td>
-                  <td className="px-1.5 py-1.5">
-                    <input className="table-input min-w-[160px]" value={it.productName} onChange={(e) => updateItem(idx, 'productName', e.target.value)} />
-                  </td>
-                  <td className="px-1.5 py-1.5">
-                    <input type="number" className="table-input min-w-[70px]" value={it.qty} onChange={(e) => updateItem(idx, 'qty', e.target.value)} />
-                  </td>
-                  <td className="px-1.5 py-1.5">
-                    <input className="table-input min-w-[60px]" value={it.units} onChange={(e) => updateItem(idx, 'units', e.target.value)} />
-                  </td>
-                  <td className="px-1.5 py-1.5">
-                    <button className="rounded-md border border-rose-300 px-2 py-1 text-rose-600 hover:bg-rose-50" onClick={() => removeItem(idx)} title="Delete">
-                      &times;
-                    </button>
-                  </td>
-                </tr>
-              ))
+              items.map((it, idx) => {
+                const isEditing = editAll || editingRowIdx === idx;
+                return (
+                  <tr key={idx} className={`border-t border-gray-100 transition ${isEditing ? 'bg-amber-50/40' : 'hover:bg-gray-50/60'}`}>
+                    <td className="whitespace-nowrap px-2.5 py-1.5 font-medium text-gray-900">
+                      {idx + 1}
+                      {it.isExtra && <span className="ml-1.5 inline-block rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">Extra</span>}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="table-input min-w-[150px]"
+                          value={it.productName ?? ''}
+                          onChange={(e) => updateItem(idx, 'productName', e.target.value)}
+                          placeholder="Product Name"
+                        />
+                      ) : (
+                        <span className="font-semibold text-gray-900 min-w-[140px] block px-1">{it.productName || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="table-input min-w-[110px]"
+                          value={it.category ?? ''}
+                          onChange={(e) => updateItem(idx, 'category', e.target.value)}
+                          placeholder="Category"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.category || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="table-input min-w-[110px]"
+                          value={it.vendor ?? ''}
+                          onChange={(e) => updateItem(idx, 'vendor', e.target.value)}
+                          placeholder="Vendor"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.vendor || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="table-input min-w-[95px]"
+                          value={it.parentGroup ?? ''}
+                          onChange={(e) => updateItem(idx, 'parentGroup', e.target.value)}
+                          placeholder="Parent Group"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.parentGroup || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="table-input min-w-[80px]"
+                          value={it.shelfCapacity ?? ''}
+                          onChange={(e) => updateItem(idx, 'shelfCapacity', e.target.value)}
+                          placeholder="Shelf Cap"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.shelfCapacity || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="table-input min-w-[65px]"
+                          value={it.maxLevelQty ?? ''}
+                          onChange={(e) => updateItem(idx, 'maxLevelQty', e.target.value)}
+                          placeholder="Max Qty"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.maxLevelQty != null && it.maxLevelQty !== '' ? it.maxLevelQty : '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="table-input min-w-[65px]"
+                          value={it.rolQty ?? ''}
+                          onChange={(e) => updateItem(idx, 'rolQty', e.target.value)}
+                          placeholder="ROL Qty"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.rolQty != null && it.rolQty !== '' ? it.rolQty : '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      <input
+                        type="number"
+                        min="0"
+                        className="table-input min-w-[70px] font-semibold text-gray-900"
+                        value={it.qty ?? ''}
+                        onChange={(e) => updateItem(idx, 'qty', e.target.value)}
+                      />
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="table-input min-w-[60px]"
+                          value={it.units ?? ''}
+                          onChange={(e) => updateItem(idx, 'units', e.target.value)}
+                          placeholder="Units"
+                        />
+                      ) : (
+                        <span className="whitespace-nowrap text-gray-600 block px-1">{it.units || '—'}</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-1.5 py-1.5 text-center">
+                      {editingRowIdx === idx && !editAll ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            className="rounded bg-[#173254] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs"
+                            onClick={() => doneEditRow(idx)}
+                          >
+                            Done
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 shadow-xs"
+                            onClick={() => cancelEditRow(idx)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1.5">
+                          {!editAll && (
+                            <button
+                              type="button"
+                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
+                              onClick={() => startEditRow(idx)}
+                              title="Edit item inline"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="rounded-md border border-rose-300 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                            onClick={() => removeItem(idx)}
+                            title="Delete"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
