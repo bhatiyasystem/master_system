@@ -44,18 +44,22 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [vendors, setVendors] = useState([]);
+  const [allVendors, setAllVendors] = useState([]);
+  const [mappedVendorNames, setMappedVendorNames] = useState(null);
+  const [showAllVendors, setShowAllVendors] = useState(false);
   const [editingRowIdx, setEditingRowIdx] = useState(null);
   const [rowBackup, setRowBackup] = useState(null);
   const [editAll, setEditAll] = useState(false);
   const [allBackup, setAllBackup] = useState(null);
+
+  const parentGroup = draft?.parentGroup || (draft?.items && draft.items[0]?.parentGroup) || '';
 
   useEffect(() => {
     supabase
       .from('vendors')
       .select('*')
       .order('name', { ascending: true })
-      .then(({ data }) => setVendors(data || []));
+      .then(({ data }) => setAllVendors(data || []));
 
     // Fetch Global Ship To Settings
     if (!existingPO) {
@@ -81,12 +85,66 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
     }
   }, [existingPO]);
 
-  // Auto-fill vendor details whenever vendorName or the vendors list changes.
-  // This also covers the case where vendorName arrives from navigation state
-  // before the vendors list has loaded.
+  // Fetch mapped vendors for the current parentGroup
   useEffect(() => {
-    if (!form.vendorName || vendors.length === 0) return;
-    const match = vendors.find(
+    if (!parentGroup) {
+      setMappedVendorNames(null);
+      return;
+    }
+    let cancelled = false;
+    const fromItems = (draft?.items || [])
+      .map((it) => it.vendor?.trim())
+      .filter(Boolean);
+
+    supabase
+      .from('purchase_indents')
+      .select('vendor')
+      .eq('parent_group', parentGroup)
+      .not('vendor', 'is', null)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const names = new Set(fromItems.map((n) => n.toLowerCase()));
+        if (!error && data) {
+          data.forEach((r) => {
+            if (r.vendor && r.vendor.trim()) {
+              names.add(r.vendor.trim().toLowerCase());
+            }
+          });
+        }
+        setMappedVendorNames(names);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [parentGroup, draft?.items]);
+
+  const displayedVendors = useMemo(() => {
+    if (showAllVendors || !parentGroup || !mappedVendorNames || mappedVendorNames.size === 0) {
+      return allVendors;
+    }
+    const matched = allVendors.filter((v) => {
+      const name = (v.name || '').trim().toLowerCase();
+      if (mappedVendorNames.has(name)) return true;
+      if (Array.isArray(v.parent_groups) && v.parent_groups.includes(parentGroup)) return true;
+      return false;
+    });
+
+    const existingNames = new Set(matched.map((v) => (v.name || '').trim().toLowerCase()));
+    mappedVendorNames.forEach((n) => {
+      if (!existingNames.has(n)) {
+        const orig = (draft?.items || []).find((it) => it.vendor?.trim().toLowerCase() === n)?.vendor;
+        matched.push({ id: n, name: orig || n });
+      }
+    });
+
+    return matched.length > 0 ? matched : allVendors;
+  }, [allVendors, mappedVendorNames, showAllVendors, parentGroup, draft?.items]);
+
+  // Auto-fill vendor details whenever vendorName or the vendors list changes.
+  useEffect(() => {
+    if (!form.vendorName || allVendors.length === 0) return;
+    const match = allVendors.find(
       (v) => (v.name || '').trim().toLowerCase() === form.vendorName.trim().toLowerCase()
     );
     if (!match) return;
@@ -100,7 +158,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
       fixTransporter: match.fix_transporter || '',
       vendorPaymentTerms: match.payment_terms || '',
     }));
-  }, [form.vendorName, vendors]);
+  }, [form.vendorName, allVendors]);
 
   useEffect(() => {
     setForm(buildInitialForm(draft));
@@ -311,13 +369,29 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
       <hr className="my-4 border-gray-200" />
       <div className="mb-2 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <div className="mb-2 text-[13px] font-bold text-[#173254]">Vendor (Supplier) — all products below belong to this vendor</div>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
+            <div className="text-[13px] font-bold text-[#173254]">Vendor (Supplier) — all products below belong to this vendor</div>
+            {parentGroup && mappedVendorNames && mappedVendorNames.size > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                  {showAllVendors ? 'Showing all vendors' : `Filtered for "${parentGroup}" (${displayedVendors.length})`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllVendors((v) => !v)}
+                  className="text-[11px] font-semibold text-blue-600 hover:underline"
+                >
+                  {showAllVendors ? 'Filter by Group' : 'Show All'}
+                </button>
+              </div>
+            )}
+          </div>
           <EntitySelectInput
             className="form-input mb-2"
             placeholder="Supplier name (type new, or pick existing)"
             value={form.vendorName}
             onChange={(v) => updateField('vendorName', v)}
-            options={vendors}
+            options={displayedVendors}
             onSelectOption={(v) =>
               setForm((prev) => ({
                 ...prev,

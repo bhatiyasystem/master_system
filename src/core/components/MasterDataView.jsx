@@ -51,8 +51,8 @@ const CONFIG = {
             { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
             { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
         ],
-        label: 'Indent',
-        pluralLabel: 'Indents'
+        label: 'Master Item',
+        pluralLabel: 'Master Items'
     },
     'NewPete Settings': {
         table: 'newpete_settings',
@@ -366,15 +366,13 @@ function MasterDataPanel({ type }) {
                             {filteredRows.map((r) => (
                                 <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
                                     <td className="whitespace-nowrap px-3 py-2.5">
-                                        {type !== 'indent' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditingRecord(r)}
-                                                className="mr-1.5 inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-50"
-                                            >
-                                                <Lucide.Pencil size={12} /> Edit
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditingRecord(r)}
+                                            className="mr-1.5 inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-50"
+                                        >
+                                            <Lucide.Pencil size={12} /> Edit
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => handleDelete(r)}
@@ -575,9 +573,24 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
         }
         setSaving(true);
         try {
-            const { error } = record
-                ? await supabase.from(config.table).update(payload).eq('id', record.id)
-                : await supabase.from(config.table).insert(payload);
+            let error;
+            if (config.table === 'purchase_indents') {
+                if (record) {
+                    const query = supabase.from('purchase_indents').update(payload);
+                    const res = record.item_details
+                        ? await query.eq('item_details', record.item_details)
+                        : await query.eq('id', record.id);
+                    error = res.error;
+                } else {
+                    const res = await supabase.from('purchase_indents').insert(payload);
+                    error = res.error;
+                }
+            } else {
+                const res = record
+                    ? await supabase.from(config.table).update(payload).eq('id', record.id)
+                    : await supabase.from(config.table).insert(payload);
+                error = res.error;
+            }
             if (error) throw error;
 
             if (config.table === 'vendors' && payload.fix_transporter) {

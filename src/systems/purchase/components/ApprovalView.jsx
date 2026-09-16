@@ -69,11 +69,11 @@ export default function ApprovalView() {
 
   const pendingCount = useMemo(() => {
     const pendingItems = (indents || []).filter((i) => i.orderFormula > 0 && i.status === 'Pending');
-    return new Set(pendingItems.map((i) => i.category || 'Uncategorized')).size;
+    return new Set(pendingItems.map((i) => i.parentGroup || 'Unassigned')).size;
   }, [indents]);
 
   return (
-    <CardPanel title="Second Stage Approval" desc="Items with Order Formula > 0, grouped by vendor — approve or reject a whole vendor's items in one action, and adjust quantity if needed.">
+    <CardPanel title="Second Stage Approval" desc="Items with Order Formula > 0, grouped by parent group — approve or reject a whole parent group's items in one action, and adjust quantity if needed.">
       <div className="mb-4 inline-flex rounded-lg bg-gray-100 p-1 items-center">
         <button
           className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition ${tab === 'pending' ? 'bg-[#173254] text-white' : 'text-gray-600'}`}
@@ -108,24 +108,24 @@ export default function ApprovalView() {
 
 function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [parentGroup, setParentGroup] = useState('');
   const [vendor, setVendor] = useState('');
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeGroup, setActiveGroup] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [expanded, setExpanded] = useState({});
 
-  const toggleVendor = (v) => {
-    setExpanded((prev) => ({ ...prev, [v]: !prev[v] }));
+  const toggleGroup = (pg) => {
+    setExpanded((prev) => ({ ...prev, [pg]: !prev[pg] }));
   };
 
   const allPending = useMemo(() => indents.filter((i) => i.orderFormula > 0 && i.status === 'Pending'), [indents]);
-  const categories = useMemo(() => uniqueValues(allPending, 'category'), [allPending]);
+  const parentGroups = useMemo(() => uniqueValues(allPending, 'parentGroup'), [allPending]);
   const vendors = useMemo(() => uniqueValues(allPending, 'vendor'), [allPending]);
 
   const fuse = useMemo(() => {
     return new Fuse(allPending, {
-      keys: ['itemDetails', 'vendor', 'category'],
+      keys: ['itemDetails', 'vendor', 'parentGroup', 'category'],
       threshold: 0.38,
       ignoreLocation: true,
     });
@@ -138,24 +138,24 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
       result = fuse.search(term).map((res) => res.item);
     }
     return result.filter((i) => {
-      if (category && i.category !== category) return false;
+      if (parentGroup && (i.parentGroup || 'Unassigned') !== parentGroup) return false;
       if (vendor && i.vendor !== vendor) return false;
       return true;
     });
-  }, [allPending, fuse, search, category, vendor]);
+  }, [allPending, fuse, search, parentGroup, vendor]);
 
   const groups = useMemo(() => {
     const g = {};
     filtered.forEach((i) => {
-      const cat = i.category || 'Uncategorized';
-      (g[cat] = g[cat] || []).push(i);
+      const pg = i.parentGroup || 'Unassigned';
+      (g[pg] = g[pg] || []).push(i);
     });
     return g;
   }, [filtered]);
 
   const clear = () => {
     setSearch('');
-    setCategory('');
+    setParentGroup('');
     setVendor('');
   };
 
@@ -169,10 +169,10 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select className="min-w-[130px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">All Categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
+        <select className="min-w-[130px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]" value={parentGroup} onChange={(e) => setParentGroup(e.target.value)}>
+          <option value="">All Parent Groups</option>
+          {parentGroups.map((pg) => (
+            <option key={pg} value={pg}>{pg}</option>
           ))}
         </select>
         <select className="min-w-[130px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]" value={vendor} onChange={(e) => setVendor(e.target.value)}>
@@ -188,7 +188,7 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
+                {['Unique No.', 'Item Details', 'Parent Group', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -205,7 +205,7 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
+                {['Unique No.', 'Item Details', 'Parent Group', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -220,37 +220,37 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
       ) : (
         Object.keys(groups)
           .sort()
-          .map((cat) => {
-            const list = groups[cat];
+          .map((pg) => {
+            const list = groups[pg];
             const totalQty = list.reduce((s, i) => s + i.orderFormula, 0);
             const vendorsInGroup = Array.from(new Set(list.map((i) => i.vendor).filter(Boolean)));
             const vendorsText = vendorsInGroup.length > 0 ? vendorsInGroup.join(', ') : 'No Vendor';
             return (
-              <div key={cat} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <div key={pg} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <div className="flex flex-wrap items-center justify-between gap-2 p-4">
                   <button
                     type="button"
-                    onClick={() => toggleVendor(cat)}
+                    onClick={() => toggleGroup(pg)}
                     className="flex items-center gap-1.5 text-left"
                   >
-                    {expanded[cat] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
-                    <span className="text-[14px] font-bold text-[#173254]">{cat}</span>
+                    {expanded[pg] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
+                    <span className="text-[14px] font-bold text-[#173254]">{pg}</span>
                     <span className="text-[12.5px] font-medium text-gray-700">— {vendorsText}</span>
                     <span className="text-[11.5px] text-gray-500">({list.length} item(s), total qty {totalQty})</span>
                   </button>
                   <button
                     className="rounded-lg bg-[#C99A3E] px-3 py-1.5 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
-                    onClick={() => setActiveCategory(cat)}
+                    onClick={() => setActiveGroup(pg)}
                   >
-                    Review Category
+                    Review Parent Group
                   </button>
                 </div>
-                {expanded[cat] && (
+                {expanded[pg] && (
                   <div className="overflow-x-auto border-t border-gray-200">
                     <table className="w-full text-[12.6px]">
                       <thead>
                         <tr className="bg-gray-50 text-gray-500">
-                          {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
+                          {['Unique No.', 'Item Details', 'Parent Group', 'Vendor', 'Qty', 'Planned Date'].map((h) => (
                             <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                               {h}
                             </th>
@@ -262,7 +262,7 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
                           <tr key={i.dbId} className="border-t border-gray-100">
                             <td className="px-2.5 py-2 font-semibold">{i.id}</td>
                             <td className="px-2.5 py-2">{i.itemDetails}</td>
-                            <td className="px-2.5 py-2">{i.category}</td>
+                            <td className="px-2.5 py-2">{i.parentGroup || '—'}</td>
                             <td className="px-2.5 py-2">{i.vendor}</td>
                             <td className="px-2.5 py-2 font-semibold">{i.orderFormula}</td>
                             <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[i.dbId], i.createdAt, tatMins)}</td>
@@ -278,14 +278,14 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
       )}
 
       <CategoryApprovalModal
-        category={activeCategory}
-        items={activeCategory ? groups[activeCategory] || [] : []}
-        vendors={activeCategory ? Array.from(new Set((groups[activeCategory] || []).map((i) => i.vendor).filter(Boolean))) : []}
+        parentGroup={activeGroup}
+        items={activeGroup ? groups[activeGroup] || [] : []}
+        vendors={activeGroup ? Array.from(new Set((groups[activeGroup] || []).map((i) => i.vendor).filter(Boolean))) : []}
         saving={saving}
         error={saveError}
         onDecided={onDecided}
         onClose={() => {
-          setActiveCategory(null);
+          setActiveGroup(null);
           setSaveError('');
         }}
         onSubmit={async (ids, qtyById, status, remarks) => {
@@ -293,7 +293,7 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
           setSaveError('');
           try {
             let idsToDecide = ids;
-            const currentItems = activeCategory ? groups[activeCategory] || [] : [];
+            const currentItems = activeGroup ? groups[activeGroup] || [] : [];
 
             if (status === 'Approved') {
               const candidates = currentItems
@@ -316,7 +316,7 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
             await decideCategory({ ids: idsToDecide, qtyById, status, remarks });
             await onDecided();
             if (status !== 'Approved' || idsToDecide.length === ids.length) {
-              setActiveCategory(null);
+              setActiveGroup(null);
             }
           } catch (err) {
             setSaveError(err.message || 'Failed to save decision.');
@@ -328,8 +328,8 @@ function PendingPanel({ indents, tatTracking, tatMins, onDecided }) {
     </div>
   );
 }
-
-function CategoryApprovalModal({ category, items, vendors = [], saving, error: submitError, onClose, onSubmit, onDecided }) {
+function CategoryApprovalModal({ parentGroup, category, items, vendors = [], saving, error: submitError, onClose, onSubmit, onDecided }) {
+  const groupName = parentGroup || category || '';
   const [checked, setChecked] = useState({});
   const [qty, setQty] = useState({});
   const [status, setStatus] = useState('');
@@ -344,7 +344,7 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
   const [savingAll, setSavingAll] = useState(false);
   const [inlineError, setInlineError] = useState('');
 
-  if (category && initedFor !== category) {
+  if (groupName && initedFor !== groupName) {
     const initChecked = {};
     const initQty = {};
     items.forEach((i) => {
@@ -356,7 +356,7 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
     setStatus('');
     setRemarks('');
     setError('');
-    setInitedFor(category);
+    setInitedFor(groupName);
     setEditingRowIds(new Set());
     setRowEdits({});
     setRowSaving({});
@@ -557,11 +557,11 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
 
   return (
     <Modal
-      open={!!category}
+      open={!!groupName}
       onClose={onClose}
       title={
         <div className="flex flex-wrap items-baseline gap-2">
-          <span>Review Category: {category}</span>
+          <span>Review Parent Group: {groupName}</span>
           {vendorsSubtitle && <span className="text-xs font-normal text-gray-200">— {vendorsSubtitle}</span>}
         </div>
       }
@@ -579,7 +579,7 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <label className="text-[11.2px] font-bold uppercase tracking-wide text-gray-500">
-          Items in this category (uncheck to exclude from batch decision)
+          Items in this parent group (uncheck to exclude from batch decision)
         </label>
         {isAllEditing || editingRowIds.size > 0 ? (
           <div className="flex items-center gap-1.5">
@@ -617,39 +617,39 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
         </div>
       )}
 
-      <div className="mb-3.5 max-h-[420px] overflow-x-auto overflow-y-auto rounded-lg border border-gray-200">
-        <table className="w-full border-collapse text-[12px]">
+      <div className="mb-3.5 max-h-[440px] overflow-y-auto rounded-lg border border-gray-200">
+        <table className="w-full border-collapse text-[11.5px]">
           <thead>
             <tr className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-gray-600">
-              <th className="w-8 px-2.5 py-2 text-center">
+              <th className="w-7 px-1.5 py-2 text-center">
                 <input
                   type="checkbox"
                   checked={items.length > 0 && items.every((i) => checked[i.dbId])}
                   onChange={toggleAll}
-                  className="h-4 w-4 rounded"
+                  className="h-3.5 w-3.5 rounded"
                   title="Toggle all"
                 />
               </th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide">Unique No.</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[150px]">Item Details</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[110px]">Category</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[110px]">Vendor</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[95px]">Parent Group</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[65px]">Unit</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[70px]">Alt Unit</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[80px]">Shelf Capacity</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[65px]">Max Level Qty</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[65px]">ROL Qty</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide min-w-[70px]">Order Qty</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide">Qty to Order</th>
-              <th className="whitespace-nowrap px-2.5 py-2 text-center text-[10.5px] font-bold uppercase tracking-wide min-w-[105px]">Action</th>
+              <th className="px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[70px]">Unique No.</th>
+              <th className="px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[130px]">Item Details</th>
+              <th className="px-1.5 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[55px]">Order Qty</th>
+              <th className="px-1.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[80px]">Category</th>
+              <th className="px-1.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[90px]">Vendor</th>
+              <th className="px-1.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[80px]">Parent Group</th>
+              <th className="px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[42px]">Unit</th>
+              <th className="px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[45px]">Alt Unit</th>
+              <th className="px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[48px]">Shelf Cap</th>
+              <th className="px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[50px]">Max Qty</th>
+              <th className="px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[50px]">ROL Qty</th>
+              <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[70px]">Qty to Order</th>
+              <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[65px]">Action</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
                 <td colSpan={14} className="px-4 py-8 text-center text-xs text-gray-500">
-                  No items in this category.
+                  No items in this parent group.
                 </td>
               </tr>
             ) : (
@@ -658,152 +658,152 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
                 const cur = rowEdits[i.dbId] || {};
                 return (
                   <tr key={i.dbId} className={`border-b border-gray-100 transition ${isEditing ? 'bg-amber-50/40' : 'hover:bg-gray-50/80'}`}>
-                    <td className="px-2.5 py-2 text-center">
+                    <td className="w-7 px-1.5 py-1.5 text-center">
                       <input
                         type="checkbox"
                         checked={!!checked[i.dbId]}
                         onChange={(e) => setChecked((prev) => ({ ...prev, [i.dbId]: e.target.checked }))}
-                        className="h-4 w-4 rounded"
+                        className="h-3.5 w-3.5 rounded"
                       />
                     </td>
-                    <td className="whitespace-nowrap px-2.5 py-2 font-semibold text-gray-900">{i.id}</td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-2 py-1.5 font-semibold text-gray-900 break-words text-[11px] leading-tight">{i.id}</td>
+                    <td className="px-2 py-1.5 break-words leading-tight">
                       {isEditing ? (
                         <input
                           type="text"
-                          className="w-full min-w-[150px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          className="w-full rounded border border-gray-300 px-1.5 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
                           value={cur.itemDetails ?? ''}
                           onChange={(e) => updateRowEditField(i.dbId, 'itemDetails', e.target.value)}
                         />
                       ) : (
-                        <span className="min-w-[140px] font-medium text-gray-800">{i.itemDetails}</span>
+                        <span className="font-medium text-gray-800 break-words text-[11.5px]">{i.itemDetails}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="w-full min-w-[110px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.category ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'category', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.category}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="w-full min-w-[110px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.vendor ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'vendor', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.vendor}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="w-full min-w-[95px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.parentGroup ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'parentGroup', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.parentGroup || '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="w-full min-w-[65px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.unit ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'unit', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.unit || '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="w-full min-w-[70px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.altUnit ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'altUnit', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.altUnit || '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          className="w-full min-w-[80px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.shelfCapacity ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'shelfCapacity', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.shelfCapacity || '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          className="w-full min-w-[65px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.maxLevelQty ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'maxLevelQty', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.maxLevelQty != null && i.maxLevelQty !== '' ? i.maxLevelQty : '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          className="w-full min-w-[65px] rounded border border-gray-300 px-2 py-1 text-xs font-medium focus:border-blue-500 focus:outline-none"
-                          value={cur.rolQty ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'rolQty', e.target.value)}
-                        />
-                      ) : (
-                        <span className="whitespace-nowrap text-gray-600">{i.rolQty != null && i.rolQty !== '' ? i.rolQty : '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-1.5 py-1.5 text-right font-semibold text-gray-900 text-[11.5px] leading-tight">
                       {isEditing ? (
                         <input
                           type="number"
                           min="0"
-                          className="w-full min-w-[70px] rounded border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-900 focus:border-blue-500 focus:outline-none"
+                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-semibold text-gray-900 text-right focus:border-blue-500 focus:outline-none"
                           value={cur.orderFormula ?? ''}
                           onChange={(e) => updateRowEditField(i.dbId, 'orderFormula', e.target.value)}
                         />
                       ) : (
-                        <span className="whitespace-nowrap font-semibold text-gray-900">{i.orderFormula}</span>
+                        <span className="font-semibold text-gray-900 text-[11.5px]">{i.orderFormula}</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-2.5 py-2">
+                    <td className="px-1.5 py-1.5 break-words text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.category ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'category', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-600 break-words text-[11px]">{i.category || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5 break-words text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.vendor ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'vendor', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-600 break-words text-[11px]">{i.vendor || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5 break-words text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.parentGroup ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'parentGroup', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-600 break-words text-[11px]">{i.parentGroup || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1 py-1.5 text-center text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.unit ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'unit', e.target.value)}
+                        />
+                      ) : (
+                        <span>{i.unit || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1 py-1.5 text-center text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.altUnit ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'altUnit', e.target.value)}
+                        />
+                      ) : (
+                        <span>{i.altUnit || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1 py-1.5 text-center text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.shelfCapacity ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'shelfCapacity', e.target.value)}
+                        />
+                      ) : (
+                        <span>{i.shelfCapacity || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1 py-1.5 text-right text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-xs text-right font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.maxLevelQty ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'maxLevelQty', e.target.value)}
+                        />
+                      ) : (
+                        <span>{i.maxLevelQty != null && i.maxLevelQty !== '' ? i.maxLevelQty : '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1 py-1.5 text-right text-gray-600 text-[11px] leading-tight">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-xs text-right font-medium focus:border-blue-500 focus:outline-none"
+                          value={cur.rolQty ?? ''}
+                          onChange={(e) => updateRowEditField(i.dbId, 'rolQty', e.target.value)}
+                        />
+                      ) : (
+                        <span>{i.rolQty != null && i.rolQty !== '' ? i.rolQty : '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-1.5 py-1.5 text-center">
                       <input
                         type="number"
                         min="0"
-                        className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold focus:border-blue-500 focus:outline-none"
+                        className="w-16 rounded border border-gray-300 px-1 py-0.5 text-xs font-semibold text-center focus:border-blue-500 focus:outline-none"
                         value={qty[i.dbId] ?? ''}
                         onChange={(e) => setQty((prev) => ({ ...prev, [i.dbId]: Number(e.target.value) || 0 }))}
                         title="Qty to order"
                       />
                     </td>
-                    <td className="whitespace-nowrap px-2.5 py-2 text-center">
+                    <td className="px-1.5 py-1.5 text-center">
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
-                            className="rounded bg-[#173254] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs disabled:opacity-60"
+                            className="rounded bg-[#173254] px-1.5 py-0.5 text-[10.5px] font-semibold text-white hover:bg-[#122842] shadow-xs disabled:opacity-60"
                             onClick={() => saveRow(i.dbId)}
                             disabled={rowSaving[i.dbId]}
                           >
@@ -811,7 +811,7 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
                           </button>
                           <button
                             type="button"
-                            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 shadow-xs"
+                            className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10.5px] text-gray-700 hover:bg-gray-100 shadow-xs"
                             onClick={() => cancelEditRow(i.dbId)}
                             disabled={rowSaving[i.dbId]}
                           >
@@ -821,7 +821,7 @@ function CategoryApprovalModal({ category, items, vendors = [], saving, error: s
                       ) : (
                         <button
                           type="button"
-                          className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
+                          className="rounded-md border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
                           onClick={() => startEditRow(i)}
                         >
                           Edit

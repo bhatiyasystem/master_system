@@ -16,9 +16,9 @@ export default function PoPendingView({ onCreatePO }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [parentGroup, setParentGroup] = useState('');
   const [vendor, setVendor] = useState('');
-  const [checkedByVendor, setCheckedByVendor] = useState({});
+  const [checkedByGroup, setCheckedByGroup] = useState({});
   const [expanded, setExpanded] = useState({});
   const [fixingVendorGroup, setFixingVendorGroup] = useState(null);
 
@@ -71,10 +71,10 @@ export default function PoPendingView({ onCreatePO }) {
     return cancel;
   }, [location.pathname, reload]);
 
-  async function handleDeleteSelected(v, items) {
-    const checkedItems = items.filter((i) => isChecked(v, i.id));
+  async function handleDeleteSelected(group, items) {
+    const checkedItems = items.filter((i) => isChecked(group, i.id));
     if (checkedItems.length === 0) return;
-    if (!window.confirm(`Delete ${checkedItems.length} selected item(s) from ${v}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete ${checkedItems.length} selected item(s) from ${group}? This cannot be undone.`)) return;
     try {
       await deleteIndents(checkedItems.map((i) => i.dbId));
       reload();
@@ -83,8 +83,8 @@ export default function PoPendingView({ onCreatePO }) {
     }
   }
 
-  const toggleVendor = (v) => {
-    setExpanded((prev) => ({ ...prev, [v]: !prev[v] }));
+  const toggleGroup = (group) => {
+    setExpanded((prev) => ({ ...prev, [group]: !prev[group] }));
   };
 function DiffCell({ orderQty, approvedQty }) {
   if (approvedQty == null) return <span className="text-gray-400">—</span>;
@@ -100,61 +100,61 @@ function DiffCell({ orderQty, approvedQty }) {
 
 
   const allPending = useMemo(() => indents.filter((i) => i.status === 'Approved' && !i.poId), [indents]);
-  const categories = useMemo(() => uniqueValues(allPending, 'category'), [allPending]);
+  const parentGroups = useMemo(() => uniqueValues(allPending, 'parentGroup'), [allPending]);
   const vendors = useMemo(() => uniqueValues(allPending, 'vendor'), [allPending]);
 
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
     return allPending.filter((i) => {
-      if (term && !`${i.itemDetails} ${i.vendor}`.toLowerCase().includes(term)) return false;
-      if (category && i.category !== category) return false;
+      if (term && !`${i.itemDetails} ${i.vendor} ${i.parentGroup}`.toLowerCase().includes(term)) return false;
+      if (parentGroup && (i.parentGroup || 'Unassigned Group') !== parentGroup) return false;
       if (vendor && i.vendor !== vendor) return false;
       return true;
     });
-  }, [allPending, search, category, vendor]);
+  }, [allPending, search, parentGroup, vendor]);
 
   const groups = useMemo(() => {
     const g = {};
     filtered.forEach((i) => {
-      const v = i.vendor || 'Unspecified Vendor';
-      (g[v] = g[v] || []).push(i);
+      const pg = i.parentGroup || 'Unassigned Group';
+      (g[pg] = g[pg] || []).push(i);
     });
     return g;
   }, [filtered]);
 
-  const isChecked = (v, id) => {
-    const map = checkedByVendor[v];
+  const isChecked = (group, id) => {
+    const map = checkedByGroup[group];
     return map && map[id] !== undefined ? map[id] : true;
   };
-  const setCheck = (v, id, val) => {
-    setCheckedByVendor((prev) => ({ ...prev, [v]: { ...(prev[v] || {}), [id]: val } }));
+  const setCheck = (group, id, val) => {
+    setCheckedByGroup((prev) => ({ ...prev, [group]: { ...(prev[group] || {}), [id]: val } }));
   };
-  const toggleAllForVendor = (v, items, val) => {
+  const toggleAllForGroup = (group, items, val) => {
     const map = {};
     items.forEach((i) => (map[i.id] = val));
-    setCheckedByVendor((prev) => ({ ...prev, [v]: map }));
+    setCheckedByGroup((prev) => ({ ...prev, [group]: map }));
   };
 
   const clear = () => {
     setSearch('');
-    setCategory('');
+    setParentGroup('');
     setVendor('');
   };
 
   return (
-    <CardPanel title="PO Pending" desc="Approved items grouped by vendor. A Purchase Order is always created vendor-wise — select items from a vendor group and create one PO for all of them.">
+    <CardPanel title="PO Pending" desc="Approved items grouped by parent group. Select items from a parent group to create a Purchase Order.">
       <FilterBar onClear={clear}>
         <input
           type="text"
-          placeholder="Search item, vendor..."
+          placeholder="Search item, vendor, parent group..."
           className="min-w-[150px] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select className="min-w-[130px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">All Categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
+        <select className="min-w-[130px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]" value={parentGroup} onChange={(e) => setParentGroup(e.target.value)}>
+          <option value="">All Parent Groups</option>
+          {parentGroups.map((pg) => (
+            <option key={pg} value={pg}>{pg}</option>
           ))}
         </select>
         <select className="min-w-[130px] rounded-lg border border-gray-300 px-2.5 py-1.5 text-[12.5px]" value={vendor} onChange={(e) => setVendor(e.target.value)}>
@@ -174,7 +174,7 @@ function DiffCell({ orderQty, approvedQty }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['', 'Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
+                {['', 'Unique No.', 'Item Details', 'Parent Group', 'Vendor', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -182,7 +182,7 @@ function DiffCell({ orderQty, approvedQty }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={9} className="px-2.5 py-10 text-center text-gray-500">No approved items waiting for a Purchase Order.</td></tr>
+              <tr><td colSpan={10} className="px-2.5 py-10 text-center text-gray-500">No approved items waiting for a Purchase Order.</td></tr>
             </tbody>
           </table>
         </div>
@@ -191,7 +191,7 @@ function DiffCell({ orderQty, approvedQty }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['', 'Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
+                {['', 'Unique No.', 'Item Details', 'Parent Group', 'Vendor', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -199,24 +199,27 @@ function DiffCell({ orderQty, approvedQty }) {
               </tr>
             </thead>
             <tbody>
-              <tr><td colSpan={9} className="px-2.5 py-10 text-center text-gray-500">No items match the current filters.</td></tr>
+              <tr><td colSpan={10} className="px-2.5 py-10 text-center text-gray-500">No items match the current filters.</td></tr>
             </tbody>
           </table>
         </div>
       ) : (
-        Object.keys(groups).map((v) => {
-          const items = groups[v];
-          const allChecked = items.every((i) => isChecked(v, i.id));
+        Object.keys(groups).map((pg) => {
+          const items = groups[pg];
+          const allChecked = items.every((i) => isChecked(pg, i.id));
+          const vendorsInGroup = Array.from(new Set(items.map((i) => i.vendor).filter(Boolean)));
+          const vendorsText = vendorsInGroup.length > 0 ? vendorsInGroup.join(', ') : 'No Vendor';
           return (
-           <div key={v} className="mb-5 overflow-hidden rounded-xl border border-gray-200">
+           <div key={pg} className="mb-5 overflow-hidden rounded-xl border border-gray-200">
               <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 px-3.5 py-2.5">
                 <button
                   type="button"
-                  onClick={() => toggleVendor(v)}
+                  onClick={() => toggleGroup(pg)}
                   className="flex items-center gap-1.5 text-left text-[13px] font-bold text-[#173254]"
                 >
-                  {expanded[v] ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-                  <span>{v}</span>
+                  {expanded[pg] ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                  <span>{pg}</span>
+                  <span className="text-[12.5px] font-medium text-gray-700">— {vendorsText}</span>
                   <span className="font-normal text-gray-500">({items.length} item{items.length > 1 ? 's' : ''})</span>
                   {items.length > 0 && (
                     <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1">
@@ -227,40 +230,32 @@ function DiffCell({ orderQty, approvedQty }) {
                <div className="flex items-center gap-2">
                   <button
                     className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                    onClick={() => handleDeleteSelected(v, items)}
+                    onClick={() => handleDeleteSelected(pg, items)}
                   >
                     Delete Selected
                   </button>
-                  {v === 'Unspecified Vendor' ? (
-                    <button
-                      className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                      onClick={() => setFixingVendorGroup({ vendor: v, items })}
-                    >
-                      Fix Vendor Before Ordering
-                    </button>
-                  ) : (
-                    <button
-                      className="rounded-lg bg-[#C99A3E] px-3 py-1.5 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
-                      onClick={() => {
-                        const checkedItems = items.filter((i) => isChecked(v, i.id));
-                        if (checkedItems.length === 0) return;
-                        onCreatePO(checkedItems, v);
-                      }}
-                    >
-                      Create PO for selected
-                    </button>
-                  )}
+                  <button
+                    className="rounded-lg bg-[#C99A3E] px-3 py-1.5 text-xs font-semibold text-[#1B2A3D] hover:bg-[#B98A2E]"
+                    onClick={() => {
+                      const checkedItems = items.filter((i) => isChecked(pg, i.id));
+                      if (checkedItems.length === 0) return;
+                      const defaultVendor = checkedItems.find((i) => i.vendor)?.vendor || '';
+                      onCreatePO(checkedItems, pg, defaultVendor);
+                    }}
+                  >
+                    Create PO for selected
+                  </button>
                 </div>
               </div>
-              {expanded[v] && (
+              {expanded[pg] && (
               <div className="overflow-x-auto border-t border-gray-200">
                 <table className="w-full text-[12.6px]">
                   <thead>
                     <tr className="bg-gray-50 text-gray-500">
                       <th className="px-2.5 py-2">
-                        <input type="checkbox" checked={allChecked} onChange={(e) => toggleAllForVendor(v, items, e.target.checked)} />
+                        <input type="checkbox" checked={allChecked} onChange={(e) => toggleAllForGroup(pg, items, e.target.checked)} />
                       </th>
-                     {['Unique No.', 'Item Details', 'Category', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
+                     {['Unique No.', 'Item Details', 'Parent Group', 'Vendor', 'Unit', 'Order Qty', 'Approved Qty', 'Difference', 'Planned Date'].map((h) => (
                         <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                           {h}
                         </th>
@@ -271,13 +266,14 @@ function DiffCell({ orderQty, approvedQty }) {
                     {items.map((i) => (
                       <tr key={i.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-2.5 py-2">
-                          <input type="checkbox" checked={isChecked(v, i.id)} onChange={(e) => setCheck(v, i.id, e.target.checked)} />
+                          <input type="checkbox" checked={isChecked(pg, i.id)} onChange={(e) => setCheck(pg, i.id, e.target.checked)} />
                         </td>
                         <td className="px-2.5 py-2">{i.id}</td>
                         <td className="px-2.5 py-2">{i.itemDetails}</td>
-                        <td className="px-2.5 py-2">{i.category}</td>
+                        <td className="px-2.5 py-2">{i.parentGroup || '—'}</td>
+                        <td className="px-2.5 py-2">{i.vendor || '—'}</td>
                         <td className="px-2.5 py-2">{i.unit}</td>
-                       <td className="px-2.5 py-2">{i.orderFormula}</td>
+                        <td className="px-2.5 py-2">{i.orderFormula}</td>
                         <td className="px-2.5 py-2 font-semibold">{i.approvedQty != null ? i.approvedQty : i.orderFormula}</td>
                         <td className="px-2.5 py-2">
                           <DiffCell orderQty={i.orderFormula} approvedQty={i.approvedQty} />

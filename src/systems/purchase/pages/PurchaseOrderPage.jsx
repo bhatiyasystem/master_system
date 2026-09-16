@@ -38,8 +38,8 @@ export default function PurchaseOrderPage() {
 
       {tab === 'pending' ? (
         <PoPendingView
-          onCreatePO={(items, vendorName) =>
-            navigate('/dashboard/purchase/pocreate', { state: { items, vendorName } })
+          onCreatePO={(items, parentGroup, vendorName) =>
+            navigate('/dashboard/purchase/pocreate', { state: { items, parentGroup, vendorName } })
           }
         />
       ) : (

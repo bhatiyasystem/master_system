@@ -61,7 +61,8 @@ export default function PoCreatePage() {
 
 function buildDirectDraft(navState) {
   if (navState.items) {
-    return { items: navState.items, vendorName: navState.vendorName, existingPO: null };
+    const parentGroup = navState.parentGroup || (navState.items[0] && navState.items[0].parentGroup) || '';
+    return { items: navState.items, parentGroup, vendorName: navState.vendorName, existingPO: null };
   }
   return null;
 }
