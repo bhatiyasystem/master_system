@@ -90,9 +90,18 @@ CREATE TABLE IF NOT EXISTS public.purchase_indents (
   shelf_capacity text,
   max_level_qty numeric DEFAULT 0,
   rol_qty numeric DEFAULT 0,                     -- reorder level qty
+  reorder_level numeric DEFAULT 0,
   cl_qty numeric DEFAULT 0,                       -- closing qty
   conversion_unit text,
   order_formula numeric DEFAULT 0,                -- suggested order qty
+  order_qty numeric DEFAULT 0,
+  online_item_name text,                         -- online portal item name
+  min_order_qty numeric DEFAULT 0,               -- minimum order qty
+  eligible_for_online text DEFAULT 'No',         -- online portal eligibility (Yes / No)
+  item_description text,                         -- detailed item description
+  image_url text,                                -- primary item image URL
+  image_urls text[] DEFAULT '{}',                -- multiple item image URLs
+  variant_available text DEFAULT 'No',           -- variant available (Yes / No)
 
   -- Approval-phase fields (set later, kept here so Indent Data reflects current state)
   status text NOT NULL DEFAULT 'Pending'

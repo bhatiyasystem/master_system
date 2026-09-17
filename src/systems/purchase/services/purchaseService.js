@@ -62,9 +62,18 @@ function mapIndentRow(row) {
     shelfCapacity: row.shelf_capacity,
     maxLevelQty: row.max_level_qty,
     rolQty: row.rol_qty,
+    reorderLevel: row.reorder_level ?? row.rol_qty,
     clQty: row.cl_qty,
     conversionUnit: row.conversion_unit,
     orderFormula: evaluateFormula(row.order_formula),
+    orderQty: row.order_qty ?? evaluateFormula(row.order_formula),
+    onlineItemName: row.online_item_name,
+    minOrderQty: row.min_order_qty,
+    eligibleForOnline: row.eligible_for_online || 'No',
+    itemDescription: row.item_description,
+    imageUrl: (Array.isArray(row.image_urls) && row.image_urls[0]) || row.image_url || null,
+    imageUrls: Array.isArray(row.image_urls) && row.image_urls.length ? row.image_urls : (row.image_url ? [row.image_url] : []),
+    variantAvailable: row.variant_available || 'No',
     status: row.status,
     remarks: row.remarks,
     approvedQty: row.approved_qty,
@@ -137,12 +146,65 @@ export async function updateIndent(dbId, fields) {
   if (fields.conversionUnit !== undefined) payload.conversion_unit = fields.conversionUnit;
   else if (fields.conversion_unit !== undefined) payload.conversion_unit = fields.conversion_unit;
 
+  if (fields.onlineItemName !== undefined) payload.online_item_name = fields.onlineItemName;
+  else if (fields.online_item_name !== undefined) payload.online_item_name = fields.online_item_name;
+
+  if (fields.minOrderQty !== undefined) payload.min_order_qty = fields.minOrderQty !== '' && fields.minOrderQty !== null ? Number(fields.minOrderQty) : 0;
+  else if (fields.min_order_qty !== undefined) payload.min_order_qty = fields.min_order_qty !== '' && fields.min_order_qty !== null ? Number(fields.min_order_qty) : 0;
+
+  if (fields.reorderLevel !== undefined) {
+    const rVal = fields.reorderLevel !== '' && fields.reorderLevel !== null ? Number(fields.reorderLevel) : 0;
+    payload.reorder_level = rVal;
+    payload.rol_qty = rVal;
+  } else if (fields.reorder_level !== undefined) {
+    const rVal = fields.reorder_level !== '' && fields.reorder_level !== null ? Number(fields.reorder_level) : 0;
+    payload.reorder_level = rVal;
+    payload.rol_qty = rVal;
+  }
+
+  if (fields.orderQty !== undefined) {
+    const qVal = fields.orderQty !== '' && fields.orderQty !== null ? Number(fields.orderQty) : 0;
+    payload.order_qty = qVal;
+    payload.order_formula = qVal;
+  } else if (fields.order_qty !== undefined) {
+    const qVal = fields.order_qty !== '' && fields.order_qty !== null ? Number(fields.order_qty) : 0;
+    payload.order_qty = qVal;
+    payload.order_formula = qVal;
+  }
+
+  if (fields.eligibleForOnline !== undefined) payload.eligible_for_online = fields.eligibleForOnline;
+  else if (fields.eligible_for_online !== undefined) payload.eligible_for_online = fields.eligible_for_online;
+
+  if (fields.itemDescription !== undefined) payload.item_description = fields.itemDescription;
+  else if (fields.item_description !== undefined) payload.item_description = fields.item_description;
+
+  if (fields.imageUrls !== undefined) {
+    const urls = Array.isArray(fields.imageUrls) ? fields.imageUrls : [fields.imageUrls].filter(Boolean);
+    payload.image_urls = urls;
+    payload.image_url = urls[0] || null;
+  } else if (fields.image_urls !== undefined) {
+    const urls = Array.isArray(fields.image_urls) ? fields.image_urls : [fields.image_urls].filter(Boolean);
+    payload.image_urls = urls;
+    payload.image_url = urls[0] || null;
+  } else if (fields.imageUrl !== undefined) {
+    payload.image_url = fields.imageUrl;
+    payload.image_urls = fields.imageUrl ? [fields.imageUrl] : [];
+  } else if (fields.image_url !== undefined) {
+    payload.image_url = fields.image_url;
+    payload.image_urls = fields.image_url ? [fields.image_url] : [];
+  }
+
+  if (fields.variantAvailable !== undefined) payload.variant_available = fields.variantAvailable;
+  else if (fields.variant_available !== undefined) payload.variant_available = fields.variant_available;
+
   if (fields.orderFormula !== undefined) {
     const val = String(fields.orderFormula).trim();
     payload.order_formula = val ? evaluateFormula(val) : null;
+    if (payload.order_qty === undefined) payload.order_qty = payload.order_formula;
   } else if (fields.order_formula !== undefined) {
     const val = String(fields.order_formula).trim();
     payload.order_formula = val ? evaluateFormula(val) : null;
+    if (payload.order_qty === undefined) payload.order_qty = payload.order_formula;
   }
 
   payload.updated_at = new Date().toISOString();
@@ -331,7 +393,7 @@ export async function importIndentRows(parsedRows) {
     while (true) {
       const { data: mData, error: mErr } = await supabase
         .from('purchase_indents')
-        .select('item_details, shelf_capacity, max_level_qty, rol_qty')
+        .select('item_details, shelf_capacity, max_level_qty, rol_qty, reorder_level, online_item_name, min_order_qty, eligible_for_online, item_description, image_url, variant_available, order_qty')
         .or('hide_in_master.eq.false,hide_in_master.is.null')
         .order('created_at', { ascending: false })
         .range(masterFrom, masterFrom + pageSize - 1);
@@ -411,6 +473,21 @@ export async function importIndentRows(parsedRows) {
             : 0,
         conversion_unit: r.conversionUnit || r.conversion_unit || '',
         order_formula: dbOrderFormula,
+        order_qty: dbOrderFormula || 0,
+        online_item_name: r.onlineItemName || r.online_item_name || masterRecord?.online_item_name || null,
+        min_order_qty: (r.minOrderQty !== undefined && r.minOrderQty !== null && r.minOrderQty !== '')
+          ? Number(r.minOrderQty)
+          : (masterRecord?.min_order_qty !== undefined && masterRecord?.min_order_qty !== null ? Number(masterRecord.min_order_qty) : 0),
+        reorder_level: rolQty,
+        eligible_for_online: r.eligibleForOnline || r.eligible_for_online || masterRecord?.eligible_for_online || 'No',
+        item_description: r.itemDescription || r.item_description || masterRecord?.item_description || null,
+        image_url: r.imageUrl || r.image_url || masterRecord?.image_url || null,
+        image_urls: (Array.isArray(r.imageUrls) && r.imageUrls.length)
+          ? r.imageUrls
+          : (Array.isArray(masterRecord?.image_urls) && masterRecord.image_urls.length
+            ? masterRecord.image_urls
+            : ((r.imageUrl || r.image_url || masterRecord?.image_url) ? [r.imageUrl || r.image_url || masterRecord?.image_url] : [])),
+        variant_available: r.variantAvailable || r.variant_available || masterRecord?.variant_available || 'No',
         status: isZero ? 'Rejected' : 'Pending',
         remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
       };
@@ -1641,6 +1718,27 @@ export async function createIndentsManualBulk(vendor, items) {
           : 0,
       conversion_unit: item.conversion_unit || item.conversionUnit || '',
       order_formula: dbOrderFormula,
+      order_qty: (item.order_qty !== undefined && item.order_qty !== null && item.order_qty !== '')
+        ? Number(item.order_qty)
+        : (dbOrderFormula || 0),
+      online_item_name: item.online_item_name || item.onlineItemName || null,
+      min_order_qty: (item.min_order_qty !== undefined && item.min_order_qty !== null && item.min_order_qty !== '')
+        ? Number(item.min_order_qty)
+        : (item.minOrderQty !== undefined && item.minOrderQty !== null && item.minOrderQty !== '')
+          ? Number(item.minOrderQty)
+          : 0,
+      reorder_level: (item.reorder_level !== undefined && item.reorder_level !== null && item.reorder_level !== '')
+        ? Number(item.reorder_level)
+        : ((item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '')
+          ? Number(item.rol_qty)
+          : 0),
+      eligible_for_online: item.eligible_for_online || item.eligibleForOnline || 'No',
+      item_description: item.item_description || item.itemDescription || null,
+      image_urls: Array.isArray(item.image_urls) && item.image_urls.length
+        ? item.image_urls
+        : ((item.image_url || item.imageUrl) ? [item.image_url || item.imageUrl] : []),
+      image_url: (Array.isArray(item.image_urls) && item.image_urls[0]) || item.image_url || item.imageUrl || null,
+      variant_available: item.variant_available || item.variantAvailable || 'No',
       status: isZero ? 'Rejected' : 'Pending',
       remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
       hide_in_master: false,

@@ -1,12 +1,36 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Fuse from 'fuse.js';
+import { UploadCloud, X, Image as ImageIcon } from 'lucide-react';
 import supabase from '../../../SupabaseClient';
 import { createIndentsManualBulk, previewIndentsManualBulk, fetchActiveIndentsPool } from '../services/purchaseService';
 
+const DEFAULT_ITEM = {
+    vendor: '',
+    category: '',
+    unit: 'Pcs.',
+    parent_group: '',
+    conversion_unit: '',
+    order_formula: '',
+    order_qty: '',
+    item_details: '',
+    alt_unit: '',
+    shelf_capacity: '',
+    max_level_qty: '',
+    rol_qty: '',
+    reorder_level: '',
+    cl_qty: '',
+    orderQtyRequired: false,
+    online_item_name: '',
+    min_order_qty: '',
+    eligible_for_online: 'No',
+    item_description: '',
+    image_url: '',
+    image_urls: [],
+    variant_available: 'No',
+};
+
 export default function CreateIndentFormModal({ onClose, onSaved }) {
-    const [items, setItems] = useState([
-        { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '', orderQtyRequired: false }
-    ]);
+    const [items, setItems] = useState([{ ...DEFAULT_ITEM }]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [showErrorPopup, setShowErrorPopup] = useState(false);
@@ -24,7 +48,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 const [indentsRes, vendorsRes] = await Promise.all([
                     supabase
                         .from('purchase_indents')
-                        .select('item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula')
+                        .select('item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula, online_item_name, min_order_qty, eligible_for_online, item_description, image_url, image_urls, variant_available, reorder_level, order_qty')
                         .or('hide_in_master.eq.false,hide_in_master.is.null')
                         .order('created_at', { ascending: false }),
                     supabase
@@ -79,7 +103,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 updatedVendor = exactVendor || matched.vendor || currentItem.vendor;
             }
             // order_formula: if matched value is 0 or empty/null, leave blank and flag as required
-            const matchedOrderQty = matched ? matched.order_formula : null;
+            const matchedOrderQty = matched ? (matched.order_qty ?? matched.order_formula) : null;
             const orderQtyIsZeroOrEmpty = matched && (matchedOrderQty === 0 || matchedOrderQty === null || matchedOrderQty === undefined || String(matchedOrderQty).trim() === '' || String(matchedOrderQty).trim() === '0');
             copy[index] = {
                 ...currentItem,
@@ -92,10 +116,19 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 shelf_capacity: matched ? (matched.shelf_capacity || currentItem.shelf_capacity) : currentItem.shelf_capacity,
                 max_level_qty: matched ? (matched.max_level_qty !== null ? String(matched.max_level_qty) : currentItem.max_level_qty) : currentItem.max_level_qty,
                 rol_qty: matched ? (matched.rol_qty !== null ? String(matched.rol_qty) : currentItem.rol_qty) : currentItem.rol_qty,
+                reorder_level: matched ? (matched.reorder_level !== null ? String(matched.reorder_level) : (matched.rol_qty !== null ? String(matched.rol_qty) : currentItem.reorder_level)) : currentItem.reorder_level,
                 cl_qty: matched ? (matched.cl_qty !== null ? String(matched.cl_qty) : currentItem.cl_qty) : currentItem.cl_qty,
                 conversion_unit: matched ? (matched.conversion_unit || currentItem.conversion_unit) : currentItem.conversion_unit,
+                online_item_name: matched ? (matched.online_item_name || currentItem.online_item_name) : currentItem.online_item_name,
+                min_order_qty: matched ? (matched.min_order_qty !== null ? String(matched.min_order_qty) : currentItem.min_order_qty) : currentItem.min_order_qty,
+                eligible_for_online: matched ? (matched.eligible_for_online || currentItem.eligible_for_online) : currentItem.eligible_for_online,
+                item_description: matched ? (matched.item_description || currentItem.item_description) : currentItem.item_description,
+                image_url: matched ? (matched.image_url || (matched.image_urls?.[0]) || currentItem.image_url) : currentItem.image_url,
+                image_urls: matched ? (Array.isArray(matched.image_urls) && matched.image_urls.length ? matched.image_urls : (matched.image_url ? [matched.image_url] : currentItem.image_urls)) : currentItem.image_urls,
+                variant_available: matched ? (matched.variant_available || currentItem.variant_available) : currentItem.variant_available,
                 // If 0 or empty from DB: leave blank and mark as required so user must fill it
                 order_formula: orderQtyIsZeroOrEmpty ? '' : (matched ? String(matchedOrderQty) : currentItem.order_formula),
+                order_qty: orderQtyIsZeroOrEmpty ? '' : (matched ? String(matchedOrderQty) : currentItem.order_qty),
                 orderQtyRequired: orderQtyIsZeroOrEmpty,
                 isNewItem: !matched && !!trimmedVal,
             };
@@ -106,8 +139,78 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     const addItem = () => {
         setItems((prev) => [
             ...prev,
-            { vendor: '', category: '', unit: 'Pcs.', parent_group: '', conversion_unit: '', order_formula: '', item_details: '', alt_unit: '', shelf_capacity: '', max_level_qty: '', rol_qty: '', cl_qty: '', orderQtyRequired: false }
+            { ...DEFAULT_ITEM }
         ]);
+    };
+
+    const handleImageFiles = async (index, files) => {
+        if (!files || files.length === 0) return;
+        try {
+            const fileList = Array.from(files);
+            const uploadedUrls = [];
+            for (const file of fileList) {
+                const ext = file.name.split('.').pop();
+                const fileName = `item-images/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+                const { error: uploadError } = await supabase.storage.from('purchase-builty').upload(fileName, file);
+                if (uploadError) throw uploadError;
+                const { data } = supabase.storage.from('purchase-builty').getPublicUrl(fileName);
+                uploadedUrls.push(data.publicUrl);
+            }
+            setItems((prev) => {
+                const copy = [...prev];
+                const currentItem = copy[index];
+                const existing = Array.isArray(currentItem.image_urls) && currentItem.image_urls.length
+                    ? currentItem.image_urls
+                    : (currentItem.image_url ? [currentItem.image_url] : []);
+                const combined = [...existing, ...uploadedUrls];
+                copy[index] = {
+                    ...currentItem,
+                    image_urls: combined,
+                    image_url: combined[0] || '',
+                };
+                return copy;
+            });
+        } catch (err) {
+            console.error('Error uploading images:', err);
+            setError('Failed to upload images: ' + (err.message || 'Unknown error'));
+            setShowErrorPopup(true);
+        }
+    };
+
+    const removeImage = (itemIndex, imgIndex) => {
+        setItems((prev) => {
+            const copy = [...prev];
+            const currentItem = copy[itemIndex];
+            const existing = Array.isArray(currentItem.image_urls) && currentItem.image_urls.length
+                ? currentItem.image_urls
+                : (currentItem.image_url ? [currentItem.image_url] : []);
+            const list = existing.filter((_, i) => i !== imgIndex);
+            copy[itemIndex] = {
+                ...currentItem,
+                image_urls: list,
+                image_url: list[0] || '',
+            };
+            return copy;
+        });
+    };
+
+    const addImageUrl = (itemIndex, url) => {
+        const trimmed = String(url || '').trim();
+        if (!trimmed) return;
+        setItems((prev) => {
+            const copy = [...prev];
+            const currentItem = copy[itemIndex];
+            const existing = Array.isArray(currentItem.image_urls) && currentItem.image_urls.length
+                ? currentItem.image_urls
+                : (currentItem.image_url ? [currentItem.image_url] : []);
+            const combined = [...existing, trimmed];
+            copy[itemIndex] = {
+                ...currentItem,
+                image_urls: combined,
+                image_url: combined[0] || '',
+            };
+            return copy;
+        });
     };
 
     const removeItem = (index) => {
@@ -241,6 +344,19 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                 </div>
 
                                                 <div className="space-y-1">
+                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                        Item Name for Online Portal
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.online_item_name || ''}
+                                                        onChange={(e) => updateItem(index, 'online_item_name', e.target.value)}
+                                                        placeholder="Enter online portal item name"
+                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
                                                     <ComboSelect
                                                         table="purchase_indents"
@@ -324,15 +440,31 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">ROL Qty</label>
-                                                    <input
-                                                        type="text"
-                                                        value={item.rol_qty || ''}
-                                                        onChange={(e) => updateItem(index, 'rol_qty', e.target.value)}
-                                                        placeholder="ROL Qty"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                    />
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Reorder Level (ROL)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.rol_qty || ''}
+                                                            onChange={(e) => {
+                                                                updateItem(index, 'rol_qty', e.target.value);
+                                                                updateItem(index, 'reorder_level', e.target.value);
+                                                            }}
+                                                            placeholder="Reorder Level"
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Minimum Order Qty</label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={item.min_order_qty || ''}
+                                                            onChange={(e) => updateItem(index, 'min_order_qty', e.target.value)}
+                                                            placeholder="Min Order Qty"
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="space-y-1 text-gray-800">
                                                     <label className="text-[10px] font-bold uppercase tracking-wider block flex items-center gap-1"
@@ -340,7 +472,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                     >
                                                         Order Qty <span className="text-rose-500">*</span>
                                                         {item.orderQtyRequired && !item.order_formula && (
-                                                            <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full">
+                                                             <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full">
                                                                 ⚠ Required — was 0 in records
                                                             </span>
                                                         )}
@@ -351,6 +483,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         value={item.order_formula}
                                                         onChange={(e) => {
                                                             updateItem(index, 'order_formula', e.target.value);
+                                                            updateItem(index, 'order_qty', e.target.value);
                                                             // Clear the required flag once user starts typing
                                                             if (e.target.value && Number(e.target.value) > 0) {
                                                                 updateItem(index, 'orderQtyRequired', false);
@@ -364,6 +497,132 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         }`}
                                                     />
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Section: Online Portal & Specs */}
+                                        <div className="pt-3 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                            Eligible For Online
+                                                        </label>
+                                                        <select
+                                                            value={item.eligible_for_online || 'No'}
+                                                            onChange={(e) => updateItem(index, 'eligible_for_online', e.target.value)}
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        >
+                                                            <option value="Yes">Yes</option>
+                                                            <option value="No">No</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                            Variant Available
+                                                        </label>
+                                                        <select
+                                                            value={item.variant_available || 'No'}
+                                                            onChange={(e) => updateItem(index, 'variant_available', e.target.value)}
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        >
+                                                            <option value="Yes">Yes</option>
+                                                            <option value="No">No</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                {/* Multiple Image upload / URL */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                            Item Images (Multiple)
+                                                        </label>
+                                                        {(item.image_urls?.length > 0 || item.image_url) && (
+                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60">
+                                                                {(item.image_urls?.length || (item.image_url ? 1 : 0))} image{(item.image_urls?.length || (item.image_url ? 1 : 0)) > 1 ? 's' : ''} added
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {(item.image_urls?.length ? item.image_urls : (item.image_url ? [item.image_url] : [])).map((imgUrl, imgIdx) => (
+                                                            <div key={imgIdx} className="relative w-14 h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 group shadow-xs">
+                                                                <img src={imgUrl} alt={`Item ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeImage(index, imgIdx)}
+                                                                    className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="Remove this image"
+                                                                >
+                                                                    <X size={15} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+
+                                                        {/* Upload button box */}
+                                                        <label className="w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0">
+                                                            <UploadCloud size={16} />
+                                                            <span className="text-[8.5px] font-bold mt-0.5">Upload</span>
+                                                            <input
+                                                                type="file"
+                                                                multiple
+                                                                accept="image/*"
+                                                                className="hidden"
+                                                                onChange={(e) => {
+                                                                    if (e.target.files && e.target.files.length > 0) {
+                                                                        handleImageFiles(index, e.target.files);
+                                                                        e.target.value = '';
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
+
+                                                    {/* URL add input */}
+                                                    <div className="flex items-center gap-1.5 pt-1">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Or paste image URL and press Enter..."
+                                                            id={`img-url-inp-${index}`}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    addImageUrl(index, e.target.value);
+                                                                    e.target.value = '';
+                                                                }
+                                                            }}
+                                                            className="flex-1 px-3 py-2 bg-white border border-gray-150 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const el = document.getElementById(`img-url-inp-${index}`);
+                                                                if (el && el.value) {
+                                                                    addImageUrl(index, el.value);
+                                                                    el.value = '';
+                                                                }
+                                                            }}
+                                                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                                                        >
+                                                            Add URL
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Item Description */}
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                    Item Description
+                                                </label>
+                                                <textarea
+                                                    rows={4}
+                                                    value={item.item_description || ''}
+                                                    onChange={(e) => updateItem(index, 'item_description', e.target.value)}
+                                                    placeholder="Enter description for online portal or inventory specs..."
+                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                                                />
                                             </div>
                                         </div>
                                         {index === items.length - 1 && (
@@ -403,16 +662,41 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                             <thead>
                                                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
                                                     <th className="px-3 py-2">Item Name</th>
+                                                    <th className="px-3 py-2">Online Name</th>
                                                     <th className="px-3 py-2">Vendor</th>
-                                                    <th className="px-3 py-2">Qty</th>
+                                                    <th className="px-3 py-2">Order Qty</th>
+                                                    <th className="px-3 py-2">Min Qty</th>
+                                                    <th className="px-3 py-2">Online?</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {previewData.toCreate.map((it, idx) => (
                                                     <tr key={idx} className="border-t border-gray-100 font-semibold text-gray-800">
-                                                        <td className="px-3 py-2">{it.item_details}</td>
+                                                        <td className="px-3 py-2">
+                                                            <div className="flex items-center gap-2">
+                                                                {it.image_urls?.length ? (
+                                                                    <div className="flex -space-x-1.5 overflow-hidden">
+                                                                        {it.image_urls.slice(0, 3).map((url, i) => (
+                                                                            <img key={i} src={url} alt="" className="w-6 h-6 rounded-md object-cover border border-white shadow-xs" />
+                                                                        ))}
+                                                                    </div>
+                                                                ) : it.image_url ? (
+                                                                    <img src={it.image_url} alt="" className="w-6 h-6 rounded-md object-cover border border-gray-200" />
+                                                                ) : null}
+                                                                <span>{it.item_details}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-2 text-gray-600">{it.online_item_name || '—'}</td>
                                                         <td className="px-3 py-2 text-gray-600">{it.vendor}</td>
                                                         <td className="px-3 py-2 font-bold text-gray-900">{it.order_formula}</td>
+                                                        <td className="px-3 py-2 text-gray-600">{it.min_order_qty || '0'}</td>
+                                                        <td className="px-3 py-2">
+                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                                it.eligible_for_online === 'Yes' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                                {it.eligible_for_online || 'No'}
+                                                            </span>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>

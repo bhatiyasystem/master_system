@@ -26,7 +26,13 @@ export default function ImportView({ onImported }) {
       "Rol Qty",
       "Cl Qty",
       "Conversion Unit",
-      "Order Formula"
+      "Order Formula",
+      "Online Item Name",
+      "Min Order Qty",
+      "Eligible For Online",
+      "Item Description",
+      "Image URL",
+      "Variant Available"
     ];
     const sampleData = [
       [
@@ -41,7 +47,13 @@ export default function ImportView({ onImported }) {
         "20",
         "10",
         "",
-        "90"
+        "90",
+        "Example Online Item A",
+        "5",
+        "Yes",
+        "High quality item",
+        "",
+        "No"
       ]
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
@@ -82,6 +94,12 @@ export default function ImportView({ onImported }) {
           clQty: findColIndex(headers, ['cl. qty', 'cl qty']),
           conv: findColIndex(headers, ['conversion unit']),
           orderFormula: findColIndex(headers, ['order formula']),
+          onlineItemName: findColIndex(headers, ['online item name', 'item name for online portal']),
+          minOrderQty: findColIndex(headers, ['min order qty', 'minimum order qty', 'moq']),
+          eligibleForOnline: findColIndex(headers, ['eligible for online', 'online eligible']),
+          itemDescription: findColIndex(headers, ['item description', 'description']),
+          imageUrl: findColIndex(headers, ['image url', 'image']),
+          variantAvailable: findColIndex(headers, ['variant available']),
         };
         const dataRows = rows.slice(headerRowIdx + 1).filter((r) => r.some((c) => String(c).trim() !== ''));
         const parsed = [];
@@ -102,6 +120,12 @@ export default function ImportView({ onImported }) {
             clQty: idx.clQty > -1 ? Number(r[idx.clQty]) || 0 : 0,
             conversionUnit: idx.conv > -1 ? String(r[idx.conv] || '').trim() : '',
             orderFormula: idx.orderFormula > -1 ? Number(r[idx.orderFormula]) || 0 : 0,
+            onlineItemName: idx.onlineItemName > -1 ? String(r[idx.onlineItemName] || '').trim() : '',
+            minOrderQty: idx.minOrderQty > -1 ? Number(r[idx.minOrderQty]) || 0 : 0,
+            eligibleForOnline: idx.eligibleForOnline > -1 ? String(r[idx.eligibleForOnline] || '').trim() : 'No',
+            itemDescription: idx.itemDescription > -1 ? String(r[idx.itemDescription] || '').trim() : '',
+            imageUrl: idx.imageUrl > -1 ? String(r[idx.imageUrl] || '').trim() : '',
+            variantAvailable: idx.variantAvailable > -1 ? String(r[idx.variantAvailable] || '').trim() : 'No',
           });
         });
         if (parsed.length === 0) {
@@ -144,6 +168,12 @@ export default function ImportView({ onImported }) {
         clQty: it.clQty,
         conversionUnit: it.conversionUnit,
         orderFormula: it.orderFormula,
+        onlineItemName: it.onlineItemName,
+        minOrderQty: it.minOrderQty,
+        eligibleForOnline: it.eligibleForOnline,
+        itemDescription: it.itemDescription,
+        imageUrl: it.imageUrl,
+        variantAvailable: it.variantAvailable,
       }));
       const { firstNo, lastNo, insertedCount } = await importIndentRows(payload);
       const count = insertedCount !== undefined ? insertedCount : previewData.toCreate.length;

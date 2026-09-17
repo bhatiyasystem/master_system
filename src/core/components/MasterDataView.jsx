@@ -43,13 +43,20 @@ const CONFIG = {
         table: 'purchase_indents',
         fields: [
             { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
+            { key: 'online_item_name', label: 'Item Name for online portal', placeholder: 'Enter item name for online portal' },
             { key: 'vendor', label: 'Vendor Name', placeholder: 'Enter vendor name', comboTable: 'vendors', comboColumn: 'name' },
             { key: 'category', label: 'Category', placeholder: 'Enter category', comboTable: 'purchase_indents', comboColumn: 'category' },
             { key: 'unit', label: 'Unit', placeholder: 'Enter unit', comboTable: 'purchase_indents', comboColumn: 'unit' },
             { key: 'parent_group', label: 'Parent Group', placeholder: 'Enter parent group', comboTable: 'purchase_indents', comboColumn: 'parent_group' },
             { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
             { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
-            { key: 'rol_qty', label: 'ROL Qty', placeholder: 'Enter ROL qty' },
+            { key: 'rol_qty', label: 'Reorder Level', placeholder: 'Enter reorder level' },
+            { key: 'order_formula', label: 'Order Qty', placeholder: 'Enter order qty' },
+            { key: 'min_order_qty', label: 'Minimum Order Qty', placeholder: 'Enter minimum order qty' },
+            { key: 'eligible_for_online', label: 'Eligible For Online', options: ['Yes', 'No'] },
+            { key: 'variant_available', label: 'Variant Available', options: ['Yes', 'No'] },
+            { key: 'image_url', label: 'Image', type: 'image', placeholder: 'Enter image URL or upload' },
+            { key: 'item_description', label: 'Item Description', type: 'textarea', placeholder: 'Enter item description' },
         ],
         label: 'Master Item',
         pluralLabel: 'Master Items'
@@ -133,7 +140,16 @@ function MasterDataPanel({ type }) {
     const fileInputRef = useRef(null);
 
     const filteredRows = searchTerm.trim()
-        ? rows.filter((r) => String(r.name || r.item_details || '').toLowerCase().includes(searchTerm.trim().toLowerCase()))
+        ? rows.filter((r) => {
+            const term = searchTerm.trim().toLowerCase();
+            return (
+                String(r.name || '').toLowerCase().includes(term) ||
+                String(r.item_details || '').toLowerCase().includes(term) ||
+                String(r.online_item_name || '').toLowerCase().includes(term) ||
+                String(r.vendor || '').toLowerCase().includes(term) ||
+                String(r.category || '').toLowerCase().includes(term)
+            );
+        })
         : rows;
 
     async function handleDelete(row) {
@@ -381,13 +397,67 @@ function MasterDataPanel({ type }) {
                                             <Lucide.Trash2 size={12} /> Delete
                                         </button>
                                     </td>
-                                    {getTableFields(config).map((f) => (
-                                        <td key={f.key} className="px-3 py-2.5 text-gray-800">
-                                            {Array.isArray(r[f.key])
-                                                ? (r[f.key].length ? r[f.key].join(', ') : '—')
-                                                : (r[f.key] || '—')}
-                                        </td>
-                                    ))}
+                                    {getTableFields(config).map((f) => {
+                                        const val = r[f.key];
+                                        if (f.key === 'image_url' || f.key === 'image_urls') {
+                                            const imgs = Array.isArray(r.image_urls) && r.image_urls.length
+                                                ? r.image_urls
+                                                : (val ? [val] : []);
+                                            return (
+                                                <td key={f.key} className="px-3 py-2 text-gray-800 whitespace-nowrap">
+                                                    {imgs.length > 0 ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            {imgs.slice(0, 3).map((imgSrc, i) => (
+                                                                <a
+                                                                    key={i}
+                                                                    href={imgSrc}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="block w-9 h-9 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:opacity-80 transition shadow-xs flex-shrink-0"
+                                                                    title={`View image ${i + 1}`}
+                                                                >
+                                                                    <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                                                                </a>
+                                                            ))}
+                                                            {imgs.length > 3 && (
+                                                                <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md">
+                                                                    +{imgs.length - 3}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-300 text-[11px] italic">No image</span>
+                                                    )}
+                                                </td>
+                                            );
+                                        }
+                                        if (f.key === 'eligible_for_online' || f.key === 'variant_available') {
+                                            const isYes = String(val || '').toLowerCase() === 'yes';
+                                            return (
+                                                <td key={f.key} className="px-3 py-2 text-gray-800 whitespace-nowrap">
+                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10.5px] font-bold ${
+                                                        isYes ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500'
+                                                    }`}>
+                                                        {val || 'No'}
+                                                    </span>
+                                                </td>
+                                            );
+                                        }
+                                        if (f.key === 'item_description') {
+                                            return (
+                                                <td key={f.key} className="px-3 py-2 text-gray-700 max-w-[180px]" title={val}>
+                                                    <span className="truncate block">{val || '—'}</span>
+                                                </td>
+                                            );
+                                        }
+                                        return (
+                                            <td key={f.key} className="px-3 py-2.5 text-gray-800 whitespace-nowrap">
+                                                {Array.isArray(val)
+                                                    ? (val.length ? val.join(', ') : '—')
+                                                    : (val !== null && val !== undefined && val !== '' ? String(val) : '—')}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
@@ -517,9 +587,20 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
     const initialForm = {};
     config.fields.forEach((f) => {
         if (record) {
-            initialForm[f.key] = f.multi ? (record[f.key]?.length ? record[f.key] : ['']) : (record[f.key] || '');
+            if (f.key === 'image_url') {
+                const arr = Array.isArray(record.image_urls) && record.image_urls.length
+                    ? record.image_urls
+                    : (record.image_url ? [record.image_url] : []);
+                initialForm[f.key] = arr;
+            } else {
+                initialForm[f.key] = f.multi ? (record[f.key]?.length ? record[f.key] : ['']) : (record[f.key] || '');
+            }
         } else {
-            initialForm[f.key] = f.multi ? [''] : '';
+            if (f.key === 'image_url') {
+                initialForm[f.key] = [];
+            } else {
+                initialForm[f.key] = f.multi ? [''] : '';
+            }
         }
     });
     const [form, setForm] = useState(initialForm);
@@ -556,7 +637,11 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
         // Build cleaned payload: trim strings, drop blanks from multi-value arrays
         const payload = {};
         config.fields.forEach((f) => {
-            if (f.multi) {
+            if (f.key === 'image_url') {
+                const arr = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
+                payload.image_urls = arr;
+                payload.image_url = arr[0] || null;
+            } else if (f.multi) {
                 payload[f.key] = (form[f.key] || []).map((v) => v.trim()).filter(Boolean);
             } else {
                 payload[f.key] = (form[f.key] || '').trim();
@@ -575,6 +660,12 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
         try {
             let error;
             if (config.table === 'purchase_indents') {
+                if (payload.order_formula !== undefined && payload.order_formula !== '') {
+                    payload.order_qty = payload.order_formula;
+                }
+                if (payload.rol_qty !== undefined && payload.rol_qty !== '') {
+                    payload.reorder_level = payload.rol_qty;
+                }
                 if (record) {
                     const query = supabase.from('purchase_indents').update(payload);
                     const res = record.item_details
@@ -633,7 +724,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                     <div className="overflow-y-auto flex-1 px-6 py-5">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                             {config.fields.map((f) => (
-                                <div key={f.key} className={`space-y-1 ${f.multi || f.key === 'address' ? 'col-span-2' : ''}`}>
+                                <div key={f.key} className={`space-y-1 ${f.multi || f.key === 'address' || f.key === 'item_description' || f.key === 'image_url' ? 'col-span-2' : ''}`}>
                                     <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                         {f.label} {f.required && <span className="text-rose-500">*</span>}
                                     </label>
@@ -697,7 +788,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                             label={f.label}
                                             placeholder={f.placeholder}
                                         />
-                                    ) : f.key === 'address' ? (
+                                    ) : f.key === 'address' || f.type === 'textarea' ? (
                                         <textarea
                                             rows={2}
                                             value={form[f.key]}
@@ -705,9 +796,95 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                             placeholder={f.placeholder}
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
                                         />
+                                    ) : f.type === 'image' || f.key === 'image_url' ? (
+                                        <div className="space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {(Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : [])).map((imgSrc, imgIdx) => (
+                                                    <div key={imgIdx} className="relative w-14 h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 group shadow-xs">
+                                                        <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const list = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
+                                                                update(f.key, list.filter((_, i) => i !== imgIdx));
+                                                            }}
+                                                            className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            title="Remove image"
+                                                        >
+                                                            <Lucide.X size={15} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+
+                                                <label className="w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0">
+                                                    <Lucide.UploadCloud size={16} />
+                                                    <span className="text-[8.5px] font-bold mt-0.5">Upload</span>
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={async (e) => {
+                                                            const files = Array.from(e.target.files || []);
+                                                            if (!files.length) return;
+                                                            try {
+                                                                const uploaded = [];
+                                                                for (const file of files) {
+                                                                    const ext = file.name.split('.').pop();
+                                                                    const fileName = `item-images/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+                                                                    const { error: upErr } = await supabase.storage.from('purchase-builty').upload(fileName, file);
+                                                                    if (upErr) throw upErr;
+                                                                    const { data } = supabase.storage.from('purchase-builty').getPublicUrl(fileName);
+                                                                    uploaded.push(data.publicUrl);
+                                                                }
+                                                                const list = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
+                                                                update(f.key, [...list, ...uploaded]);
+                                                            } catch (err) {
+                                                                setError(err.message || 'Image upload failed');
+                                                            }
+                                                            e.target.value = '';
+                                                        }}
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5 pt-1">
+                                                <input
+                                                    type="text"
+                                                    id="modal-img-url-input"
+                                                    placeholder="Or paste image URL and press Enter..."
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            const val = e.target.value.trim();
+                                                            if (val) {
+                                                                const list = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
+                                                                update(f.key, [...list, val]);
+                                                                e.target.value = '';
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-150 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const el = document.getElementById('modal-img-url-input');
+                                                        if (el && el.value.trim()) {
+                                                            const list = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
+                                                            update(f.key, [...list, el.value.trim()]);
+                                                            el.value = '';
+                                                        }
+                                                    }}
+                                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                                                >
+                                                    Add URL
+                                                </button>
+                                            </div>
+                                        </div>
                                     ) : (
                                         <input
-                                            type="text"
+                                            type={f.type || "text"}
                                             value={form[f.key]}
                                             onChange={(e) => update(f.key, e.target.value)}
                                             placeholder={f.placeholder || ''}
