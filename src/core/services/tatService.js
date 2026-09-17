@@ -92,6 +92,56 @@ export async function startOrUpdateStage(entityId, stageKey, startedAt, tatMinut
   return data;
 }
 
+export async function startOrUpdateStageBatch(items, stageKey, tatMinutes) {
+  if (!items || items.length === 0) return [];
+  let mins = tatMinutes;
+  if (mins === undefined) {
+    try {
+      const { data: setting } = await supabase
+        .from('purchase_tat_settings')
+        .select('tat_minutes')
+        .eq('stage_key', stageKey)
+        .maybeSingle();
+      mins = setting?.tat_minutes ?? 20;
+    } catch (err) {
+      mins = 20;
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const records = items.map((item) => {
+    const entityId = typeof item === 'object' ? item.id : item;
+    const startedAt = (typeof item === 'object' && item.created_at) ? item.created_at : nowIso;
+    const started = new Date(startedAt);
+    const planned = new Date(started.getTime() + mins * 60000);
+    return {
+      entity_id: String(entityId),
+      stage_key: stageKey,
+      started_at: started.toISOString(),
+      planned_at: planned.toISOString(),
+      status: 'Pending',
+      updated_at: nowIso,
+    };
+  });
+
+  const BATCH_SIZE = 500;
+  const results = [];
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const chunk = records.slice(i, i + BATCH_SIZE);
+    const { data, error } = await supabase
+      .from('purchase_tat_tracking')
+      .upsert(chunk, { onConflict: 'entity_id, stage_key' })
+      .select();
+    if (error) {
+      console.error('Error batch updating TAT stage tracking:', error);
+    } else if (data) {
+      results.push(...data);
+    }
+  }
+  return results;
+}
+
+
 export async function completeStage(entityId, stageKey, completedAt = new Date().toISOString()) {
   if (!entityId) return null;
   const { data, error } = await supabase

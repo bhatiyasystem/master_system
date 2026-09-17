@@ -145,10 +145,14 @@ export default function ImportView({ onImported }) {
         conversionUnit: it.conversionUnit,
         orderFormula: it.orderFormula,
       }));
-      const { firstNo, lastNo } = await importIndentRows(payload);
+      const { firstNo, lastNo, insertedCount } = await importIndentRows(payload);
+      const count = insertedCount !== undefined ? insertedCount : previewData.toCreate.length;
+      const numText = firstNo && lastNo
+        ? (firstNo === lastNo ? `Unique number: ${firstNo}` : `Unique numbers: ${firstNo} to ${lastNo}`)
+        : '';
       setResult({
         type: 'success',
-        text: `Import completed: Created ${previewData.toCreate.length} new indent(s) successfully (Unique numbers: ${firstNo} to ${lastNo}).`,
+        text: `Import completed: Created ${count} new indent(s) successfully${numText ? ` (${numText})` : ''}.`,
       });
       setStep('summary');
       onImported && onImported();

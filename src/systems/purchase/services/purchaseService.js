@@ -1,5 +1,34 @@
 import supabase from '../../../SupabaseClient';
-import { startOrUpdateStage, completeStage, handleDeliveryReceived } from '../../../core/services/tatService';
+import { startOrUpdateStage, startOrUpdateStageBatch, completeStage, handleDeliveryReceived } from '../../../core/services/tatService';
+
+export async function reserveIndentNumbers(year, totalCount) {
+  if (!totalCount || totalCount <= 0) return [];
+  const CHUNK_SIZE = 1000;
+  const allReserved = [];
+  let remaining = totalCount;
+
+  while (remaining > 0) {
+    const countToReserve = Math.min(remaining, CHUNK_SIZE);
+    const { data, error } = await supabase.rpc('purchase_reserve_indent_numbers', {
+      p_year: year,
+      p_count: countToReserve,
+    });
+    if (error) {
+      throw new Error('Failed to reserve indent numbers: ' + error.message);
+    }
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      throw new Error('Failed to reserve indent numbers: received empty response from server.');
+    }
+    allReserved.push(...data);
+    remaining -= data.length;
+  }
+
+  if (allReserved.length < totalCount) {
+    throw new Error(`Reserved indent count mismatch: expected ${totalCount}, got ${allReserved.length}`);
+  }
+
+  return allReserved;
+}
 
 export function evaluateFormula(formulaStr) {
   if (formulaStr === undefined || formulaStr === null) return 0;
@@ -18,6 +47,7 @@ export function evaluateFormula(formulaStr) {
     return 0;
   }
 }
+
 
 function mapIndentRow(row) {
   return {
@@ -56,13 +86,24 @@ export async function fixIndentVendor(dbIds, vendorName) {
 }
 
 export async function fetchIndents() {
-  const { data, error } = await supabase
-    .from('purchase_indents')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data || []).map(mapIndentRow);
+  const allRows = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from('purchase_indents')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allRows.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return allRows.map(mapIndentRow);
 }
+
 
 export async function updateIndent(dbId, fields) {
   if (!dbId) throw new Error('Indent ID is required for update.');
@@ -209,24 +250,37 @@ export async function fetchIndentHistory(indentId) {
 }
 
 export async function importIndentRows(parsedRows) {
-  if (!parsedRows || parsedRows.length === 0) return { rows: [], firstNo: null, lastNo: null, matchedCount: 0, insertedCount: 0 };
+  if (!parsedRows || parsedRows.length === 0) return { rows: [], firstNo: null, lastNo: null, matchedCount: 0, insertedCount: 0, skipped: [] };
 
-  // Fetch all pending/approved indents to check against payment approval completion status
-  const { data: indents, error: indentErr } = await supabase
-    .from('purchase_indents')
-    .select('*')
-    .in('status', ['Pending', 'Approved']);
-  if (indentErr) throw indentErr;
+  // Fetch all pending/approved indents with pagination to prevent 1000 row truncation
+  const indents = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error: indentErr } = await supabase
+      .from('purchase_indents')
+      .select('id, item_details, status, po_id, unique_no')
+      .in('status', ['Pending', 'Approved'])
+      .range(from, from + pageSize - 1);
+    if (indentErr) throw indentErr;
+    if (!data || data.length === 0) break;
+    indents.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
 
   const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
   const decidedPoIds = new Set();
   if (poIds.length > 0) {
-    const { data: approvals, error: appErr } = await supabase
-      .from('purchase_payment_approvals')
-      .select('po_id')
-      .in('po_id', poIds);
-    if (appErr) throw appErr;
-    (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
+    for (let i = 0; i < poIds.length; i += 200) {
+      const chunk = poIds.slice(i, i + 200);
+      const { data: approvals, error: appErr } = await supabase
+        .from('purchase_payment_approvals')
+        .select('po_id')
+        .in('po_id', chunk);
+      if (appErr) throw appErr;
+      (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
+    }
   }
 
   const incompleteIndents = (indents || []).filter(row => {
@@ -250,7 +304,7 @@ export async function importIndentRows(parsedRows) {
   const matchedRows = [];
 
   parsedRows.forEach((r) => {
-    const norm = normalizeName(r.itemDetails);
+    const norm = normalizeName(r.itemDetails || r.item_details);
     const existingList = activePool[norm] || [];
     if (existingList.length > 0) {
       const matchedIndent = existingList.shift();
@@ -266,21 +320,30 @@ export async function importIndentRows(parsedRows) {
   let lastNo = null;
 
   if (newRowsToInsert.length > 0) {
-    const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
-      p_year: year,
-      p_count: newRowsToInsert.length,
-    });
-    if (reserveError) throw new Error('Failed to reserve indent numbers: ' + reserveError.message);
+    const reserved = await reserveIndentNumbers(year, newRowsToInsert.length);
 
     const createdBy = localStorage.getItem('user-id') || null;
     const importBatchId = crypto.randomUUID();
 
-    // Query last edited master values for shelf_capacity, max_level_qty, rol_qty
-    const { data: masterHistoryRows } = await supabase
-      .from('purchase_indents')
-      .select('item_details, shelf_capacity, max_level_qty, rol_qty')
-      .or('hide_in_master.eq.false,hide_in_master.is.null')
-      .order('created_at', { ascending: false });
+    // Query last edited master values for shelf_capacity, max_level_qty, rol_qty with pagination
+    const masterHistoryRows = [];
+    let masterFrom = 0;
+    while (true) {
+      const { data: mData, error: mErr } = await supabase
+        .from('purchase_indents')
+        .select('item_details, shelf_capacity, max_level_qty, rol_qty')
+        .or('hide_in_master.eq.false,hide_in_master.is.null')
+        .order('created_at', { ascending: false })
+        .range(masterFrom, masterFrom + pageSize - 1);
+      if (mErr) {
+        console.error('Error querying master history:', mErr);
+        break;
+      }
+      if (!mData || mData.length === 0) break;
+      masterHistoryRows.push(...mData);
+      if (mData.length < pageSize) break;
+      masterFrom += pageSize;
+    }
 
     const masterLookup = {};
     (masterHistoryRows || []).forEach((row) => {
@@ -291,72 +354,101 @@ export async function importIndentRows(parsedRows) {
     });
 
     const payload = newRowsToInsert.map((r, i) => {
-      const formulaVal = (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '') ? String(r.orderFormula).trim() : null;
+      const formulaVal = (r.orderFormula !== undefined && r.orderFormula !== null && r.orderFormula !== '')
+        ? String(r.orderFormula).trim()
+        : (r.order_formula !== undefined && r.order_formula !== null && r.order_formula !== '')
+          ? String(r.order_formula).trim()
+          : null;
       const evaluated = formulaVal ? evaluateFormula(formulaVal) : null;
       const isZero = evaluated === 0;
       const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
 
-      const norm = normalizeName(r.itemDetails);
+      const norm = normalizeName(r.itemDetails || r.item_details);
       const masterRecord = masterLookup[norm];
 
       const shelfCapacity = (masterRecord && masterRecord.shelf_capacity !== null && masterRecord.shelf_capacity !== undefined && String(masterRecord.shelf_capacity).trim() !== '')
         ? masterRecord.shelf_capacity
-        : (r.shelfCapacity || '');
+        : (r.shelfCapacity || r.shelf_capacity || '');
 
       const maxLevelQty = (masterRecord && masterRecord.max_level_qty !== null && masterRecord.max_level_qty !== undefined && String(masterRecord.max_level_qty).trim() !== '')
         ? Number(masterRecord.max_level_qty)
-        : ((r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '') ? Number(r.maxLevelQty) : 0);
+        : ((r.maxLevelQty !== undefined && r.maxLevelQty !== null && r.maxLevelQty !== '')
+          ? Number(r.maxLevelQty)
+          : (r.max_level_qty !== undefined && r.max_level_qty !== null && r.max_level_qty !== '')
+            ? Number(r.max_level_qty)
+            : 0);
 
       const rolQty = (masterRecord && masterRecord.rol_qty !== null && masterRecord.rol_qty !== undefined && String(masterRecord.rol_qty).trim() !== '')
         ? Number(masterRecord.rol_qty)
-        : ((r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '') ? Number(r.rolQty) : 0);
+        : ((r.rolQty !== undefined && r.rolQty !== null && r.rolQty !== '')
+          ? Number(r.rolQty)
+          : (r.rol_qty !== undefined && r.rol_qty !== null && r.rol_qty !== '')
+            ? Number(r.rol_qty)
+            : 0);
+
+      const uniqueNo = reserved[i]?.unique_no;
+      if (!uniqueNo) {
+        throw new Error(`Failed to assign unique number to indent row ${i + 1}. Expected ${newRowsToInsert.length} reserved numbers, but got ${reserved.length}.`);
+      }
 
       return {
-        unique_no: reserved[i].unique_no,
+        unique_no: uniqueNo,
         import_batch_id: importBatchId,
         created_by: createdBy,
-        item_details: r.itemDetails,
+        item_details: r.itemDetails || r.item_details,
         category: r.category || 'Uncategorized',
         vendor: r.vendor || '',
         unit: r.unit || 'Pcs.',
-        alt_unit: r.altUnit || '',
-        parent_group: r.parentGroup || '',
+        alt_unit: r.altUnit || r.alt_unit || '',
+        parent_group: r.parentGroup || r.parent_group || '',
         shelf_capacity: shelfCapacity,
         max_level_qty: maxLevelQty,
         rol_qty: rolQty,
-        cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '') ? Number(r.clQty) : 0,
-        conversion_unit: r.conversionUnit || '',
+        cl_qty: (r.clQty !== undefined && r.clQty !== null && r.clQty !== '')
+          ? Number(r.clQty)
+          : (r.cl_qty !== undefined && r.cl_qty !== null && r.cl_qty !== '')
+            ? Number(r.cl_qty)
+            : 0,
+        conversion_unit: r.conversionUnit || r.conversion_unit || '',
         order_formula: dbOrderFormula,
         status: isZero ? 'Rejected' : 'Pending',
         remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
       };
     });
 
-    const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
-    if (error) {
-      if (error.code === '23505') {
-        throw new Error('A sequence conflict occurred (duplicate indent number). Please try submitting again.');
+    // Batch insert payload in chunks of 500
+    const INSERT_CHUNK = 500;
+    insertedRows = [];
+    for (let i = 0; i < payload.length; i += INSERT_CHUNK) {
+      const chunk = payload.slice(i, i + INSERT_CHUNK);
+      const { data, error } = await supabase.from('purchase_indents').insert(chunk).select();
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('A sequence conflict occurred (duplicate indent number). Please try submitting again.');
+        }
+        throw new Error(error.message || 'Failed to insert indents.');
       }
-      throw new Error(error.message || 'Failed to insert indents.');
+      if (data) {
+        insertedRows.push(...data);
+      }
     }
 
-    insertedRows = data || [];
-    firstNo = payload[0].unique_no;
-    lastNo = payload[payload.length - 1].unique_no;
+    firstNo = payload[0]?.unique_no || null;
+    lastNo = payload[payload.length - 1]?.unique_no || null;
 
     // Start Indent Approval stage for newly imported indents
     try {
       const pendingRows = insertedRows.filter(row => row.status === 'Pending');
       if (pendingRows.length) {
-        await Promise.all(pendingRows.map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
+        await startOrUpdateStageBatch(pendingRows, 'indent_approval');
       }
     } catch (tatErr) {
       console.error('Error logging import Indent TAT:', tatErr);
     }
   }
 
-  const mappedMatched = matchedRows.map(mapIndentRow);
-  const mappedInserted = insertedRows.map(mapIndentRow);
+  const mappedMatched = (matchedRows || []).map(mapIndentRow).filter(Boolean);
+  const mappedInserted = (insertedRows || []).map(mapIndentRow).filter(Boolean);
 
   return {
     rows: [...mappedMatched, ...mappedInserted],
@@ -364,7 +456,7 @@ export async function importIndentRows(parsedRows) {
     lastNo,
     matchedCount: matchedRows.length,
     insertedCount: insertedRows.length,
-    skipped: matchedRows.map(r => r.unique_no).filter(Boolean),
+    skipped: (matchedRows || []).map(r => r?.unique_no).filter(Boolean),
   };
 }
 
@@ -1448,27 +1540,40 @@ export async function revisePaymentApproval({
 export async function createIndentsManualBulk(vendor, items) {
   if (!items || items.length === 0) return [];
 
-  // Query existing pending or approved indents
-  const { data: indents, error: fetchError } = await supabase
-    .from('purchase_indents')
-    .select('item_details, status, po_id')
-    .in('status', ['Pending', 'Approved']);
-  if (fetchError) throw fetchError;
+  // Query existing pending or approved indents with pagination
+  const indents = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error: fetchError } = await supabase
+      .from('purchase_indents')
+      .select('item_details, status, po_id')
+      .in('status', ['Pending', 'Approved'])
+      .range(from, from + pageSize - 1);
+    if (fetchError) throw fetchError;
+    if (!data || data.length === 0) break;
+    indents.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
 
-  const poIds = Array.from(new Set((indents || []).map(r => r.po_id).filter(Boolean)));
+  const poIds = Array.from(new Set(indents.map(r => r.po_id).filter(Boolean)));
   const decidedPoIds = new Set();
   if (poIds.length > 0) {
-    const { data: approvals, error: appErr } = await supabase
-      .from('purchase_payment_approvals')
-      .select('po_id')
-      .in('po_id', poIds);
-    if (appErr) throw appErr;
-    (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
+    for (let i = 0; i < poIds.length; i += 200) {
+      const chunk = poIds.slice(i, i + 200);
+      const { data: approvals, error: appErr } = await supabase
+        .from('purchase_payment_approvals')
+        .select('po_id')
+        .in('po_id', chunk);
+      if (appErr) throw appErr;
+      (approvals || []).forEach(a => decidedPoIds.add(a.po_id));
+    }
   }
 
   const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
   const existingNames = new Set();
-  (indents || []).forEach(row => {
+  indents.forEach(row => {
     const isPending = row.status === 'Pending';
     const isApprovedButNotDecided = row.status === 'Approved' && (!row.po_id || !decidedPoIds.has(row.po_id));
     if (isPending || isApprovedButNotDecided) {
@@ -1479,7 +1584,7 @@ export async function createIndentsManualBulk(vendor, items) {
   // Filter items to create, skipping those that already exist
   const itemsToCreate = [];
   for (const item of items) {
-    const norm = normalize(item.item_details);
+    const norm = normalize(item.item_details || item.itemDetails);
     if (!existingNames.has(norm)) {
       itemsToCreate.push(item);
     }
@@ -1490,33 +1595,51 @@ export async function createIndentsManualBulk(vendor, items) {
   }
 
   const year = new Date().getFullYear();
-  const { data: reserved, error: reserveError } = await supabase.rpc('purchase_reserve_indent_numbers', {
-    p_year: year,
-    p_count: itemsToCreate.length,
-  });
-  if (reserveError) throw new Error('Failed to reserve indent numbers: ' + reserveError.message);
+  const reserved = await reserveIndentNumbers(year, itemsToCreate.length);
 
   const createdBy = localStorage.getItem('user-id') || null;
 
   const payload = itemsToCreate.map((item, idx) => {
-    const formulaVal = (item.order_formula !== undefined && item.order_formula !== null && item.order_formula !== '') ? String(item.order_formula).trim() : null;
+    const formulaVal = (item.order_formula !== undefined && item.order_formula !== null && item.order_formula !== '')
+      ? String(item.order_formula).trim()
+      : (item.orderFormula !== undefined && item.orderFormula !== null && item.orderFormula !== '')
+        ? String(item.orderFormula).trim()
+        : null;
     const evaluated = formulaVal ? evaluateFormula(formulaVal) : null;
     const isZero = evaluated === 0;
     const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
+
+    const uniqueNo = reserved[idx]?.unique_no;
+    if (!uniqueNo) {
+      throw new Error(`Failed to assign unique number to indent row ${idx + 1}. Expected ${itemsToCreate.length} reserved numbers, but got ${reserved.length}.`);
+    }
+
     return {
-      unique_no: reserved[idx].unique_no,
+      unique_no: uniqueNo,
       created_by: createdBy,
-      item_details: item.item_details,
+      item_details: item.item_details || item.itemDetails,
       category: item.category || 'Uncategorized',
       vendor: item.vendor || vendor || '',
       unit: item.unit || 'Pcs.',
-      alt_unit: item.alt_unit || '',
-      parent_group: item.parent_group || '',
-      shelf_capacity: item.shelf_capacity || '',
-      max_level_qty: (item.max_level_qty !== undefined && item.max_level_qty !== null && item.max_level_qty !== '') ? Number(item.max_level_qty) : 0,
-      rol_qty: (item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '') ? Number(item.rol_qty) : 0,
-      cl_qty: (item.cl_qty !== undefined && item.cl_qty !== null && item.cl_qty !== '') ? Number(item.cl_qty) : 0,
-      conversion_unit: item.conversion_unit || '',
+      alt_unit: item.alt_unit || item.altUnit || '',
+      parent_group: item.parent_group || item.parentGroup || '',
+      shelf_capacity: item.shelf_capacity || item.shelfCapacity || '',
+      max_level_qty: (item.max_level_qty !== undefined && item.max_level_qty !== null && item.max_level_qty !== '')
+        ? Number(item.max_level_qty)
+        : (item.maxLevelQty !== undefined && item.maxLevelQty !== null && item.maxLevelQty !== '')
+          ? Number(item.maxLevelQty)
+          : 0,
+      rol_qty: (item.rol_qty !== undefined && item.rol_qty !== null && item.rol_qty !== '')
+        ? Number(item.rol_qty)
+        : (item.rolQty !== undefined && item.rolQty !== null && item.rolQty !== '')
+          ? Number(item.rolQty)
+          : 0,
+      cl_qty: (item.cl_qty !== undefined && item.cl_qty !== null && item.cl_qty !== '')
+        ? Number(item.cl_qty)
+        : (item.clQty !== undefined && item.clQty !== null && item.clQty !== '')
+          ? Number(item.clQty)
+          : 0,
+      conversion_unit: item.conversion_unit || item.conversionUnit || '',
       order_formula: dbOrderFormula,
       status: isZero ? 'Rejected' : 'Pending',
       remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
@@ -1524,22 +1647,31 @@ export async function createIndentsManualBulk(vendor, items) {
     };
   });
 
-  const { data, error } = await supabase.from('purchase_indents').insert(payload).select();
-  if (error) {
-    if (error.code === '23505') {
-      throw new Error('A sequence conflict occurred (duplicate indent number). Please try submitting again.');
+  const INSERT_CHUNK = 500;
+  const insertedRows = [];
+  for (let i = 0; i < payload.length; i += INSERT_CHUNK) {
+    const chunk = payload.slice(i, i + INSERT_CHUNK);
+    const { data, error } = await supabase.from('purchase_indents').insert(chunk).select();
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('A sequence conflict occurred (duplicate indent number). Please try submitting again.');
+      }
+      throw new Error(error.message || 'Failed to create indents.');
     }
-    throw new Error(error.message || 'Failed to create indents.');
+    if (data) {
+      insertedRows.push(...data);
+    }
   }
 
-  // 1. Unhide any previously hidden records for these items on the master side
+  // 1. Unhide any previously hidden records for these items on the master side in chunks
   try {
-    const itemNames = Array.from(new Set(itemsToCreate.map(it => String(it.item_details || '').trim()).filter(Boolean)));
-    if (itemNames.length > 0) {
+    const itemNames = Array.from(new Set(itemsToCreate.map(it => String(it.item_details || it.itemDetails || '').trim()).filter(Boolean)));
+    for (let i = 0; i < itemNames.length; i += 200) {
+      const chunk = itemNames.slice(i, i + 200);
       await supabase
         .from('purchase_indents')
         .update({ hide_in_master: false })
-        .in('item_details', itemNames);
+        .in('item_details', chunk);
     }
   } catch (unhideErr) {
     console.error('Error unhiding items in master:', unhideErr);
@@ -1555,41 +1687,65 @@ export async function createIndentsManualBulk(vendor, items) {
       const existingVNames = new Set((existingV || []).map(v => String(v.name || '').trim().toLowerCase()));
       const newVendors = enteredVendors.filter(v => !existingVNames.has(v.toLowerCase()));
       if (newVendors.length > 0) {
-        await supabase
-          .from('vendors')
-          .insert(newVendors.map(v => ({ name: v })));
+        for (let i = 0; i < newVendors.length; i += 200) {
+          const chunk = newVendors.slice(i, i + 200);
+          await supabase
+            .from('vendors')
+            .insert(chunk.map(v => ({ name: v })));
+        }
       }
     }
   } catch (vendorErr) {
     console.error('Error auto-saving new vendors to master:', vendorErr);
   }
 
+  // 3. Start Indent Approval stage for newly created indents
   try {
-    const pendingRows = (data || []).filter(row => row.status === 'Pending');
+    const pendingRows = insertedRows.filter(row => row.status === 'Pending');
     if (pendingRows.length) {
-      await Promise.all(pendingRows.map(row => startOrUpdateStage(row.id, 'indent_approval', row.created_at)));
+      await startOrUpdateStageBatch(pendingRows, 'indent_approval');
     }
   } catch (tatErr) {
     console.error('Error logging manual Indent TAT:', tatErr);
   }
 
-  return data;
+  return insertedRows;
 }
 
 export async function fetchActiveIndentsPool() {
-  const [indentsRes, deliveriesRes, approvalsRes] = await Promise.all([
-    supabase.from('purchase_indents').select('id, item_details, status, po_id, unique_no').in('status', ['Pending', 'Approved']),
-    supabase.from('purchase_deliveries').select('id, po_id, received'),
-    supabase.from('purchase_payment_approvals').select('po_id'),
-  ]);
+  const indents = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error: indentsErr } = await supabase
+      .from('purchase_indents')
+      .select('id, item_details, status, po_id, unique_no')
+      .in('status', ['Pending', 'Approved'])
+      .range(from, from + pageSize - 1);
+    if (indentsErr) throw indentsErr;
+    if (!data || data.length === 0) break;
+    indents.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
 
-  if (indentsRes.error) throw indentsRes.error;
-  if (deliveriesRes.error) throw deliveriesRes.error;
-  if (approvalsRes.error) throw approvalsRes.error;
+  const poIds = Array.from(new Set(indents.map(r => r.po_id).filter(Boolean)));
+  const deliveries = [];
+  const approvals = [];
 
-  const indents = indentsRes.data || [];
-  const deliveries = deliveriesRes.data || [];
-  const approvals = approvalsRes.data || [];
+  if (poIds.length > 0) {
+    for (let i = 0; i < poIds.length; i += 200) {
+      const chunk = poIds.slice(i, i + 200);
+      const [delRes, appRes] = await Promise.all([
+        supabase.from('purchase_deliveries').select('id, po_id, received').in('po_id', chunk),
+        supabase.from('purchase_payment_approvals').select('po_id').in('po_id', chunk),
+      ]);
+      if (delRes.error) throw delRes.error;
+      if (appRes.error) throw appRes.error;
+      if (delRes.data) deliveries.push(...delRes.data);
+      if (appRes.data) approvals.push(...appRes.data);
+    }
+  }
 
   const delsByPo = {};
   deliveries.forEach(d => {
@@ -1636,7 +1792,7 @@ export async function previewIndentsManualBulk(vendor, items) {
   const toSkip = [];
 
   for (const item of items) {
-    const norm = normalize(item.item_details);
+    const norm = normalize(item.item_details || item.itemDetails);
     if (activePool[norm]) {
       toSkip.push({ ...item, uniqueNo: activePool[norm].uniqueNo, stage: activePool[norm].stage });
     } else {
