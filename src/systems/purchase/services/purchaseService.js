@@ -232,7 +232,7 @@ function mapHistoryRow(row) {
 export async function decideCategory({ ids, qtyById, status, remarks }) {
   const qtyPayload = {};
   ids.forEach((id) => {
-    if (qtyById[id] != null) qtyPayload[id] = qtyById[id];
+    if (qtyById[id] != null) qtyPayload[id] = Number(qtyById[id]) || 0;
   });
 
   const { data, error } = await supabase.rpc('purchase_decide_category', {
@@ -242,6 +242,22 @@ export async function decideCategory({ ids, qtyById, status, remarks }) {
     p_remarks: remarks,
   });
   if (error) throw error;
+
+  // Sync order_qty on indents if provided
+  try {
+    const updatePromises = ids.map((id) => {
+      const q = qtyPayload[id];
+      if (q != null) {
+        return supabase.from('purchase_indents').update({ order_qty: q }).eq('id', id);
+      }
+      return null;
+    }).filter(Boolean);
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    }
+  } catch (syncErr) {
+    console.warn('Failed to sync order_qty on indents:', syncErr);
+  }
 
   // Complete Indent Approval stage and start Purchase Order stage if approved
   try {
@@ -1220,12 +1236,31 @@ export async function reviseReceiving({ receivingId, items, fullyReceived, recei
 
   return mapReceivingRow(updatedRecRow, itemRows);
 }
+async function fetchActiveIndentsForCounts() {
+  const allRows = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from('purchase_indents')
+      .select('id, status, order_formula, po_id, parent_group')
+      .in('status', ['Pending', 'Approved'])
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    allRows.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return allRows;
+}
+
 // ── Sidebar badge counts ────────────────────────────────────────────────
 // Lightweight, column-limited queries (no joins) so this can be polled
 // from the sidebar without the cost of the full fetch* functions above.
 export async function fetchPurchasePendingCounts() {
-  const [indentsRes, posRes, deliveriesRes, payablePOsRaw, approvalsRes, paymentsRes, receivingsRes] = await Promise.all([
-    supabase.from('purchase_indents').select('id, status, order_formula, po_id, category'),
+  const [indents, posRes, deliveriesRes, payablePOsRaw, approvalsRes, paymentsRes, receivingsRes] = await Promise.all([
+    fetchActiveIndentsForCounts(),
     supabase.from('purchase_pos').select('id'),
     supabase.from('purchase_deliveries').select('id, po_id, received, dagg_count'),
     fetchPayablePOs(),
@@ -1234,25 +1269,23 @@ export async function fetchPurchasePendingCounts() {
     supabase.from('purchase_receivings').select('delivery_id, received_dagg'),
   ]);
 
-  if (indentsRes.error) throw indentsRes.error;
   if (posRes.error) throw posRes.error;
   if (deliveriesRes.error) throw deliveriesRes.error;
   if (approvalsRes.error) throw approvalsRes.error;
   if (paymentsRes.error) throw paymentsRes.error;
   if (receivingsRes.error) throw receivingsRes.error;
 
-  const indents = indentsRes.data || [];
   const pos = posRes.data || [];
   const deliveries = deliveriesRes.data || [];
   const approvals = approvalsRes.data || [];
   const payments = paymentsRes.data || [];
   const receivings = receivingsRes.data || [];
 
-  // Indents awaiting an approve/reject decision (distinct categories)
+  // Indents awaiting an approve/reject decision (distinct parent groups)
   const approvalPending = new Set(
     indents
       .filter((i) => i.status === 'Pending' && evaluateFormula(i.order_formula) > 0)
-      .map((i) => i.category || 'Uncategorized')
+      .map((i) => i.parent_group || 'Unassigned')
   ).size;
 
   // Indents approved but not yet attached to a PO

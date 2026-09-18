@@ -385,7 +385,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
         shelfCapacity: item.shelfCapacity || '',
         maxLevelQty: item.maxLevelQty != null && item.maxLevelQty !== '' ? String(item.maxLevelQty) : '',
         rolQty: item.rolQty != null && item.rolQty !== '' ? String(item.rolQty) : '',
-        orderFormula: item.orderFormula != null && item.orderFormula !== '' ? String(item.orderFormula) : '',
+        orderFormula: qty[item.dbId] != null && qty[item.dbId] !== '' ? String(qty[item.dbId]) : (item.orderFormula != null && item.orderFormula !== '' ? String(item.orderFormula) : ''),
       },
     }));
     setEditingRowIds((prev) => new Set(prev).add(item.dbId));
@@ -430,7 +430,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
         shelfCapacity: item.shelfCapacity || '',
         maxLevelQty: item.maxLevelQty != null && item.maxLevelQty !== '' ? String(item.maxLevelQty) : '',
         rolQty: item.rolQty != null && item.rolQty !== '' ? String(item.rolQty) : '',
-        orderFormula: item.orderFormula != null && item.orderFormula !== '' ? String(item.orderFormula) : '',
+        orderFormula: qty[item.dbId] != null && qty[item.dbId] !== '' ? String(qty[item.dbId]) : (item.orderFormula != null && item.orderFormula !== '' ? String(item.orderFormula) : ''),
       };
     });
     setRowEdits(newEdits);
@@ -549,7 +549,17 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
       setError('Select at least one item.');
       return;
     }
-    onSubmit(ids, qty, status, remarks.trim());
+    const finalQtyById = {};
+    ids.forEach((id) => {
+      const it = items.find((x) => x.dbId === id);
+      const val = editingRowIds.has(id) && rowEdits[id]?.orderFormula != null
+        ? rowEdits[id].orderFormula
+        : qty[id];
+      finalQtyById[id] = (val !== '' && val != null && !isNaN(Number(val)))
+        ? Number(val)
+        : (it?.approvedQty != null ? it.approvedQty : (it?.orderFormula || 0));
+    });
+    onSubmit(ids, finalQtyById, status, remarks.trim());
   };
 
   const vendorsSubtitle = vendors && vendors.length > 0 ? vendors.join(', ') : '';
@@ -632,7 +642,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
               </th>
               <th className="px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[70px]">Unique No.</th>
               <th className="px-2 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[130px]">Item Details</th>
-              <th className="px-1.5 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[55px]">Order Qty</th>
+              <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[70px]">Order Qty</th>
               <th className="px-1.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[80px]">Category</th>
               <th className="px-1.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[90px]">Vendor</th>
               <th className="px-1.5 py-2 text-left text-[10px] font-bold uppercase tracking-wide min-w-[80px]">Parent Group</th>
@@ -641,14 +651,13 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
               <th className="px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[48px]">Shelf Cap</th>
               <th className="px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[50px]">Max Qty</th>
               <th className="px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[50px]">ROL Qty</th>
-              <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[70px]">Qty to Order</th>
               <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[65px]">Action</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={14} className="px-4 py-8 text-center text-xs text-gray-500">
+                <td colSpan={13} className="px-4 py-8 text-center text-xs text-gray-500">
                   No items in this parent group.
                 </td>
               </tr>
@@ -679,18 +688,21 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                         <span className="font-medium text-gray-800 break-words text-[11.5px]">{i.itemDetails}</span>
                       )}
                     </td>
-                    <td className="px-1.5 py-1.5 text-right font-semibold text-gray-900 text-[11.5px] leading-tight">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-semibold text-gray-900 text-right focus:border-blue-500 focus:outline-none"
-                          value={cur.orderFormula ?? ''}
-                          onChange={(e) => updateRowEditField(i.dbId, 'orderFormula', e.target.value)}
-                        />
-                      ) : (
-                        <span className="font-semibold text-gray-900 text-[11.5px]">{i.orderFormula}</span>
-                      )}
+                    <td className="px-1.5 py-1.5 text-center">
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-16 rounded border border-gray-300 px-1 py-0.5 text-xs font-semibold text-center focus:border-blue-500 focus:outline-none"
+                        value={isEditing ? (cur.orderFormula ?? '') : (qty[i.dbId] ?? '')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setQty((prev) => ({ ...prev, [i.dbId]: val }));
+                          if (isEditing) {
+                            updateRowEditField(i.dbId, 'orderFormula', val);
+                          }
+                        }}
+                        title="Order Qty"
+                      />
                     </td>
                     <td className="px-1.5 py-1.5 break-words text-gray-600 text-[11px] leading-tight">
                       {isEditing ? (
@@ -787,16 +799,6 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                       ) : (
                         <span>{i.rolQty != null && i.rolQty !== '' ? i.rolQty : '—'}</span>
                       )}
-                    </td>
-                    <td className="px-1.5 py-1.5 text-center">
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-16 rounded border border-gray-300 px-1 py-0.5 text-xs font-semibold text-center focus:border-blue-500 focus:outline-none"
-                        value={qty[i.dbId] ?? ''}
-                        onChange={(e) => setQty((prev) => ({ ...prev, [i.dbId]: Number(e.target.value) || 0 }))}
-                        title="Qty to order"
-                      />
                     </td>
                     <td className="px-1.5 py-1.5 text-center">
                       {isEditing ? (
