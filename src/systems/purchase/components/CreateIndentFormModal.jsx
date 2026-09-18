@@ -236,15 +236,13 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                 setShowErrorPopup(true);
                 return;
             }
-            // Validate Order Qty — must be filled and non-zero (only in master mode)
-            if (!isPurchaseMode) {
-                const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
-                if (missingQty) {
-                    const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
-                    setError(errMsg);
-                    setShowErrorPopup(true);
-                    return;
-                }
+            // Validate Order Qty — must be filled and non-zero
+            const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
+            if (missingQty) {
+                const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
+                setError(errMsg);
+                setShowErrorPopup(true);
+                return;
             }
             setSaving(true);
             const data = await previewIndentsManualBulk(null, items);
@@ -285,29 +283,38 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
-            <div className={`relative bg-white rounded-3xl shadow-2xl w-full ${isPurchaseMode ? 'max-w-2xl' : 'max-w-4xl'} flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden`}>
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
                 {/* Header — sticky */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 flex justify-between items-center border-b border-blue-50 flex-shrink-0">
-                    <h3 className="font-black text-gray-900 text-lg">Add Indents</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
-                        <span className="text-xl font-bold">×</span>
+                <div className={`px-8 pt-6 pb-4 flex justify-between items-center flex-shrink-0 ${isPurchaseMode ? 'bg-white' : 'bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-50 px-6 py-4'}`}>
+                    <h3 className="font-bold text-gray-900 text-lg">Add Indents</h3>
+                    <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span className="text-2xl font-bold leading-none">&times;</span>
                     </button>
                 </div>
                 <form onSubmit={step === 'input' ? handleReview : (e) => { e.preventDefault(); handleFinalSubmit(); }} className="flex flex-col flex-1 min-h-0">
                     {step === 'input' ? (
                         /* Scrollable fields */
-                        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+                        <div className="overflow-y-auto flex-1 px-8 py-5 space-y-6">
                             {/* List of items */}
-                            <div className="space-y-4">
+                            <div className="space-y-5">
                                 {items.map((item, index) => (
-                                    <div key={index} className="relative p-5 bg-gray-50/50 border border-gray-155 rounded-2xl space-y-4">
-                                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                                            <span className="text-xs font-bold text-gray-700">Item #{index + 1}</span>
+                                    <div
+                                        key={index}
+                                        className={
+                                            isPurchaseMode
+                                                ? "relative p-6 bg-white border border-gray-700 rounded-2xl space-y-4"
+                                                : "relative p-5 bg-gray-50/50 border border-gray-155 rounded-2xl space-y-4"
+                                        }
+                                    >
+                                        <div className={`flex items-center justify-between ${isPurchaseMode ? '' : 'border-b border-gray-100 pb-2'}`}>
+                                            <span className={`font-bold ${isPurchaseMode ? 'text-sm text-gray-800' : 'text-xs text-gray-700'}`}>
+                                                Item #{index + 1}
+                                            </span>
                                             {items.length > 1 && (
                                                 <button
                                                     type="button"
                                                     onClick={() => removeItem(index)}
-                                                    className="text-[11px] font-bold text-rose-500 hover:underline"
+                                                    className="text-xs font-semibold text-rose-500 hover:underline"
                                                 >
                                                     Remove Item
                                                 </button>
@@ -315,96 +322,187 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                         </div>
 
                                         {isPurchaseMode ? (
-                                            /* Streamlined 2-column layout for Indent Data in Purchase System */
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="md:col-span-2 space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                        Item Name <span className="text-rose-500">*</span>
-                                                    </label>
-                                                    <ComboSelect
-                                                        table="purchase_indents"
-                                                        column="item_details"
-                                                        value={item.item_details}
-                                                        onChange={(val) => handleItemNameChange(index, val)}
-                                                        label="Item Name"
-                                                        placeholder="Select or enter item name"
-                                                        activePool={activePool}
-                                                        normalize={normalizeFn}
-                                                    />
-                                                    {item.item_details && item.item_details.trim() && (
-                                                        <div className="pt-0.5">
-                                                            {item.isNewItem ? (
-                                                                <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-lg shadow-xs">
-                                                                    ✨ New item — will be saved to Master automatically
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg shadow-xs">
-                                                                    ✓ Existing item from Master (details auto-filled)
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
-                                                    <ComboSelect
-                                                        table="purchase_indents"
-                                                        column="category"
-                                                        value={item.category}
-                                                        onChange={(val) => updateItem(index, 'category', val)}
-                                                        label="Category"
-                                                        placeholder="Select or enter category"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                        Vendor Name <span className="text-rose-500">*</span>
-                                                    </label>
-                                                    <ComboSelect
-                                                        table="vendors"
-                                                        column="name"
-                                                        value={item.vendor}
-                                                        onChange={(val) => updateItem(index, 'vendor', val)}
-                                                        label="Vendor"
-                                                        placeholder="Select or enter vendor name"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
-                                                    <ComboSelect
-                                                        table="purchase_indents"
-                                                        column="parent_group"
-                                                        value={item.parent_group}
-                                                        onChange={(val) => updateItem(index, 'parent_group', val)}
-                                                        label="Parent Group"
-                                                        placeholder="Select or enter parent group"
-                                                    />
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-3">
+                                            /* Exact 2-column layout for Indent Data matching screenshot */
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                                                {/* Left Column (5 fields) */}
+                                                <div className="space-y-4">
+                                                    {/* ITEM NAME * */}
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                            ITEM NAME <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <ComboSelect
+                                                            table="purchase_indents"
+                                                            column="item_details"
+                                                            value={item.item_details}
+                                                            onChange={(val) => handleItemNameChange(index, val)}
+                                                            label="Item Name"
+                                                            placeholder="Select or enter item name"
+                                                            activePool={activePool}
+                                                            normalize={normalizeFn}
+                                                            inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
+                                                        />
+                                                        {item.item_details && item.item_details.trim() && (
+                                                            <div className="pt-0.5">
+                                                                {item.isNewItem ? (
+                                                                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-lg shadow-xs">
+                                                                        ✨ New item — will be saved to Master automatically
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg shadow-xs">
+                                                                        ✓ Existing item from Master (details auto-filled)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* CATEGORY */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                            CATEGORY
+                                                        </label>
+                                                        <ComboSelect
+                                                            table="purchase_indents"
+                                                            column="category"
+                                                            value={item.category}
+                                                            onChange={(val) => updateItem(index, 'category', val)}
+                                                            label="Category"
+                                                            placeholder="Search or enter Category..."
+                                                            inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
+                                                        />
+                                                    </div>
+
+                                                    {/* VENDOR NAME * */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                            VENDOR NAME <span className="text-red-500">*</span>
+                                                        </label>
+                                                        <ComboSelect
+                                                            table="vendors"
+                                                            column="name"
+                                                            value={item.vendor}
+                                                            onChange={(val) => updateItem(index, 'vendor', val)}
+                                                            label="Vendor"
+                                                            placeholder="Select vendor name"
+                                                            inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
+                                                        />
+                                                    </div>
+
+                                                    {/* PARENT GROUP */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                            PARENT GROUP
+                                                        </label>
+                                                        <ComboSelect
+                                                            table="purchase_indents"
+                                                            column="parent_group"
+                                                            value={item.parent_group}
+                                                            onChange={(val) => updateItem(index, 'parent_group', val)}
+                                                            label="Parent Group"
+                                                            placeholder="Search or enter Parent Group..."
+                                                            inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
+                                                        />
+                                                    </div>
+
+                                                    {/* UNIT */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                            UNIT
+                                                        </label>
                                                         <ComboSelect
                                                             table="purchase_indents"
                                                             column="unit"
                                                             value={item.unit}
                                                             onChange={(val) => updateItem(index, 'unit', val)}
                                                             label="Unit"
-                                                            placeholder="Unit"
+                                                            placeholder="Pcs."
+                                                            inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
                                                         />
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Alt Unit</label>
-                                                        <input
-                                                            type="text"
-                                                            value={item.alt_unit || ''}
-                                                            onChange={(e) => updateItem(index, 'alt_unit', e.target.value)}
-                                                            placeholder="Alt Unit (optional)"
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        />
+                                                </div>
+
+                                                {/* Right Column (4 fields + button) */}
+                                                <div className="space-y-4 flex flex-col justify-between">
+                                                    <div className="space-y-4">
+                                                        {/* SHELF CAPACITY */}
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                                SHELF CAPACITY
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={item.shelf_capacity || ''}
+                                                                onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
+                                                                placeholder="Shelf Capacity"
+                                                                className="w-full px-4 py-3 bg-white border border-gray-700 rounded-2xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                            />
+                                                        </div>
+
+                                                        {/* MAX LEVEL QTY */}
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                                MAX LEVEL QTY
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                value={item.max_level_qty || ''}
+                                                                onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
+                                                                placeholder="Max Level Qty"
+                                                                className="w-full px-4 py-3 bg-white border border-gray-700 rounded-2xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                            />
+                                                        </div>
+
+                                                        {/* ROL QTY */}
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                                ROL QTY
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                value={item.rol_qty || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    updateItem(index, 'rol_qty', val);
+                                                                    updateItem(index, 'reorder_level', val);
+                                                                }}
+                                                                placeholder="ROL Qty"
+                                                                className="w-full px-4 py-3 bg-white border border-gray-700 rounded-2xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                            />
+                                                        </div>
+
+                                                        {/* ORDER QTY * */}
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                                                ORDER QTY <span className="text-red-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                value={item.order_formula || item.order_qty || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    updateItem(index, 'order_formula', val);
+                                                                    updateItem(index, 'order_qty', val);
+                                                                    updateItem(index, 'orderQtyRequired', !val);
+                                                                }}
+                                                                placeholder="Enter order quantity"
+                                                                className="w-full px-4 py-3 bg-white border border-gray-700 rounded-2xl text-xs font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 5: + Add Another Item button */}
+                                                    <div className="flex items-end justify-end pt-5">
+                                                        {index === items.length - 1 ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={addItem}
+                                                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm transition"
+                                                            >
+                                                                <span className="text-base font-bold leading-none">+</span>
+                                                                <span>Add Another Item</span>
+                                                            </button>
+                                                        ) : <div />}
                                                     </div>
                                                 </div>
                                             </div>
@@ -727,7 +825,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                 </div>
                                             </>
                                         )}
-                                        {index === items.length - 1 && (
+                                        {!isPurchaseMode && index === items.length - 1 && (
                                             <div className="flex justify-end pt-2">
                                                 <button
                                                     type="button"
@@ -770,7 +868,10 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                             <th className="px-3 py-2">Vendor</th>
                                                             <th className="px-3 py-2">Parent Group</th>
                                                             <th className="px-3 py-2">Unit</th>
-                                                            <th className="px-3 py-2">Alt Unit</th>
+                                                            <th className="px-3 py-2">Shelf Cap.</th>
+                                                            <th className="px-3 py-2">Max Qty</th>
+                                                            <th className="px-3 py-2">ROL Qty</th>
+                                                            <th className="px-3 py-2">Order Qty</th>
                                                         </>
                                                     ) : (
                                                         <>
@@ -808,7 +909,10 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                 <td className="px-3 py-2 text-gray-600">{it.vendor || '—'}</td>
                                                                 <td className="px-3 py-2 text-gray-600">{it.parent_group || '—'}</td>
                                                                 <td className="px-3 py-2 text-gray-600">{it.unit || '—'}</td>
-                                                                <td className="px-3 py-2 text-gray-600">{it.alt_unit || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.shelf_capacity || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.max_level_qty || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.rol_qty || '—'}</td>
+                                                                <td className="px-3 py-2 font-bold text-gray-900">{it.order_formula || it.order_qty || '—'}</td>
                                                             </>
                                                         ) : (
                                                             <>
@@ -869,20 +973,20 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                     )}
 
                     {/* Footer — sticky */}
-                    <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+                    <div className={`flex justify-end gap-3 px-8 py-4 border-t ${isPurchaseMode ? 'border-gray-100 bg-white' : 'border-gray-100 bg-gray-50/50'} flex-shrink-0`}>
                         {step === 'input' ? (
                             <>
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                    className="rounded-xl border border-gray-300 px-5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-60 shadow-md shadow-blue-200"
+                                    className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-2 text-xs font-bold text-white disabled:opacity-60 shadow-sm hover:opacity-90 transition"
                                 >
                                     {saving ? 'Loading…' : 'Next: Review'}
                                 </button>
@@ -895,14 +999,14 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                         setError('');
                                         setStep('input');
                                     }}
-                                    className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                                    className="rounded-xl border border-gray-300 px-5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
                                 >
                                     Back
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={saving || previewData.toCreate.length === 0}
-                                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50 shadow-md shadow-emerald-200 animate-pulse"
+                                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-xs font-bold text-white disabled:opacity-50 shadow-sm hover:opacity-90 transition"
                                 >
                                     {saving ? 'Saving…' : 'Confirm & Submit'}
                                 </button>
@@ -937,7 +1041,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
         </div>
     );
 }
-function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom, activePool, normalize }) {
+function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom, activePool, normalize, inputClassName }) {
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
@@ -1069,7 +1173,7 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                         }
                     }}
                     placeholder={placeholder || `Search or enter ${label || column}...`}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-10"
+                    className={`w-full px-4 py-3 ${inputClassName || 'bg-gray-50 border border-gray-150'} rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-10`}
                 />
                 <button
                     type="button"
