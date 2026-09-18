@@ -46,24 +46,60 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
         let isMounted = true;
         async function loadData() {
             try {
-                const [indentsRes, vendorsRes] = await Promise.all([
-                    supabase
-                        .from('purchase_indents')
-                        .select('item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula, online_item_name, min_order_qty, eligible_for_online, item_description, image_url, image_urls, variant_available, reorder_level, order_qty')
-                        .or('hide_in_master.eq.false,hide_in_master.is.null')
-                        .order('created_at', { ascending: false }),
+                // Paginated fetch of all master items from purchase_indents
+                const fetchAllMasterIndents = async () => {
+                    const all = [];
+                    let from = 0;
+                    while (true) {
+                        const { data, error } = await supabase
+                            .from('purchase_indents')
+                            .select('item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, cl_qty, conversion_unit, order_formula, online_item_name, min_order_qty, eligible_for_online, item_description, image_url, variant_available, reorder_level, order_qty')
+                            .or('hide_in_master.eq.false,hide_in_master.is.null')
+                            .order('created_at', { ascending: false })
+                            .range(from, from + 999);
+                        if (error) throw error;
+                        if (!data || !data.length) break;
+                        all.push(...data);
+                        if (data.length < 1000) break;
+                        from += 1000;
+                    }
+                    return all;
+                };
+
+                const [indentsData, vendorsRes] = await Promise.all([
+                    fetchAllMasterIndents(),
                     supabase
                         .from('vendors')
                         .select('name')
+                        .order('name', { ascending: true })
                 ]);
-                if (indentsRes.error) throw indentsRes.error;
                 if (vendorsRes.error) throw vendorsRes.error;
 
                 const uniqueMap = {};
-                (indentsRes.data || []).forEach(row => {
+                (indentsData || []).forEach(row => {
                     const name = String(row.item_details || '').trim();
-                    if (name && !uniqueMap[name]) {
-                        uniqueMap[name] = row;
+                    if (!name) return;
+                    if (!uniqueMap[name]) {
+                        uniqueMap[name] = { ...row };
+                    } else {
+                        // Merge non-empty values
+                        const curr = uniqueMap[name];
+                        const keysToMerge = [
+                            'category', 'vendor', 'unit', 'alt_unit', 'parent_group',
+                            'shelf_capacity', 'max_level_qty', 'rol_qty', 'reorder_level',
+                            'cl_qty', 'conversion_unit', 'order_formula', 'order_qty',
+                            'online_item_name', 'min_order_qty', 'eligible_for_online',
+                            'item_description', 'image_url', 'variant_available'
+                        ];
+                        keysToMerge.forEach(k => {
+                            const ev = curr[k];
+                            const rv = row[k];
+                            const isEmpty = ev === null || ev === undefined || ev === '' || ev === 0;
+                            const hasVal = rv !== null && rv !== undefined && rv !== '' && rv !== 0;
+                            if (isEmpty && hasVal) {
+                                curr[k] = rv;
+                            }
+                        });
                     }
                 });
 
@@ -84,6 +120,22 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
         return () => { isMounted = false; };
     }, []);
 
+    const itemOptions = useMemo(() => {
+        return Array.from(new Set(existingItemsDB.map(r => String(r.item_details || '').trim()).filter(Boolean))).sort();
+    }, [existingItemsDB]);
+
+    const categoryOptions = useMemo(() => {
+        return Array.from(new Set(existingItemsDB.map(r => String(r.category || '').trim()).filter(Boolean))).sort();
+    }, [existingItemsDB]);
+
+    const parentGroupOptions = useMemo(() => {
+        return Array.from(new Set(existingItemsDB.map(r => String(r.parent_group || '').trim()).filter(Boolean))).sort();
+    }, [existingItemsDB]);
+
+    const unitOptions = useMemo(() => {
+        return Array.from(new Set(['Pcs.', 'Box', 'Kg', 'Mtr', 'Set', 'Nos.', 'Ltr', ...existingItemsDB.map(r => String(r.unit || '').trim()).filter(Boolean)])).sort();
+    }, [existingItemsDB]);
+
     const updateItem = (index, key, val) => {
         setItems((prev) => {
             const copy = [...prev];
@@ -94,43 +146,59 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
 
     const handleItemNameChange = (index, val) => {
         const trimmedVal = String(val || '').trim();
-        const matched = existingItemsDB.find(dbItem => String(dbItem.item_details || '').trim().toLowerCase() === trimmedVal.toLowerCase());
+        if (!trimmedVal) {
+            setItems(prev => {
+                const copy = [...prev];
+                copy[index] = { ...copy[index], item_details: val, isNewItem: false };
+                return copy;
+            });
+            return;
+        }
+
+        const norm = (s) => String(s || '').trim().toLowerCase().replace(/^[\s*#-]+/, '').replace(/\s+/g, ' ');
+        const targetNorm = norm(trimmedVal);
+        const targetExact = trimmedVal.toLowerCase();
+
+        const matched = existingItemsDB.find(dbItem => String(dbItem.item_details || '').trim().toLowerCase() === targetExact)
+            || existingItemsDB.find(dbItem => norm(dbItem.item_details) === targetNorm);
+
         setItems((prev) => {
             const copy = [...prev];
             const currentItem = copy[index];
             let updatedVendor = currentItem.vendor;
-            if (matched) {
+            if (matched && matched.vendor) {
                 const exactVendor = vendorOptions.find(v => v.toLowerCase() === String(matched.vendor || '').trim().toLowerCase());
-                updatedVendor = exactVendor || matched.vendor || currentItem.vendor;
+                updatedVendor = exactVendor || matched.vendor;
             }
-            // order_formula: if matched value is 0 or empty/null, leave blank and flag as required
+
             const matchedOrderQty = matched ? (matched.order_qty ?? matched.order_formula) : null;
-            const orderQtyIsZeroOrEmpty = matched && (matchedOrderQty === 0 || matchedOrderQty === null || matchedOrderQty === undefined || String(matchedOrderQty).trim() === '' || String(matchedOrderQty).trim() === '0');
+            const hasOrderQty = matchedOrderQty !== null && matchedOrderQty !== undefined && String(matchedOrderQty).trim() !== '' && String(matchedOrderQty).trim() !== '0';
+            const orderQtyVal = hasOrderQty ? String(matchedOrderQty) : '';
+
             copy[index] = {
                 ...currentItem,
                 item_details: val,
-                vendor: matched ? updatedVendor : currentItem.vendor,
-                category: matched ? (matched.category || currentItem.category) : currentItem.category,
-                unit: matched ? (matched.unit || currentItem.unit) : currentItem.unit,
-                alt_unit: matched ? (matched.alt_unit || currentItem.alt_unit) : currentItem.alt_unit,
-                parent_group: matched ? (matched.parent_group || currentItem.parent_group) : currentItem.parent_group,
-                shelf_capacity: matched ? (matched.shelf_capacity || currentItem.shelf_capacity) : currentItem.shelf_capacity,
-                max_level_qty: matched ? (matched.max_level_qty !== null ? String(matched.max_level_qty) : currentItem.max_level_qty) : currentItem.max_level_qty,
-                rol_qty: matched ? (matched.rol_qty !== null ? String(matched.rol_qty) : currentItem.rol_qty) : currentItem.rol_qty,
-                reorder_level: matched ? (matched.reorder_level !== null ? String(matched.reorder_level) : (matched.rol_qty !== null ? String(matched.rol_qty) : currentItem.reorder_level)) : currentItem.reorder_level,
-                cl_qty: matched ? (matched.cl_qty !== null ? String(matched.cl_qty) : currentItem.cl_qty) : currentItem.cl_qty,
-                conversion_unit: matched ? (matched.conversion_unit || currentItem.conversion_unit) : currentItem.conversion_unit,
-                online_item_name: matched ? (matched.online_item_name || currentItem.online_item_name) : currentItem.online_item_name,
-                min_order_qty: matched ? (matched.min_order_qty !== null ? String(matched.min_order_qty) : currentItem.min_order_qty) : currentItem.min_order_qty,
-                eligible_for_online: matched ? (matched.eligible_for_online || currentItem.eligible_for_online) : currentItem.eligible_for_online,
-                item_description: matched ? (matched.item_description || currentItem.item_description) : currentItem.item_description,
-                image_url: matched ? (matched.image_url || (matched.image_urls?.[0]) || currentItem.image_url) : currentItem.image_url,
-                image_urls: matched ? (Array.isArray(matched.image_urls) && matched.image_urls.length ? matched.image_urls : (matched.image_url ? [matched.image_url] : currentItem.image_urls)) : currentItem.image_urls,
-                variant_available: matched ? (matched.variant_available || currentItem.variant_available) : currentItem.variant_available,
-                // If 0 or empty from DB: leave blank and mark as required so user must fill it
-                order_formula: orderQtyIsZeroOrEmpty ? '' : (matched ? String(matchedOrderQty) : currentItem.order_formula),
-                order_qty: orderQtyIsZeroOrEmpty ? '' : (matched ? String(matchedOrderQty) : currentItem.order_qty),
-                orderQtyRequired: orderQtyIsZeroOrEmpty,
+                vendor: matched ? (updatedVendor || '') : currentItem.vendor,
+                category: matched ? (matched.category || '') : currentItem.category,
+                unit: matched ? (matched.unit || 'Pcs.') : (currentItem.unit || 'Pcs.'),
+                alt_unit: matched ? (matched.alt_unit || '') : currentItem.alt_unit,
+                parent_group: matched ? (matched.parent_group || '') : currentItem.parent_group,
+                shelf_capacity: matched ? (matched.shelf_capacity !== null && matched.shelf_capacity !== undefined ? String(matched.shelf_capacity) : '') : currentItem.shelf_capacity,
+                max_level_qty: matched ? (matched.max_level_qty !== null && matched.max_level_qty !== undefined ? String(matched.max_level_qty) : '') : currentItem.max_level_qty,
+                rol_qty: matched ? (matched.rol_qty !== null && matched.rol_qty !== undefined ? String(matched.rol_qty) : (matched.reorder_level !== null && matched.reorder_level !== undefined ? String(matched.reorder_level) : '')) : currentItem.rol_qty,
+                reorder_level: matched ? (matched.reorder_level !== null && matched.reorder_level !== undefined ? String(matched.reorder_level) : (matched.rol_qty !== null && matched.rol_qty !== undefined ? String(matched.rol_qty) : '')) : currentItem.reorder_level,
+                cl_qty: matched ? (matched.cl_qty !== null && matched.cl_qty !== undefined ? String(matched.cl_qty) : '') : currentItem.cl_qty,
+                conversion_unit: matched ? (matched.conversion_unit || '') : currentItem.conversion_unit,
+                online_item_name: matched ? (matched.online_item_name || '') : currentItem.online_item_name,
+                min_order_qty: matched ? (matched.min_order_qty !== null && matched.min_order_qty !== undefined ? String(matched.min_order_qty) : '') : currentItem.min_order_qty,
+                eligible_for_online: matched ? (matched.eligible_for_online || 'No') : currentItem.eligible_for_online,
+                item_description: matched ? (matched.item_description || '') : currentItem.item_description,
+                image_url: matched ? (matched.image_url || '') : currentItem.image_url,
+                image_urls: matched ? (matched.image_url ? [matched.image_url] : []) : currentItem.image_urls,
+                variant_available: matched ? (matched.variant_available || 'No') : currentItem.variant_available,
+                order_formula: orderQtyVal || (matched ? '' : currentItem.order_formula),
+                order_qty: orderQtyVal || (matched ? '' : currentItem.order_qty),
+                orderQtyRequired: !orderQtyVal,
                 isNewItem: !matched && !!trimmedVal,
             };
             return copy;
@@ -340,6 +408,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                             placeholder="Select or enter item name"
                                                             activePool={activePool}
                                                             normalize={normalizeFn}
+                                                            options={itemOptions}
                                                             inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
                                                         />
                                                         {item.item_details && item.item_details.trim() && (
@@ -369,6 +438,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                             onChange={(val) => updateItem(index, 'category', val)}
                                                             label="Category"
                                                             placeholder="Search or enter Category..."
+                                                            options={categoryOptions}
                                                             inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
                                                         />
                                                     </div>
@@ -385,6 +455,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                             onChange={(val) => updateItem(index, 'vendor', val)}
                                                             label="Vendor"
                                                             placeholder="Select vendor name"
+                                                            options={vendorOptions}
                                                             inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
                                                         />
                                                     </div>
@@ -401,6 +472,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                             onChange={(val) => updateItem(index, 'parent_group', val)}
                                                             label="Parent Group"
                                                             placeholder="Search or enter Parent Group..."
+                                                            options={parentGroupOptions}
                                                             inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
                                                         />
                                                     </div>
@@ -417,6 +489,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                             onChange={(val) => updateItem(index, 'unit', val)}
                                                             label="Unit"
                                                             placeholder="Pcs."
+                                                            options={unitOptions}
                                                             inputClassName="bg-white border border-gray-700 text-gray-800 placeholder-gray-400"
                                                         />
                                                     </div>
@@ -525,6 +598,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                 placeholder="Select or enter item name"
                                                                 activePool={activePool}
                                                                 normalize={normalizeFn}
+                                                                options={itemOptions}
                                                             />
                                                             {item.item_details && item.item_details.trim() && (
                                                                 <div className="pt-0.5">
@@ -563,6 +637,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                 onChange={(val) => updateItem(index, 'category', val)}
                                                                 label="Category"
                                                                 placeholder="Select or enter category"
+                                                                options={categoryOptions}
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
@@ -575,7 +650,8 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                 value={item.vendor}
                                                                 onChange={(val) => updateItem(index, 'vendor', val)}
                                                                 label="Vendor"
-                                                                placeholder="Select or enter vendor name"
+                                                                placeholder="Select vendor name"
+                                                                options={vendorOptions}
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
@@ -587,6 +663,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                 onChange={(val) => updateItem(index, 'parent_group', val)}
                                                                 label="Parent Group"
                                                                 placeholder="Select or enter parent group"
+                                                                options={parentGroupOptions}
                                                             />
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-3">
@@ -599,6 +676,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                     onChange={(val) => updateItem(index, 'unit', val)}
                                                                     label="Unit"
                                                                     placeholder="Unit"
+                                                                    options={unitOptions}
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
@@ -1041,9 +1119,9 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
         </div>
     );
 }
-function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom, activePool, normalize, inputClassName }) {
-    const [options, setOptions] = useState([]);
-    const [loading, setLoading] = useState(true);
+function ComboSelect({ table, column, value, onChange, label, placeholder, disableCustom, activePool, normalize, inputClassName, options: optionsProp }) {
+    const [options, setOptions] = useState(optionsProp || []);
+    const [loading, setLoading] = useState(!optionsProp);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState(value || '');
     const containerRef = useRef(null);
@@ -1053,19 +1131,32 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
     }, [value]);
 
     useEffect(() => {
+        if (optionsProp) {
+            setOptions(optionsProp);
+            setLoading(false);
+            return;
+        }
         let isMounted = true;
         async function fetchOptions() {
             try {
                 const targetColumn = table === 'vendors' ? 'name' : column;
-                let query = supabase.from(table).select(targetColumn);
-                if (table === 'purchase_indents') {
-                    query = query.or('hide_in_master.eq.false,hide_in_master.is.null');
+                let allVals = [];
+                let from = 0;
+                while (true) {
+                    let query = supabase.from(table).select(targetColumn);
+                    if (table === 'purchase_indents') {
+                        query = query.or('hide_in_master.eq.false,hide_in_master.is.null');
+                    }
+                    const { data, error } = await query.range(from, from + 999);
+                    if (error) throw error;
+                    if (!data || !data.length) break;
+                    data.forEach(r => {
+                        if (r[targetColumn]) allVals.push(r[targetColumn]);
+                    });
+                    if (data.length < 1000) break;
+                    from += 1000;
                 }
-                const { data, error } = await query;
-                if (error) throw error;
-                const vals = Array.from(
-                    new Set((data || []).map((r) => r[targetColumn]).filter(Boolean))
-                ).sort();
+                const vals = Array.from(new Set(allVals)).sort();
                 if (isMounted) {
                     setOptions(vals);
                     setLoading(false);
@@ -1077,7 +1168,7 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
         }
         fetchOptions();
         return () => { isMounted = false; };
-    }, [table, column]);
+    }, [table, column, optionsProp]);
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -1153,12 +1244,12 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (!disableCustom && trimmedSearch) {
-                                handleSelectCustom();
-                            } else if (filtered.length > 0) {
+                            if (filtered.length > 0) {
                                 onChange(filtered[0]);
                                 setSearch(filtered[0]);
                                 setIsOpen(false);
+                            } else if (!disableCustom && trimmedSearch) {
+                                handleSelectCustom();
                             }
                         } else if (e.key === 'Escape') {
                             setIsOpen(false);
