@@ -9,7 +9,9 @@ import { useNavigate } from 'react-router-dom';
 export default function PurchaseOrderPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('pending');
-  const { poPending = 0 } = usePurchasePendingCounts();
+  const { poPending: polledPoPending = 0 } = usePurchasePendingCounts();
+  const [livePoCount, setLivePoCount] = useState(null);
+  const poPending = livePoCount !== null ? livePoCount : polledPoPending;
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
@@ -38,6 +40,7 @@ export default function PurchaseOrderPage() {
 
       {tab === 'pending' ? (
         <PoPendingView
+          onPendingCountChange={setLivePoCount}
           onCreatePO={(items, parentGroup, vendorName) =>
             navigate('/dashboard/purchase/pocreate', { state: { items, parentGroup, vendorName } })
           }

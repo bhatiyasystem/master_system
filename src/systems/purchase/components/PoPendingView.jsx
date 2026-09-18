@@ -7,7 +7,7 @@ import { uniqueValues } from '../utils/helpers';
 import { fetchIndents, fixIndentVendor, deleteIndents } from '../services/purchaseService';
 import { fetchTatTracking, renderPlannedDateCell, fetchTatSettings } from '../../../core/services/tatService';
 
-export default function PoPendingView({ onCreatePO }) {
+export default function PoPendingView({ onCreatePO, onPendingCountChange }) {
   const location = useLocation();
   const hasData = useRef(false);
   const [indents, setIndents] = useState([]);
@@ -103,6 +103,12 @@ function DiffCell({ orderQty, approvedQty }) {
   const parentGroups = useMemo(() => uniqueValues(allPending, 'parentGroup'), [allPending]);
   const vendors = useMemo(() => uniqueValues(allPending, 'vendor'), [allPending]);
 
+  useEffect(() => {
+    if (onPendingCountChange) {
+      onPendingCountChange(parentGroups.length);
+    }
+  }, [parentGroups.length, onPendingCountChange]);
+
   const filtered = useMemo(() => {
     const term = search.toLowerCase().trim();
     return allPending.filter((i) => {
@@ -121,6 +127,8 @@ function DiffCell({ orderQty, approvedQty }) {
     });
     return g;
   }, [filtered]);
+
+  const groupKeys = useMemo(() => Object.keys(groups), [groups]);
 
   const isChecked = (group, id) => {
     const map = checkedByGroup[group];
@@ -204,7 +212,7 @@ function DiffCell({ orderQty, approvedQty }) {
           </table>
         </div>
       ) : (
-        Object.keys(groups).map((pg) => {
+        groupKeys.map((pg) => {
           const items = groups[pg];
           const allChecked = items.every((i) => isChecked(pg, i.id));
           const vendorsInGroup = Array.from(new Set(items.map((i) => i.vendor).filter(Boolean)));
@@ -221,11 +229,6 @@ function DiffCell({ orderQty, approvedQty }) {
                   <span>{pg}</span>
                   <span className="text-[12.5px] font-medium text-gray-700">— {vendorsText}</span>
                   <span className="font-normal text-gray-500">({items.length} item{items.length > 1 ? 's' : ''})</span>
-                  {items.length > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-1">
-                      {items.length}
-                    </span>
-                  )}
                 </button>
                <div className="flex items-center gap-2">
                   <button

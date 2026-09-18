@@ -1288,8 +1288,12 @@ export async function fetchPurchasePendingCounts() {
       .map((i) => i.parent_group || 'Unassigned')
   ).size;
 
-  // Indents approved but not yet attached to a PO
-  const poPending = indents.filter((i) => i.status === 'Approved' && !i.po_id).length;
+  // Indents approved but not yet attached to a PO (distinct parent groups)
+  const poPending = new Set(
+    indents
+      .filter((i) => i.status === 'Approved' && !i.po_id)
+      .map((i) => i.parent_group || 'Unassigned')
+  ).size;
 
   // POs with no delivery logged against them yet
   const deliveredPoIds = new Set(deliveries.filter((d) => d.po_id).map((d) => d.po_id));

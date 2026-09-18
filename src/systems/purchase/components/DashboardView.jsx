@@ -89,7 +89,11 @@ export default function DashboardView({ onTabChange }) {
       .filter((i) => i.orderFormula > 0 && i.status === 'Pending')
       .map((i) => i.parentGroup || 'Unassigned')
   ).size;
-  const statPending = indents.filter((i) => i.status === 'Approved' && !i.poId).length;
+  const statPending = new Set(
+    indents
+      .filter((i) => i.status === 'Approved' && !i.poId)
+      .map((i) => i.parentGroup || 'Unassigned')
+  ).size;
   const totalAmount = pos.reduce((s, p) => s + p.grandTotal, 0);
 
   const [searchQuery, setSearchQuery] = useState('');
