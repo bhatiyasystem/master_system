@@ -190,6 +190,7 @@ export default function IndentView({ onTabChange, refreshKey, onImported }) {
       )}
       {showAddModal && (
         <CreateIndentFormModal
+          mode="purchase"
           onClose={() => setShowAddModal(false)}
           onSaved={() => {
             setShowAddModal(false);

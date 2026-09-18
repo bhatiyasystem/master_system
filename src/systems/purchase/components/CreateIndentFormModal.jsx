@@ -29,7 +29,8 @@ const DEFAULT_ITEM = {
     variant_available: 'No',
 };
 
-export default function CreateIndentFormModal({ onClose, onSaved }) {
+export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master' }) {
+    const isPurchaseMode = mode === 'purchase';
     const [items, setItems] = useState([{ ...DEFAULT_ITEM }]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -235,13 +236,15 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                 setShowErrorPopup(true);
                 return;
             }
-            // Validate Order Qty — must be filled and non-zero
-            const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
-            if (missingQty) {
-                const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
-                setError(errMsg);
-                setShowErrorPopup(true);
-                return;
+            // Validate Order Qty — must be filled and non-zero (only in master mode)
+            if (!isPurchaseMode) {
+                const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
+                if (missingQty) {
+                    const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
+                    setError(errMsg);
+                    setShowErrorPopup(true);
+                    return;
+                }
             }
             setSaving(true);
             const data = await previewIndentsManualBulk(null, items);
@@ -282,7 +285,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
+            <div className={`relative bg-white rounded-3xl shadow-2xl w-full ${isPurchaseMode ? 'max-w-2xl' : 'max-w-4xl'} flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden`}>
                 {/* Header — sticky */}
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 flex justify-between items-center border-b border-blue-50 flex-shrink-0">
                     <h3 className="font-black text-gray-900 text-lg">Add Indents</h3>
@@ -311,10 +314,10 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* Left half UI section: Identification & Units */}
-                                            <div className="space-y-4">
-                                                <div className="space-y-1">
+                                        {isPurchaseMode ? (
+                                            /* Streamlined 2-column layout for Indent Data in Purchase System */
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="md:col-span-2 space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                                                         Item Name <span className="text-rose-500">*</span>
                                                     </label>
@@ -344,19 +347,6 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                 </div>
 
                                                 <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                        Item Name for Online Portal
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={item.online_item_name || ''}
-                                                        onChange={(e) => updateItem(index, 'online_item_name', e.target.value)}
-                                                        placeholder="Enter online portal item name"
-                                                        className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
                                                     <ComboSelect
                                                         table="purchase_indents"
@@ -367,6 +357,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         placeholder="Select or enter category"
                                                     />
                                                 </div>
+
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                                                         Vendor Name <span className="text-rose-500">*</span>
@@ -380,6 +371,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         placeholder="Select or enter vendor name"
                                                     />
                                                 </div>
+
                                                 <div className="space-y-1">
                                                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
                                                     <ComboSelect
@@ -391,6 +383,7 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                         placeholder="Select or enter parent group"
                                                     />
                                                 </div>
+
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
@@ -415,216 +408,325 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                     </div>
                                                 </div>
                                             </div>
+                                        ) : (
+                                            /* Standard layout with all fields for Item Master */
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    {/* Left half UI section: Identification & Units */}
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                                Item Name <span className="text-rose-500">*</span>
+                                                            </label>
+                                                            <ComboSelect
+                                                                table="purchase_indents"
+                                                                column="item_details"
+                                                                value={item.item_details}
+                                                                onChange={(val) => handleItemNameChange(index, val)}
+                                                                label="Item Name"
+                                                                placeholder="Select or enter item name"
+                                                                activePool={activePool}
+                                                                normalize={normalizeFn}
+                                                            />
+                                                            {item.item_details && item.item_details.trim() && (
+                                                                <div className="pt-0.5">
+                                                                    {item.isNewItem ? (
+                                                                        <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-lg shadow-xs">
+                                                                            ✨ New item — will be saved to Master automatically
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-lg shadow-xs">
+                                                                            ✓ Existing item from Master (details auto-filled)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
 
-                                            {/* Right half UI section: Quantities & Specs */}
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
-                                                        <input
-                                                            type="text"
-                                                            value={item.shelf_capacity || ''}
-                                                            onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
-                                                            placeholder="Shelf Capacity"
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
-                                                        <input
-                                                            type="text"
-                                                            value={item.max_level_qty || ''}
-                                                            onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
-                                                            placeholder="Max Level Qty"
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Reorder Level (ROL)</label>
-                                                        <input
-                                                            type="text"
-                                                            value={item.rol_qty || ''}
-                                                            onChange={(e) => {
-                                                                updateItem(index, 'rol_qty', e.target.value);
-                                                                updateItem(index, 'reorder_level', e.target.value);
-                                                            }}
-                                                            placeholder="Reorder Level"
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Minimum Order Qty</label>
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            value={item.min_order_qty || ''}
-                                                            onChange={(e) => updateItem(index, 'min_order_qty', e.target.value)}
-                                                            placeholder="Min Order Qty"
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-1 text-gray-800">
-                                                    <label className="text-[10px] font-bold uppercase tracking-wider block flex items-center gap-1"
-                                                        style={{ color: item.orderQtyRequired && !item.order_formula ? '#ef4444' : '#9ca3af' }}
-                                                    >
-                                                        Order Qty <span className="text-rose-500">*</span>
-                                                        {item.orderQtyRequired && !item.order_formula && (
-                                                             <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full">
-                                                                ⚠ Required — was 0 in records
-                                                            </span>
-                                                        )}
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={item.order_formula}
-                                                        onChange={(e) => {
-                                                            updateItem(index, 'order_formula', e.target.value);
-                                                            updateItem(index, 'order_qty', e.target.value);
-                                                            // Clear the required flag once user starts typing
-                                                            if (e.target.value && Number(e.target.value) > 0) {
-                                                                updateItem(index, 'orderQtyRequired', false);
-                                                            }
-                                                        }}
-                                                        placeholder="Enter order quantity"
-                                                        className={`w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all ${
-                                                            item.orderQtyRequired && !item.order_formula
-                                                                ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50 focus:ring-rose-400'
-                                                                : 'border-gray-150 focus:ring-blue-500'
-                                                        }`}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Bottom Section: Online Portal & Specs */}
-                                        <div className="pt-3 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                            Eligible For Online
-                                                        </label>
-                                                        <select
-                                                            value={item.eligible_for_online || 'No'}
-                                                            onChange={(e) => updateItem(index, 'eligible_for_online', e.target.value)}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        >
-                                                            <option value="Yes">Yes</option>
-                                                            <option value="No">No</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                            Variant Available
-                                                        </label>
-                                                        <select
-                                                            value={item.variant_available || 'No'}
-                                                            onChange={(e) => updateItem(index, 'variant_available', e.target.value)}
-                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        >
-                                                            <option value="Yes">Yes</option>
-                                                            <option value="No">No</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-
-                                                {/* Multiple Image upload / URL */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                            Item Images (Multiple)
-                                                        </label>
-                                                        {(item.image_urls?.length > 0 || item.image_url) && (
-                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60">
-                                                                {(item.image_urls?.length || (item.image_url ? 1 : 0))} image{(item.image_urls?.length || (item.image_url ? 1 : 0)) > 1 ? 's' : ''} added
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        {(item.image_urls?.length ? item.image_urls : (item.image_url ? [item.image_url] : [])).map((imgUrl, imgIdx) => (
-                                                            <div key={imgIdx} className="relative w-14 h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 group shadow-xs">
-                                                                <img src={imgUrl} alt={`Item ${imgIdx + 1}`} className="w-full h-full object-cover" />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeImage(index, imgIdx)}
-                                                                    className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    title="Remove this image"
-                                                                >
-                                                                    <X size={15} />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-
-                                                        {/* Upload button box */}
-                                                        <label className="w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0">
-                                                            <UploadCloud size={16} />
-                                                            <span className="text-[8.5px] font-bold mt-0.5">Upload</span>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                                Item Name for Online Portal
+                                                            </label>
                                                             <input
-                                                                type="file"
-                                                                multiple
-                                                                accept="image/*"
-                                                                className="hidden"
+                                                                type="text"
+                                                                value={item.online_item_name || ''}
+                                                                onChange={(e) => updateItem(index, 'online_item_name', e.target.value)}
+                                                                placeholder="Enter online portal item name"
+                                                                className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Category</label>
+                                                            <ComboSelect
+                                                                table="purchase_indents"
+                                                                column="category"
+                                                                value={item.category}
+                                                                onChange={(val) => updateItem(index, 'category', val)}
+                                                                label="Category"
+                                                                placeholder="Select or enter category"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                                Vendor Name <span className="text-rose-500">*</span>
+                                                            </label>
+                                                            <ComboSelect
+                                                                table="vendors"
+                                                                column="name"
+                                                                value={item.vendor}
+                                                                onChange={(val) => updateItem(index, 'vendor', val)}
+                                                                label="Vendor"
+                                                                placeholder="Select or enter vendor name"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Parent Group</label>
+                                                            <ComboSelect
+                                                                table="purchase_indents"
+                                                                column="parent_group"
+                                                                value={item.parent_group}
+                                                                onChange={(val) => updateItem(index, 'parent_group', val)}
+                                                                label="Parent Group"
+                                                                placeholder="Select or enter parent group"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Unit</label>
+                                                                <ComboSelect
+                                                                    table="purchase_indents"
+                                                                    column="unit"
+                                                                    value={item.unit}
+                                                                    onChange={(val) => updateItem(index, 'unit', val)}
+                                                                    label="Unit"
+                                                                    placeholder="Unit"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Alt Unit</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.alt_unit || ''}
+                                                                    onChange={(e) => updateItem(index, 'alt_unit', e.target.value)}
+                                                                    placeholder="Alt Unit (optional)"
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Right half UI section: Quantities & Specs */}
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Shelf Capacity</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.shelf_capacity || ''}
+                                                                    onChange={(e) => updateItem(index, 'shelf_capacity', e.target.value)}
+                                                                    placeholder="Shelf Capacity"
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Max Level Qty</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.max_level_qty || ''}
+                                                                    onChange={(e) => updateItem(index, 'max_level_qty', e.target.value)}
+                                                                    placeholder="Max Level Qty"
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Reorder Level (ROL)</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={item.rol_qty || ''}
+                                                                    onChange={(e) => {
+                                                                        updateItem(index, 'rol_qty', e.target.value);
+                                                                        updateItem(index, 'reorder_level', e.target.value);
+                                                                    }}
+                                                                    placeholder="Reorder Level"
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Minimum Order Qty</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={item.min_order_qty || ''}
+                                                                    onChange={(e) => updateItem(index, 'min_order_qty', e.target.value)}
+                                                                    placeholder="Min Order Qty"
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1 text-gray-800">
+                                                            <label className="text-[10px] font-bold uppercase tracking-wider block flex items-center gap-1"
+                                                                style={{ color: item.orderQtyRequired && !item.order_formula ? '#ef4444' : '#9ca3af' }}
+                                                            >
+                                                                Order Qty <span className="text-rose-500">*</span>
+                                                                {item.orderQtyRequired && !item.order_formula && (
+                                                                    <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full">
+                                                                        ⚠ Required — was 0 in records
+                                                                    </span>
+                                                                )}
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                value={item.order_formula}
                                                                 onChange={(e) => {
-                                                                    if (e.target.files && e.target.files.length > 0) {
-                                                                        handleImageFiles(index, e.target.files);
-                                                                        e.target.value = '';
+                                                                    updateItem(index, 'order_formula', e.target.value);
+                                                                    updateItem(index, 'order_qty', e.target.value);
+                                                                    // Clear the required flag once user starts typing
+                                                                    if (e.target.value && Number(e.target.value) > 0) {
+                                                                        updateItem(index, 'orderQtyRequired', false);
                                                                     }
                                                                 }}
+                                                                placeholder="Enter order quantity"
+                                                                className={`w-full px-4 py-3 bg-white border rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all ${
+                                                                    item.orderQtyRequired && !item.order_formula
+                                                                        ? 'border-rose-400 ring-2 ring-rose-200 bg-rose-50 focus:ring-rose-400'
+                                                                        : 'border-gray-150 focus:ring-blue-500'
+                                                                }`}
                                                             />
-                                                        </label>
-                                                    </div>
-
-                                                    {/* URL add input */}
-                                                    <div className="flex items-center gap-1.5 pt-1">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Or paste image URL and press Enter..."
-                                                            id={`img-url-inp-${index}`}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') {
-                                                                    e.preventDefault();
-                                                                    addImageUrl(index, e.target.value);
-                                                                    e.target.value = '';
-                                                                }
-                                                            }}
-                                                            className="flex-1 px-3 py-2 bg-white border border-gray-150 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const el = document.getElementById(`img-url-inp-${index}`);
-                                                                if (el && el.value) {
-                                                                    addImageUrl(index, el.value);
-                                                                    el.value = '';
-                                                                }
-                                                            }}
-                                                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
-                                                        >
-                                                            Add URL
-                                                        </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Item Description */}
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                                                    Item Description
-                                                </label>
-                                                <textarea
-                                                    rows={4}
-                                                    value={item.item_description || ''}
-                                                    onChange={(e) => updateItem(index, 'item_description', e.target.value)}
-                                                    placeholder="Enter description for online portal or inventory specs..."
-                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
-                                                />
-                                            </div>
-                                        </div>
+                                                {/* Bottom Section: Online Portal & Specs */}
+                                                <div className="pt-3 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                                    Eligible For Online
+                                                                </label>
+                                                                <select
+                                                                    value={item.eligible_for_online || 'No'}
+                                                                    onChange={(e) => updateItem(index, 'eligible_for_online', e.target.value)}
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                >
+                                                                    <option value="Yes">Yes</option>
+                                                                    <option value="No">No</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                                    Variant Available
+                                                                </label>
+                                                                <select
+                                                                    value={item.variant_available || 'No'}
+                                                                    onChange={(e) => updateItem(index, 'variant_available', e.target.value)}
+                                                                    className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                >
+                                                                    <option value="Yes">Yes</option>
+                                                                    <option value="No">No</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Multiple Image upload / URL */}
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                                    Item Images (Multiple)
+                                                                </label>
+                                                                {(item.image_urls?.length > 0 || item.image_url) && (
+                                                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/60">
+                                                                        {(item.image_urls?.length || (item.image_url ? 1 : 0))} image{(item.image_urls?.length || (item.image_url ? 1 : 0)) > 1 ? 's' : ''} added
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                {(item.image_urls?.length ? item.image_urls : (item.image_url ? [item.image_url] : [])).map((imgUrl, imgIdx) => (
+                                                                    <div key={imgIdx} className="relative w-14 h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 group shadow-xs">
+                                                                        <img src={imgUrl} alt={`Item ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeImage(index, imgIdx)}
+                                                                            className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                            title="Remove this image"
+                                                                        >
+                                                                            <X size={15} />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+
+                                                                {/* Upload button box */}
+                                                                <label className="w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0">
+                                                                    <UploadCloud size={16} />
+                                                                    <span className="text-[8.5px] font-bold mt-0.5">Upload</span>
+                                                                    <input
+                                                                        type="file"
+                                                                        multiple
+                                                                        accept="image/*"
+                                                                        className="hidden"
+                                                                        onChange={(e) => {
+                                                                            if (e.target.files && e.target.files.length > 0) {
+                                                                                handleImageFiles(index, e.target.files);
+                                                                                e.target.value = '';
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </label>
+                                                            </div>
+
+                                                            {/* URL add input */}
+                                                            <div className="flex items-center gap-1.5 pt-1">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Or paste image URL and press Enter..."
+                                                                    id={`img-url-inp-${index}`}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            addImageUrl(index, e.target.value);
+                                                                            e.target.value = '';
+                                                                        }
+                                                                    }}
+                                                                    className="flex-1 px-3 py-2 bg-white border border-gray-150 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const el = document.getElementById(`img-url-inp-${index}`);
+                                                                        if (el && el.value) {
+                                                                            addImageUrl(index, el.value);
+                                                                            el.value = '';
+                                                                        }
+                                                                    }}
+                                                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                                                                >
+                                                                    Add URL
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Item Description */}
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                                                            Item Description
+                                                        </label>
+                                                        <textarea
+                                                            rows={4}
+                                                            value={item.item_description || ''}
+                                                            onChange={(e) => updateItem(index, 'item_description', e.target.value)}
+                                                            placeholder="Enter description for online portal or inventory specs..."
+                                                            className="w-full px-4 py-3 bg-white border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                         {index === items.length - 1 && (
                                             <div className="flex justify-end pt-2">
                                                 <button
@@ -662,11 +764,23 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                             <thead>
                                                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
                                                     <th className="px-3 py-2">Item Name</th>
-                                                    <th className="px-3 py-2">Online Name</th>
-                                                    <th className="px-3 py-2">Vendor</th>
-                                                    <th className="px-3 py-2">Order Qty</th>
-                                                    <th className="px-3 py-2">Min Qty</th>
-                                                    <th className="px-3 py-2">Online?</th>
+                                                    {isPurchaseMode ? (
+                                                        <>
+                                                            <th className="px-3 py-2">Category</th>
+                                                            <th className="px-3 py-2">Vendor</th>
+                                                            <th className="px-3 py-2">Parent Group</th>
+                                                            <th className="px-3 py-2">Unit</th>
+                                                            <th className="px-3 py-2">Alt Unit</th>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <th className="px-3 py-2">Online Name</th>
+                                                            <th className="px-3 py-2">Vendor</th>
+                                                            <th className="px-3 py-2">Order Qty</th>
+                                                            <th className="px-3 py-2">Min Qty</th>
+                                                            <th className="px-3 py-2">Online?</th>
+                                                        </>
+                                                    )}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -674,29 +788,43 @@ export default function CreateIndentFormModal({ onClose, onSaved }) {
                                                     <tr key={idx} className="border-t border-gray-100 font-semibold text-gray-800">
                                                         <td className="px-3 py-2">
                                                             <div className="flex items-center gap-2">
-                                                                {it.image_urls?.length ? (
-                                                                    <div className="flex -space-x-1.5 overflow-hidden">
-                                                                        {it.image_urls.slice(0, 3).map((url, i) => (
-                                                                            <img key={i} src={url} alt="" className="w-6 h-6 rounded-md object-cover border border-white shadow-xs" />
-                                                                        ))}
-                                                                    </div>
-                                                                ) : it.image_url ? (
-                                                                    <img src={it.image_url} alt="" className="w-6 h-6 rounded-md object-cover border border-gray-200" />
-                                                                ) : null}
+                                                                {!isPurchaseMode && (
+                                                                    it.image_urls?.length ? (
+                                                                        <div className="flex -space-x-1.5 overflow-hidden">
+                                                                            {it.image_urls.slice(0, 3).map((url, i) => (
+                                                                                <img key={i} src={url} alt="" className="w-6 h-6 rounded-md object-cover border border-white shadow-xs" />
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : it.image_url ? (
+                                                                        <img src={it.image_url} alt="" className="w-6 h-6 rounded-md object-cover border border-gray-200" />
+                                                                    ) : null
+                                                                )}
                                                                 <span>{it.item_details}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-3 py-2 text-gray-600">{it.online_item_name || '—'}</td>
-                                                        <td className="px-3 py-2 text-gray-600">{it.vendor}</td>
-                                                        <td className="px-3 py-2 font-bold text-gray-900">{it.order_formula}</td>
-                                                        <td className="px-3 py-2 text-gray-600">{it.min_order_qty || '0'}</td>
-                                                        <td className="px-3 py-2">
-                                                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                                it.eligible_for_online === 'Yes' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                                                            }`}>
-                                                                {it.eligible_for_online || 'No'}
-                                                            </span>
-                                                        </td>
+                                                        {isPurchaseMode ? (
+                                                            <>
+                                                                <td className="px-3 py-2 text-gray-600">{it.category || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.vendor || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.parent_group || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.unit || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.alt_unit || '—'}</td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-3 py-2 text-gray-600">{it.online_item_name || '—'}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.vendor}</td>
+                                                                <td className="px-3 py-2 font-bold text-gray-900">{it.order_formula}</td>
+                                                                <td className="px-3 py-2 text-gray-600">{it.min_order_qty || '0'}</td>
+                                                                <td className="px-3 py-2">
+                                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                                        it.eligible_for_online === 'Yes' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                                                                    }`}>
+                                                                        {it.eligible_for_online || 'No'}
+                                                                    </span>
+                                                                </td>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 ))}
                                             </tbody>
