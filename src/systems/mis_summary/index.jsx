@@ -28,6 +28,7 @@ import { AuthContext } from './src/contexts/AuthContext';
 import AdminDashboard from './src/pages/admin/Dashboard';
 import AdminHistoryCommitment from './src/pages/admin/HistoryCommitment';
 import KpiKra from './src/pages/admin/KpiKra';
+import EmployeeMIS from './src/pages/admin/employee-mis/EmployeeMIS';
 
 // ─── Bridge Injector ─────────────────────────────────────────────────────────
 
@@ -90,6 +91,12 @@ systemRegistry.register({
       icon: 'Target',
       showFor: ['admin', 'HOD', 'user'],
     },
+    {
+      label: 'Employee MIS',
+      href: '/dashboard/employee-mis',
+      icon: 'Clock',
+      showFor: ['admin', 'HOD'],
+    },
   ],
 
   routes: [
@@ -106,6 +113,11 @@ systemRegistry.register({
     {
       path: '/dashboard/mis-kpi-kra',
       element: wrap(KpiKra),
+      protected: true,
+    },
+    {
+      path: '/dashboard/employee-mis',
+      element: wrap(EmployeeMIS),
       protected: true,
     },
   ],
