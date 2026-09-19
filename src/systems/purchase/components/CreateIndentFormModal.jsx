@@ -29,10 +29,31 @@ const DEFAULT_ITEM = {
     variant_available: 'No',
 };
 
+function parseImageUrls(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string') {
+        const str = raw.trim();
+        if (!str) return [];
+        if (str.startsWith('[') && str.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(str);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            } catch (e) {}
+        }
+        if (str.includes(',')) {
+            return str.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+        return [str];
+    }
+    return [];
+}
+
 export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master' }) {
     const isPurchaseMode = mode === 'purchase';
     const [items, setItems] = useState([{ ...DEFAULT_ITEM }]);
     const [saving, setSaving] = useState(false);
+    const [uploadingIndex, setUploadingIndex] = useState(null);
     const [error, setError] = useState('');
     const [showErrorPopup, setShowErrorPopup] = useState(false);
     const [step, setStep] = useState('input'); // 'input' or 'review'
@@ -194,7 +215,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                 eligible_for_online: matched ? (matched.eligible_for_online || 'No') : currentItem.eligible_for_online,
                 item_description: matched ? (matched.item_description || '') : currentItem.item_description,
                 image_url: matched ? (matched.image_url || '') : currentItem.image_url,
-                image_urls: matched ? (matched.image_url ? [matched.image_url] : []) : currentItem.image_urls,
+                image_urls: matched ? parseImageUrls(matched.image_url) : currentItem.image_urls,
                 variant_available: matched ? (matched.variant_available || 'No') : currentItem.variant_available,
                 order_formula: orderQtyVal || (matched ? '' : currentItem.order_formula),
                 order_qty: orderQtyVal || (matched ? '' : currentItem.order_qty),
@@ -214,6 +235,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
 
     const handleImageFiles = async (index, files) => {
         if (!files || files.length === 0) return;
+        setUploadingIndex(index);
         try {
             const fileList = Array.from(files);
             const uploadedUrls = [];
@@ -243,6 +265,8 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
             console.error('Error uploading images:', err);
             setError('Failed to upload images: ' + (err.message || 'Unknown error'));
             setShowErrorPopup(true);
+        } finally {
+            setUploadingIndex(null);
         }
     };
 
@@ -286,39 +310,128 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
         setItems((prev) => prev.filter((_, i) => i !== index));
     };
 
+    const saveMasterItemsDirectly = async (itemList) => {
+        const validItems = itemList.filter(it => it.item_details && String(it.item_details).trim());
+        if (validItems.length === 0) {
+            throw new Error('Please enter at least an Item Name.');
+        }
+
+        const numOrNull = (v) => (v !== '' && v !== null && v !== undefined && !isNaN(Number(v))) ? Number(v) : null;
+
+        for (const item of validItems) {
+            const rawName = String(item.item_details).trim();
+            const imgs = Array.isArray(item.image_urls) && item.image_urls.length
+                ? item.image_urls.filter(Boolean)
+                : parseImageUrls(item.image_url);
+
+            const payload = {
+                item_details: rawName,
+                online_item_name: item.online_item_name ? String(item.online_item_name).trim() : null,
+                vendor: item.vendor ? String(item.vendor).trim() : '',
+                category: item.category ? String(item.category).trim() : 'Uncategorized',
+                unit: item.unit ? String(item.unit).trim() : 'Pcs.',
+                alt_unit: item.alt_unit ? String(item.alt_unit).trim() : null,
+                parent_group: item.parent_group ? String(item.parent_group).trim() : null,
+                conversion_unit: item.conversion_unit ? String(item.conversion_unit).trim() : null,
+                shelf_capacity: numOrNull(item.shelf_capacity),
+                max_level_qty: numOrNull(item.max_level_qty),
+                rol_qty: numOrNull(item.rol_qty),
+                reorder_level: numOrNull(item.reorder_level) ?? numOrNull(item.rol_qty),
+                order_formula: numOrNull(item.order_formula),
+                order_qty: numOrNull(item.order_qty) ?? numOrNull(item.order_formula),
+                min_order_qty: numOrNull(item.min_order_qty),
+                eligible_for_online: item.eligible_for_online || 'No',
+                variant_available: item.variant_available || 'No',
+                item_description: item.item_description ? String(item.item_description).trim() : null,
+                image_url: imgs.length > 1 ? JSON.stringify(imgs) : (imgs[0] || null),
+                hide_in_master: false,
+            };
+
+            const { data: existing, error: findErr } = await supabase
+                .from('purchase_indents')
+                .select('id')
+                .eq('item_details', rawName)
+                .limit(1);
+
+            if (findErr) throw findErr;
+
+            if (existing && existing.length > 0) {
+                const { error: updErr } = await supabase
+                    .from('purchase_indents')
+                    .update(payload)
+                    .eq('item_details', rawName);
+                if (updErr) throw updErr;
+            } else {
+                const { error: insErr } = await supabase
+                    .from('purchase_indents')
+                    .insert([payload]);
+                if (insErr) throw insErr;
+            }
+
+            if (payload.vendor) {
+                try {
+                    const { data: vExists } = await supabase
+                        .from('vendors')
+                        .select('id')
+                        .ilike('name', payload.vendor)
+                        .limit(1);
+                    if (!vExists || vExists.length === 0) {
+                        await supabase.from('vendors').insert([{ name: payload.vendor }]);
+                    }
+                } catch (vErr) {
+                    console.error('Error saving vendor:', vErr);
+                }
+            }
+        }
+    };
+
     async function handleReview(e) {
         e.preventDefault();
         setError('');
         try {
-            const missingVendor = items.find(it => !it.vendor || !it.vendor.trim());
-            if (missingVendor) {
-                const errMsg = 'Vendor Name is required for all items.';
-                setError(errMsg);
-                setShowErrorPopup(true);
-                return;
+            if (isPurchaseMode) {
+                const missingVendor = items.find(it => !it.vendor || !it.vendor.trim());
+                if (missingVendor) {
+                    const errMsg = 'Vendor Name is required for all items.';
+                    setError(errMsg);
+                    setShowErrorPopup(true);
+                    return;
+                }
+                const invalidItem = items.find(it => !it.item_details || !it.item_details.trim());
+                if (invalidItem) {
+                    const errMsg = 'Item Name is required for all items.';
+                    setError(errMsg);
+                    setShowErrorPopup(true);
+                    return;
+                }
+                // Validate Order Qty — must be filled and non-zero
+                const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
+                if (missingQty) {
+                    const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
+                    setError(errMsg);
+                    setShowErrorPopup(true);
+                    return;
+                }
+                setSaving(true);
+                const data = await previewIndentsManualBulk(null, items);
+                setPreviewData(data);
+                setStep('review');
+            } else {
+                // Master Item Mode: Save directly without blocking or verifying
+                const hasItem = items.some(it => it.item_details && String(it.item_details).trim());
+                if (!hasItem) {
+                    const errMsg = 'Please enter at least an Item Name.';
+                    setError(errMsg);
+                    setShowErrorPopup(true);
+                    return;
+                }
+                setSaving(true);
+                await saveMasterItemsDirectly(items);
+                onSaved();
             }
-            const invalidItem = items.find(it => !it.item_details || !it.item_details.trim());
-            if (invalidItem) {
-                const errMsg = 'Item Name is required for all items.';
-                setError(errMsg);
-                setShowErrorPopup(true);
-                return;
-            }
-            // Validate Order Qty — must be filled and non-zero
-            const missingQty = items.find(it => !it.order_formula || !String(it.order_formula).trim() || Number(it.order_formula) === 0);
-            if (missingQty) {
-                const errMsg = `Order Qty is required and must be greater than 0 for "${missingQty.item_details || 'all items'}". Please fill it before proceeding.`;
-                setError(errMsg);
-                setShowErrorPopup(true);
-                return;
-            }
-            setSaving(true);
-            const data = await previewIndentsManualBulk(null, items);
-            setPreviewData(data);
-            setStep('review');
         } catch (err) {
-            console.error("Error reviewing manual indents:", err);
-            const errMsg = err.message || 'Failed to preview indents.';
+            console.error("Error saving manual items:", err);
+            const errMsg = err.message || 'Failed to save items.';
             setError(errMsg);
             setShowErrorPopup(true);
         } finally {
@@ -354,7 +467,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
                 {/* Header — sticky */}
                 <div className={`px-8 pt-6 pb-4 flex justify-between items-center flex-shrink-0 ${isPurchaseMode ? 'bg-white' : 'bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-50 px-6 py-4'}`}>
-                    <h3 className="font-bold text-gray-900 text-lg">Add Indents</h3>
+                    <h3 className="font-bold text-gray-900 text-lg">{isPurchaseMode ? 'Add Indents' : 'Add Master Item'}</h3>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
                         <span className="text-2xl font-bold leading-none">&times;</span>
                     </button>
@@ -837,13 +950,14 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                                                 ))}
 
                                                                 {/* Upload button box */}
-                                                                <label className="w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0">
-                                                                    <UploadCloud size={16} />
-                                                                    <span className="text-[8.5px] font-bold mt-0.5">Upload</span>
+                                                                <label className={`w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0 ${uploadingIndex === index ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                                    <UploadCloud size={16} className={uploadingIndex === index ? 'animate-bounce' : ''} />
+                                                                    <span className="text-[8.5px] font-bold mt-0.5">{uploadingIndex === index ? 'Wait…' : 'Upload'}</span>
                                                                     <input
                                                                         type="file"
                                                                         multiple
                                                                         accept="image/*"
+                                                                        disabled={uploadingIndex === index}
                                                                         className="hidden"
                                                                         onChange={(e) => {
                                                                             if (e.target.files && e.target.files.length > 0) {
@@ -1066,7 +1180,7 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
                                     disabled={saving}
                                     className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-2 text-xs font-bold text-white disabled:opacity-60 shadow-sm hover:opacity-90 transition"
                                 >
-                                    {saving ? 'Loading…' : 'Next: Review'}
+                                    {saving ? 'Saving…' : (isPurchaseMode ? 'Next: Review' : 'Save Master Item')}
                                 </button>
                             </>
                         ) : (

@@ -36,6 +36,33 @@ function getTableFields(config) {
     return config.fields;
 }
 
+function parseImageUrls(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string') {
+        const str = raw.trim();
+        if (!str) return [];
+        if (str.startsWith('[') && str.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(str);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            } catch (e) {}
+        }
+        if (str.includes(',')) {
+            return str.split(',').map((s) => s.trim()).filter(Boolean);
+        }
+        return [str];
+    }
+    return [];
+}
+
+function serializeImageUrls(urls) {
+    const clean = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+    if (!clean.length) return null;
+    if (clean.length === 1) return clean[0];
+    return JSON.stringify(clean);
+}
+
 const CONFIG = {
     vendor: { table: 'vendors', fields: VENDOR_FIELDS, label: 'Vendor', pluralLabel: 'Vendors' },
     transporter: { table: 'transporters', fields: TRANSPORTER_FIELDS, label: 'Transporter', pluralLabel: 'Transporters' },
@@ -400,9 +427,7 @@ function MasterDataPanel({ type }) {
                                     {getTableFields(config).map((f) => {
                                         const val = r[f.key];
                                         if (f.key === 'image_url' || f.key === 'image_urls') {
-                                            const imgs = Array.isArray(r.image_urls) && r.image_urls.length
-                                                ? r.image_urls
-                                                : (val ? [val] : []);
+                                            const imgs = parseImageUrls(r.image_url);
                                             return (
                                                 <td key={f.key} className="px-3 py-2 text-gray-800 whitespace-nowrap">
                                                     {imgs.length > 0 ? (
@@ -588,12 +613,11 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
     config.fields.forEach((f) => {
         if (record) {
             if (f.key === 'image_url') {
-                const arr = Array.isArray(record.image_urls) && record.image_urls.length
-                    ? record.image_urls
-                    : (record.image_url ? [record.image_url] : []);
-                initialForm[f.key] = arr;
+                initialForm[f.key] = parseImageUrls(record.image_url);
             } else {
-                initialForm[f.key] = f.multi ? (record[f.key]?.length ? record[f.key] : ['']) : (record[f.key] || '');
+                initialForm[f.key] = f.multi
+                    ? (record[f.key]?.length ? record[f.key] : [''])
+                    : (record[f.key] !== null && record[f.key] !== undefined ? String(record[f.key]) : '');
             }
         } else {
             if (f.key === 'image_url') {
@@ -605,6 +629,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
     });
     const [form, setForm] = useState(initialForm);
     const [saving, setSaving] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [error, setError] = useState('');
 
     function update(key, value) {
@@ -634,17 +659,23 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
         e.preventDefault();
         setError('');
 
-        // Build cleaned payload: trim strings, drop blanks from multi-value arrays
+        // Build cleaned payload: trim strings safely, drop blanks from multi-value arrays
         const payload = {};
         config.fields.forEach((f) => {
             if (f.key === 'image_url') {
-                const arr = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
-                payload.image_urls = arr;
-                payload.image_url = arr[0] || null;
+                const arr = Array.isArray(form[f.key])
+                    ? form[f.key].filter(Boolean)
+                    : (form[f.key] ? [form[f.key]] : []);
+                payload.image_url = serializeImageUrls(arr);
             } else if (f.multi) {
-                payload[f.key] = (form[f.key] || []).map((v) => v.trim()).filter(Boolean);
+                payload[f.key] = (form[f.key] || [])
+                    .map((v) => (typeof v === 'string' ? v.trim() : String(v ?? '').trim()))
+                    .filter(Boolean);
             } else {
-                payload[f.key] = (form[f.key] || '').trim();
+                const rawVal = form[f.key];
+                payload[f.key] = typeof rawVal === 'string'
+                    ? rawVal.trim()
+                    : (rawVal !== null && rawVal !== undefined ? String(rawVal).trim() : '');
             }
         });
 
@@ -666,6 +697,21 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                 if (payload.rol_qty !== undefined && payload.rol_qty !== '') {
                     payload.reorder_level = payload.rol_qty;
                 }
+
+                // Numeric sanitation for Postgres
+                const numFields = ['shelf_capacity', 'max_level_qty', 'rol_qty', 'reorder_level', 'order_qty', 'min_order_qty'];
+                numFields.forEach((k) => {
+                    if (payload[k] !== undefined) {
+                        if (payload[k] === '' || payload[k] === null) {
+                            payload[k] = null;
+                        } else if (!isNaN(Number(payload[k]))) {
+                            payload[k] = Number(payload[k]);
+                        }
+                    }
+                });
+
+                payload.hide_in_master = false;
+
                 if (record) {
                     const query = supabase.from('purchase_indents').update(payload);
                     const res = record.item_details
@@ -685,7 +731,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
             if (error) throw error;
 
             if (config.table === 'vendors' && payload.fix_transporter) {
-                const trName = payload.fix_transporter.trim();
+                const trName = typeof payload.fix_transporter === 'string' ? payload.fix_transporter.trim() : '';
                 if (trName) {
                     const { data: existingTr } = await supabase
                         .from('transporters')
@@ -816,17 +862,19 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                                     </div>
                                                 ))}
 
-                                                <label className="w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0">
-                                                    <Lucide.UploadCloud size={16} />
-                                                    <span className="text-[8.5px] font-bold mt-0.5">Upload</span>
+                                                <label className={`w-14 h-14 rounded-xl border border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50 flex flex-col items-center justify-center text-blue-600 cursor-pointer transition-all flex-shrink-0 ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                    <Lucide.UploadCloud size={16} className={uploadingImage ? 'animate-bounce' : ''} />
+                                                    <span className="text-[8.5px] font-bold mt-0.5">{uploadingImage ? 'Wait…' : 'Upload'}</span>
                                                     <input
                                                         type="file"
                                                         multiple
                                                         accept="image/*"
                                                         className="hidden"
+                                                        disabled={uploadingImage}
                                                         onChange={async (e) => {
                                                             const files = Array.from(e.target.files || []);
                                                             if (!files.length) return;
+                                                            setUploadingImage(true);
                                                             try {
                                                                 const uploaded = [];
                                                                 for (const file of files) {
@@ -841,6 +889,8 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                                                 update(f.key, [...list, ...uploaded]);
                                                             } catch (err) {
                                                                 setError(err.message || 'Image upload failed');
+                                                            } finally {
+                                                                setUploadingImage(false);
                                                             }
                                                             e.target.value = '';
                                                         }}

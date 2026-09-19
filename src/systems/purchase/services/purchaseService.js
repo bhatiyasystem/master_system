@@ -48,6 +48,33 @@ export function evaluateFormula(formulaStr) {
   }
 }
 
+export function parseImageUrls(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw === 'string') {
+    const str = raw.trim();
+    if (!str) return [];
+    if (str.startsWith('[') && str.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch (e) {}
+    }
+    if (str.includes(',')) {
+      return str.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [str];
+  }
+  return [];
+}
+
+export function serializeImageUrls(urls) {
+  const clean = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+  if (!clean.length) return null;
+  if (clean.length === 1) return clean[0];
+  return JSON.stringify(clean);
+}
+
 
 function mapIndentRow(row) {
   return {
@@ -71,8 +98,8 @@ function mapIndentRow(row) {
     minOrderQty: row.min_order_qty,
     eligibleForOnline: row.eligible_for_online || 'No',
     itemDescription: row.item_description,
-    imageUrl: (Array.isArray(row.image_urls) && row.image_urls[0]) || row.image_url || null,
-    imageUrls: Array.isArray(row.image_urls) && row.image_urls.length ? row.image_urls : (row.image_url ? [row.image_url] : []),
+    imageUrl: parseImageUrls(row.image_url)[0] || null,
+    imageUrls: parseImageUrls(row.image_url),
     variantAvailable: row.variant_available || 'No',
     status: row.status,
     remarks: row.remarks,
@@ -178,20 +205,12 @@ export async function updateIndent(dbId, fields) {
   if (fields.itemDescription !== undefined) payload.item_description = fields.itemDescription;
   else if (fields.item_description !== undefined) payload.item_description = fields.item_description;
 
-  if (fields.imageUrls !== undefined) {
-    const urls = Array.isArray(fields.imageUrls) ? fields.imageUrls : [fields.imageUrls].filter(Boolean);
-    payload.image_urls = urls;
-    payload.image_url = urls[0] || null;
-  } else if (fields.image_urls !== undefined) {
-    const urls = Array.isArray(fields.image_urls) ? fields.image_urls : [fields.image_urls].filter(Boolean);
-    payload.image_urls = urls;
-    payload.image_url = urls[0] || null;
-  } else if (fields.imageUrl !== undefined) {
-    payload.image_url = fields.imageUrl;
-    payload.image_urls = fields.imageUrl ? [fields.imageUrl] : [];
-  } else if (fields.image_url !== undefined) {
-    payload.image_url = fields.image_url;
-    payload.image_urls = fields.image_url ? [fields.image_url] : [];
+  if (fields.imageUrls !== undefined || fields.image_urls !== undefined) {
+    const urls = parseImageUrls(fields.imageUrls ?? fields.image_urls);
+    payload.image_url = serializeImageUrls(urls);
+  } else if (fields.imageUrl !== undefined || fields.image_url !== undefined) {
+    const val = fields.imageUrl ?? fields.image_url;
+    payload.image_url = val ? serializeImageUrls(parseImageUrls(val)) : null;
   }
 
   if (fields.variantAvailable !== undefined) payload.variant_available = fields.variantAvailable;
@@ -497,12 +516,11 @@ export async function importIndentRows(parsedRows) {
         reorder_level: rolQty,
         eligible_for_online: r.eligibleForOnline || r.eligible_for_online || masterRecord?.eligible_for_online || 'No',
         item_description: r.itemDescription || r.item_description || masterRecord?.item_description || null,
-        image_url: r.imageUrl || r.image_url || masterRecord?.image_url || null,
-        image_urls: (Array.isArray(r.imageUrls) && r.imageUrls.length)
-          ? r.imageUrls
-          : (Array.isArray(masterRecord?.image_urls) && masterRecord.image_urls.length
-            ? masterRecord.image_urls
-            : ((r.imageUrl || r.image_url || masterRecord?.image_url) ? [r.imageUrl || r.image_url || masterRecord?.image_url] : [])),
+        image_url: serializeImageUrls(
+          (Array.isArray(r.imageUrls) && r.imageUrls.length)
+            ? r.imageUrls
+            : parseImageUrls(r.imageUrl || r.image_url || masterRecord?.image_url)
+        ),
         variant_available: r.variantAvailable || r.variant_available || masterRecord?.variant_available || 'No',
         status: isZero ? 'Rejected' : 'Pending',
         remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
@@ -1771,10 +1789,11 @@ export async function createIndentsManualBulk(vendor, items) {
           : 0),
       eligible_for_online: item.eligible_for_online || item.eligibleForOnline || 'No',
       item_description: item.item_description || item.itemDescription || null,
-      image_urls: Array.isArray(item.image_urls) && item.image_urls.length
-        ? item.image_urls
-        : ((item.image_url || item.imageUrl) ? [item.image_url || item.imageUrl] : []),
-      image_url: (Array.isArray(item.image_urls) && item.image_urls[0]) || item.image_url || item.imageUrl || null,
+      image_url: serializeImageUrls(
+        (Array.isArray(item.image_urls) && item.image_urls.length)
+          ? item.image_urls
+          : parseImageUrls(item.image_url || item.imageUrl)
+      ),
       variant_available: item.variant_available || item.variantAvailable || 'No',
       status: isZero ? 'Rejected' : 'Pending',
       remarks: isZero ? 'Auto-rejected: Order formula evaluated to 0' : null,
