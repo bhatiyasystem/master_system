@@ -298,11 +298,26 @@ export async function findOutstandingConflicts(candidates) {
   const conflicts = new Map();
   if (!candidates || candidates.length === 0) return conflicts;
 
-  const [{ data: approvedIndents, error: indentErr }, { data: deliveries, error: delErr }] = await Promise.all([
-    supabase.from('purchase_indents').select('id, vendor, item_details, po_id, po_no').eq('status', 'Approved'),
-    supabase.from('purchase_deliveries').select('po_id, received'),
-  ]);
-  if (indentErr) throw indentErr;
+  // BUG 8 FIX: paginated fetch so approved indents beyond 1000 are not missed
+  const approvedIndents = [];
+  let indentFrom = 0;
+  const oPageSize = 1000;
+  while (true) {
+    const { data, error: indentErr } = await supabase
+      .from('purchase_indents')
+      .select('id, vendor, item_details, po_id, po_no')
+      .eq('status', 'Approved')
+      .range(indentFrom, indentFrom + oPageSize - 1);
+    if (indentErr) throw indentErr;
+    if (!data || data.length === 0) break;
+    approvedIndents.push(...data);
+    if (data.length < oPageSize) break;
+    indentFrom += oPageSize;
+  }
+
+  const { data: deliveries, error: delErr } = await supabase
+    .from('purchase_deliveries')
+    .select('po_id, received');
   if (delErr) throw delErr;
 
   const receivedPoIds = new Set((deliveries || []).filter((d) => d.received && d.po_id).map((d) => d.po_id));
@@ -310,7 +325,7 @@ export async function findOutstandingConflicts(candidates) {
   const normKey = (vendor, itemDetails) => `${(vendor || '').trim().toLowerCase()}|${(itemDetails || '').trim().toLowerCase()}`;
 
   const outstandingByKey = new Map();
-  (approvedIndents || []).forEach((row) => {
+  approvedIndents.forEach((row) => {
     const isReceived = row.po_id && receivedPoIds.has(row.po_id);
     if (isReceived) return;
     const key = normKey(row.vendor, row.item_details);
@@ -387,22 +402,24 @@ export async function importIndentRows(parsedRows) {
   });
 
   const normalizeName = (name) => (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  // BUG 17 FIX: dedup by vendor+name so same item from different vendors are not wrongly merged
+  const normalizeKey = (vendor, name) => `${(vendor || '').trim().toLowerCase()}||${normalizeName(name)}`;
 
   const activePool = {};
   (incompleteIndents || []).forEach((row) => {
-    const norm = normalizeName(row.item_details);
-    if (!activePool[norm]) {
-      activePool[norm] = [];
+    const key = normalizeKey(row.vendor, row.item_details);
+    if (!activePool[key]) {
+      activePool[key] = [];
     }
-    activePool[norm].push(row);
+    activePool[key].push(row);
   });
 
   const newRowsToInsert = [];
   const matchedRows = [];
 
   parsedRows.forEach((r) => {
-    const norm = normalizeName(r.itemDetails || r.item_details);
-    const existingList = activePool[norm] || [];
+    const key = normalizeKey(r.vendor, r.itemDetails || r.item_details);
+    const existingList = activePool[key] || [];
     if (existingList.length > 0) {
       const matchedIndent = existingList.shift();
       matchedRows.push(matchedIndent);
@@ -483,7 +500,7 @@ export async function importIndentRows(parsedRows) {
             ? Number(r.rol_qty)
             : 0);
 
-      const uniqueNo = reserved[i]?.unique_no;
+      const uniqueNo = reserved[i]?.reserved_no;
       if (!uniqueNo) {
         throw new Error(`Failed to assign unique number to indent row ${i + 1}. Expected ${newRowsToInsert.length} reserved numbers, but got ${reserved.length}.`);
       }
@@ -658,22 +675,39 @@ function poItemPayload(poId, items) {
 }
 
 export async function fetchPOs() {
-  const { data: poRows, error: poErr } = await supabase.from('purchase_pos').select('*').order('created_at', { ascending: false });
-  if (poErr) throw poErr;
-
-  const ids = (poRows || []).map((p) => p.id);
-  let itemRows = [];
-  if (ids.length) {
-    const { data, error } = await supabase.from('purchase_po_items').select('*').in('po_id', ids);
+  // BUG 7 FIX: paginate so POs beyond 1000 are not silently dropped
+  const poRows = [];
+  let poFrom = 0;
+  const poPageSize = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from('purchase_pos')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(poFrom, poFrom + poPageSize - 1);
     if (error) throw error;
-    itemRows = data || [];
+    if (!data || data.length === 0) break;
+    poRows.push(...data);
+    if (data.length < poPageSize) break;
+    poFrom += poPageSize;
+  }
+
+  const ids = poRows.map((p) => p.id);
+  const itemRows = [];
+  if (ids.length) {
+    for (let i = 0; i < ids.length; i += 200) {
+      const chunk = ids.slice(i, i + 200);
+      const { data, error } = await supabase.from('purchase_po_items').select('*').in('po_id', chunk);
+      if (error) throw error;
+      if (data) itemRows.push(...data);
+    }
   }
   const itemsByPo = {};
   itemRows.forEach((r) => {
     (itemsByPo[r.po_id] = itemsByPo[r.po_id] || []).push(r);
   });
 
-  return (poRows || []).map((row) => mapPoRow(row, itemsByPo[row.id]));
+  return poRows.map((row) => mapPoRow(row, itemsByPo[row.id]));
 }
 
 export async function fetchPO(poId) {
@@ -777,6 +811,13 @@ export async function revisePO({ poId, form, items }) {
 
   const { data: itemRows, error: itemErr } = await supabase.from('purchase_po_items').insert(poItemPayload(poId, items)).select();
   if (itemErr) throw itemErr;
+
+  // BUG 13 FIX: sync revised po_no back onto associated indents so indent list shows correct PO number
+  const revisedIndentIds = items.filter((it) => it.indentId).map((it) => it.indentId);
+  if (revisedIndentIds.length) {
+    const { error: indUpdErr } = await supabase.from('purchase_indents').update({ po_no: revisedPoNo }).in('id', revisedIndentIds);
+    if (indUpdErr) console.warn('Failed to sync po_no on indents after PO revision:', indUpdErr);
+  }
 
   return mapPoRow(poRow, itemRows);
 }
@@ -1387,25 +1428,52 @@ export async function fetchPaymentApprovals() {
 }
 
 export async function fetchPayablePOs() {
-  const [posRes, deliveriesRes, itemsRes] = await Promise.all([
-    supabase.from('purchase_pos').select('*'),
-    supabase.from('purchase_deliveries').select('*'), // Select all columns (including bill_date, bill_number)
-    supabase.from('purchase_po_items').select('*'),
-  ]);
-  if (posRes.error) throw posRes.error;
-  if (deliveriesRes.error) throw deliveriesRes.error;
-  if (itemsRes.error) throw itemsRes.error;
+  // BUG 9 FIX: paginate all 3 tables so data beyond 1000 rows is not silently dropped
+  const fpPageSize = 1000;
+
+  const posData = [];
+  let posFrom = 0;
+  while (true) {
+    const { data, error } = await supabase.from('purchase_pos').select('*').range(posFrom, posFrom + fpPageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    posData.push(...data);
+    if (data.length < fpPageSize) break;
+    posFrom += fpPageSize;
+  }
+
+  const deliveriesData = [];
+  let delFrom = 0;
+  while (true) {
+    const { data, error } = await supabase.from('purchase_deliveries').select('*').range(delFrom, delFrom + fpPageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    deliveriesData.push(...data);
+    if (data.length < fpPageSize) break;
+    delFrom += fpPageSize;
+  }
+
+  const itemsData = [];
+  let itemsFrom = 0;
+  while (true) {
+    const { data, error } = await supabase.from('purchase_po_items').select('*').range(itemsFrom, itemsFrom + fpPageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    itemsData.push(...data);
+    if (data.length < fpPageSize) break;
+    itemsFrom += fpPageSize;
+  }
 
   const deliveriesByPo = {};
-  (deliveriesRes.data || []).forEach((d) => {
+  deliveriesData.forEach((d) => {
     (deliveriesByPo[d.po_id] = deliveriesByPo[d.po_id] || []).push(d);
   });
   const itemsByPo = {};
-  (itemsRes.data || []).forEach((r) => {
+  itemsData.forEach((r) => {
     (itemsByPo[r.po_id] = itemsByPo[r.po_id] || []).push(r);
   });
 
-  return (posRes.data || [])
+  return posData
     .filter((row) => {
       if (row.vendor_payment_terms === 'Advance') {
         return true;
@@ -1679,7 +1747,7 @@ export async function createIndentsManualBulk(vendor, items) {
   while (true) {
     const { data, error: fetchError } = await supabase
       .from('purchase_indents')
-      .select('item_details, status, po_id')
+      .select('item_details, vendor, status, po_id')
       .in('status', ['Pending', 'Approved'])
       .range(from, from + pageSize - 1);
     if (fetchError) throw fetchError;
@@ -1704,20 +1772,22 @@ export async function createIndentsManualBulk(vendor, items) {
   }
 
   const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const existingNames = new Set();
+  // BUG 16 FIX: dedup by vendor+name so same item from different vendors are treated as distinct
+  const normalizeIndentKey = (v, name) => `${String(v || '').trim().toLowerCase()}||${normalize(name)}`;
+  const existingKeys = new Set();
   indents.forEach(row => {
     const isPending = row.status === 'Pending';
     const isApprovedButNotDecided = row.status === 'Approved' && (!row.po_id || !decidedPoIds.has(row.po_id));
     if (isPending || isApprovedButNotDecided) {
-      existingNames.add(normalize(row.item_details));
+      existingKeys.add(normalizeIndentKey(row.vendor, row.item_details));
     }
   });
 
-  // Filter items to create, skipping those that already exist
+  // Filter items to create, skipping those that already exist for the same vendor
   const itemsToCreate = [];
   for (const item of items) {
-    const norm = normalize(item.item_details || item.itemDetails);
-    if (!existingNames.has(norm)) {
+    const key = normalizeIndentKey(item.vendor || vendor, item.item_details || item.itemDetails);
+    if (!existingKeys.has(key)) {
       itemsToCreate.push(item);
     }
   }
@@ -1741,7 +1811,7 @@ export async function createIndentsManualBulk(vendor, items) {
     const isZero = evaluated === 0;
     const dbOrderFormula = (evaluated !== null && !isNaN(evaluated)) ? evaluated : null;
 
-    const uniqueNo = reserved[idx]?.unique_no;
+    const uniqueNo = reserved[idx]?.reserved_no;
     if (!uniqueNo) {
       throw new Error(`Failed to assign unique number to indent row ${idx + 1}. Expected ${itemsToCreate.length} reserved numbers, but got ${reserved.length}.`);
     }
@@ -1873,7 +1943,8 @@ export async function fetchActiveIndentsPool() {
   while (true) {
     const { data, error: indentsErr } = await supabase
       .from('purchase_indents')
-      .select('id, item_details, status, po_id, unique_no')
+      // BUG 16 FIX: include vendor so dedup key can be vendor+name
+      .select('id, item_details, vendor, status, po_id, unique_no')
       .in('status', ['Pending', 'Approved'])
       .range(from, from + pageSize - 1);
     if (indentsErr) throw indentsErr;
@@ -1922,33 +1993,37 @@ export async function fetchActiveIndentsPool() {
   };
 
   const normalize = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  // BUG 16 FIX: pool key is vendor||itemName so items with same name but different vendors are distinct
+  const poolKey = (v, name) => `${String(v || '').trim().toLowerCase()}||${normalize(name)}`;
   const activePool = {};
 
   indents.forEach(row => {
     const stage = getIndentStage(row);
     if (stage !== 'History' && stage !== 'Unknown') {
-      activePool[normalize(row.item_details)] = {
+      activePool[poolKey(row.vendor, row.item_details)] = {
         uniqueNo: row.unique_no,
         stage: stage
       };
     }
   });
 
-  return { activePool, normalize };
+  return { activePool, normalize, poolKey };
 }
 
 export async function previewIndentsManualBulk(vendor, items) {
   if (!items || items.length === 0) return { toCreate: [], toSkip: [] };
 
-  const { activePool, normalize } = await fetchActiveIndentsPool();
+  const { activePool, poolKey } = await fetchActiveIndentsPool();
 
   const toCreate = [];
   const toSkip = [];
 
   for (const item of items) {
-    const norm = normalize(item.item_details || item.itemDetails);
-    if (activePool[norm]) {
-      toSkip.push({ ...item, uniqueNo: activePool[norm].uniqueNo, stage: activePool[norm].stage });
+    // BUG 16 FIX: use vendor+name key so same item from different vendors are not wrongly merged
+    const itemVendor = item.vendor || vendor || '';
+    const key = poolKey(itemVendor, item.item_details || item.itemDetails);
+    if (activePool[key]) {
+      toSkip.push({ ...item, uniqueNo: activePool[key].uniqueNo, stage: activePool[key].stage });
     } else {
       toCreate.push(item);
     }
