@@ -126,9 +126,10 @@ export async function fetchIndents() {
   let from = 0;
   const pageSize = 1000;
   while (true) {
+    // BUG 15 FIX: select only columns used by mapIndentRow instead of expensive select('*')
     const { data, error } = await supabase
       .from('purchase_indents')
-      .select('*')
+      .select('id, unique_no, item_details, category, vendor, unit, alt_unit, parent_group, shelf_capacity, max_level_qty, rol_qty, reorder_level, cl_qty, conversion_unit, order_formula, order_qty, online_item_name, min_order_qty, eligible_for_online, item_description, image_url, variant_available, status, remarks, approved_qty, decided_at, po_no, po_id, created_at')
       .order('created_at', { ascending: false })
       .range(from, from + pageSize - 1);
     if (error) throw error;
@@ -826,13 +827,17 @@ function mapDeliveryRow(row) {
   let billImageUrl = row.bill_image_url || null;
 
   if (!billImageUrl) {
-    if (row.bill_number && row.bill_number.trim().startsWith('{')) {
+    // BUG 14 FIX: only attempt JSON parse if string is a full JSON object AND contains expected keys
+    // prevents genuine bill numbers starting with '{' (e.g. GST doc formats) from being misread
+    if (row.bill_number && row.bill_number.trim().startsWith('{') && row.bill_number.trim().endsWith('}')) {
       try {
         const parsed = JSON.parse(row.bill_number);
-        billNumber = parsed.billNumber || '';
-        billImageUrl = parsed.billImageUrl || null;
+        if (parsed && (parsed.billNumber !== undefined || parsed.billImageUrl !== undefined)) {
+          billNumber = parsed.billNumber || '';
+          billImageUrl = parsed.billImageUrl || null;
+        }
       } catch (e) {
-        // fallback
+        // fallback: billNumber stays as the original raw string
       }
     } else if (row.bill_number && (row.bill_number.startsWith('http://') || row.bill_number.startsWith('https://'))) {
       billImageUrl = row.bill_number;
@@ -955,9 +960,24 @@ export async function checkPoPaymentCompleted(poId) {
 
 export async function createDelivery({ poIds, transportName, contact, biltyDate, biltyNumber, daggCount, billNumber, billDate, biltyImageFile, billImageFile }) {
   if (!poIds || poIds.length === 0) throw new Error("No POs selected");
-  
+
   for (const poId of poIds) {
     await validateAdvancePayment(poId);
+  }
+
+  // BUG 12 FIX: prevent accidental duplicate submission — block if this bilty number is already
+  // recorded against the same PO (intentional split shipments use different bilty numbers)
+  if (biltyNumber && biltyNumber.trim()) {
+    for (const poId of poIds) {
+      const { data: dup } = await supabase
+        .from('purchase_deliveries')
+        .select('id')
+        .eq('po_id', poId)
+        .eq('builty_number', biltyNumber.trim());
+      if (dup && dup.length > 0) {
+        throw new Error(`A delivery with bilty number "${biltyNumber.trim()}" is already recorded for this PO. Use a different bilty number for a new shipment.`);
+      }
+    }
   }
 
   let biltyImageUrl = null;
@@ -1521,15 +1541,22 @@ export async function submitPaymentApproval({
     .eq('id', poId);
   if (poUpdErr) throw poUpdErr;
 
-  // Update associated Delivery details
-  const { error: delUpdErr } = await supabase
+  // BUG 10/11 FIX: update only the most recent delivery for this PO, not ALL deliveries
+  // previously .eq('po_id', poId) would overwrite bill_date/bill_number on every split shipment
+  const { data: latestDelivery } = await supabase
     .from('purchase_deliveries')
-    .update({
-      bill_date: editedBillDate || null,
-      bill_number: editedVchNo || '',
-    })
-    .eq('po_id', poId);
-  if (delUpdErr) throw delUpdErr;
+    .select('id')
+    .eq('po_id', poId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestDelivery) {
+    const { error: delUpdErr } = await supabase
+      .from('purchase_deliveries')
+      .update({ bill_date: editedBillDate || null, bill_number: editedVchNo || '' })
+      .eq('id', latestDelivery.id);
+    if (delUpdErr) throw delUpdErr;
+  }
 
   const decidedBy = localStorage.getItem('user-id') || null;
   const { data, error } = await supabase
