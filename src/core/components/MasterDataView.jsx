@@ -5,6 +5,7 @@ import * as Lucide from 'lucide-react';
 import supabase from '../../SupabaseClient';
 import CreateIndentFormModal from '../../systems/purchase/components/CreateIndentFormModal';
 import NewPeteSettings from '../../systems/newpete/src/pages/Settings';
+import { reserveIndentNumbers } from '../../systems/purchase/services/purchaseService';
 
 const VENDOR_FIELDS = [
     { key: 'name', label: 'Vendor Name', placeholder: 'Enter vendor name', required: true },
@@ -221,19 +222,33 @@ function MasterDataPanel({ type }) {
         setLoading(true);
         setError('');
         try {
-            let query = supabase.from(config.table).select('*');
-            if (type === 'indent') {
-                query = query.or('hide_in_master.eq.false,hide_in_master.is.null').order('item_details', { ascending: true });
-            } else {
-                query = query.order('name', { ascending: true });
+            const pageSize = 1000;
+            let allData = [];
+            let from = 0;
+            while (true) {
+                let query = supabase.from(config.table).select('*');
+                if (type === 'indent') {
+                    query = query
+                        .or('hide_in_master.eq.false,hide_in_master.is.null')
+                        .order('item_details', { ascending: true })
+                        .range(from, from + pageSize - 1);
+                } else {
+                    query = query
+                        .order('name', { ascending: true })
+                        .range(from, from + pageSize - 1);
+                }
+                const { data, error } = await query;
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                allData.push(...data);
+                if (data.length < pageSize) break;
+                from += pageSize;
             }
-            const { data, error } = await query;
-            if (error) throw error;
 
             if (type === 'indent') {
                 const seen = new Set();
                 const distinctData = [];
-                (data || []).forEach(row => {
+                allData.forEach(row => {
                     const norm = String(row.item_details || '').trim().toLowerCase();
                     if (norm && !seen.has(norm)) {
                         seen.add(norm);
@@ -242,7 +257,7 @@ function MasterDataPanel({ type }) {
                 });
                 setRows(distinctData);
             } else {
-                setRows(data || []);
+                setRows(allData);
             }
         } catch (err) {
             setError(err.message || `Failed to load ${config.pluralLabel.toLowerCase()}.`);
@@ -719,6 +734,16 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                         : await query.eq('id', record.id);
                     error = res.error;
                 } else {
+                    const year = new Date().getFullYear();
+                    const reserved = await reserveIndentNumbers(year, 1);
+                    const uniqueNo = reserved[0]?.reserved_no || reserved[0]?.unique_no;
+                    if (!uniqueNo) throw new Error('Failed to reserve indent number for new master item.');
+                    payload.unique_no = uniqueNo;
+                    const hasOrder = payload.order_qty && Number(payload.order_qty) > 0;
+                    payload.status = hasOrder ? 'Pending' : 'Rejected';
+                    payload.remarks = hasOrder ? null : 'Master Item created without order';
+                    payload.created_by = localStorage.getItem('user-id') || null;
+                    payload.import_batch_id = crypto.randomUUID();
                     const res = await supabase.from('purchase_indents').insert(payload);
                     error = res.error;
                 }
@@ -1068,13 +1093,23 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
         async function fetchOptions() {
             try {
                 const targetColumn = table === 'vendors' ? 'name' : column;
-                const { data, error } = await supabase
-                    .from(table)
-                    .select(targetColumn);
-                if (error) throw error;
-                const vals = Array.from(
-                    new Set((data || []).map((r) => r[targetColumn]).filter(Boolean))
-                ).sort();
+                let allVals = [];
+                let from = 0;
+                while (true) {
+                    let query = supabase.from(table).select(targetColumn);
+                    if (table === 'purchase_indents') {
+                        query = query.or('hide_in_master.eq.false,hide_in_master.is.null');
+                    }
+                    const { data, error } = await query.range(from, from + 999);
+                    if (error) throw error;
+                    if (!data || !data.length) break;
+                    data.forEach((r) => {
+                        if (r[targetColumn]) allVals.push(r[targetColumn]);
+                    });
+                    if (data.length < 1000) break;
+                    from += 1000;
+                }
+                const vals = Array.from(new Set(allVals)).sort();
                 if (isMounted) {
                     setOptions(vals);
                     setLoading(false);

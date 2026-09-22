@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Fuse from 'fuse.js';
 import { UploadCloud, X, Image as ImageIcon } from 'lucide-react';
 import supabase from '../../../SupabaseClient';
-import { createIndentsManualBulk, previewIndentsManualBulk, fetchActiveIndentsPool } from '../services/purchaseService';
+import { createIndentsManualBulk, previewIndentsManualBulk, fetchActiveIndentsPool, reserveIndentNumbers } from '../services/purchaseService';
 
 const DEFAULT_ITEM = {
     vendor: '',
@@ -318,6 +318,9 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
 
         const numOrNull = (v) => (v !== '' && v !== null && v !== undefined && !isNaN(Number(v))) ? Number(v) : null;
 
+        const itemsToProcess = [];
+        const itemsToInsert = [];
+
         for (const item of validItems) {
             const rawName = String(item.item_details).trim();
             const imgs = Array.isArray(item.image_urls) && item.image_urls.length
@@ -356,27 +359,60 @@ export default function CreateIndentFormModal({ onClose, onSaved, mode = 'master
             if (findErr) throw findErr;
 
             if (existing && existing.length > 0) {
-                const { error: updErr } = await supabase
-                    .from('purchase_indents')
-                    .update(payload)
-                    .eq('item_details', rawName);
-                if (updErr) throw updErr;
+                itemsToProcess.push({ isNew: false, rawName, payload });
             } else {
+                itemsToProcess.push({ isNew: true, rawName, payload });
+                itemsToInsert.push(payload);
+            }
+        }
+
+        if (itemsToInsert.length > 0) {
+            const year = new Date().getFullYear();
+            const reserved = await reserveIndentNumbers(year, itemsToInsert.length);
+            let resIdx = 0;
+            const createdBy = localStorage.getItem('user-id') || null;
+            const batchId = crypto.randomUUID();
+
+            for (const proc of itemsToProcess) {
+                if (proc.isNew) {
+                    const uniqueNo = reserved[resIdx]?.reserved_no || reserved[resIdx]?.unique_no;
+                    if (!uniqueNo) {
+                        throw new Error('Failed to reserve indent number for new master item.');
+                    }
+                    proc.payload.unique_no = uniqueNo;
+                    const hasOrder = proc.payload.order_qty && proc.payload.order_qty > 0;
+                    proc.payload.status = hasOrder ? 'Pending' : 'Rejected';
+                    proc.payload.remarks = hasOrder ? null : 'Master Item created without order';
+                    proc.payload.created_by = createdBy;
+                    proc.payload.import_batch_id = batchId;
+                    resIdx++;
+                }
+            }
+        }
+
+        for (const proc of itemsToProcess) {
+            if (proc.isNew) {
                 const { error: insErr } = await supabase
                     .from('purchase_indents')
-                    .insert([payload]);
+                    .insert([proc.payload]);
                 if (insErr) throw insErr;
+            } else {
+                const { error: updErr } = await supabase
+                    .from('purchase_indents')
+                    .update(proc.payload)
+                    .eq('item_details', proc.rawName);
+                if (updErr) throw updErr;
             }
 
-            if (payload.vendor) {
+            if (proc.payload.vendor) {
                 try {
                     const { data: vExists } = await supabase
                         .from('vendors')
                         .select('id')
-                        .ilike('name', payload.vendor)
+                        .ilike('name', proc.payload.vendor)
                         .limit(1);
                     if (!vExists || vExists.length === 0) {
-                        await supabase.from('vendors').insert([{ name: payload.vendor }]);
+                        await supabase.from('vendors').insert([{ name: proc.payload.vendor }]);
                     }
                 } catch (vErr) {
                     console.error('Error saving vendor:', vErr);
