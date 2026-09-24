@@ -235,23 +235,23 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50/50 via-slate-50 to-purple-50/50 p-6 relative overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center bg-[#f8fafc] p-6 relative overflow-hidden">
       {/* Decorative Blur Blobs */}
       <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-blue-400/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-purple-400/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-slate-400/10 blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-md bg-white/85 backdrop-blur-xl border border-slate-200/60 rounded-3xl p-8 shadow-2xl shadow-slate-200/30 relative z-10 transition-all duration-300">
+      <div className="w-full max-w-md bg-white/95 backdrop-blur-xl border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-200/50 relative z-10 transition-all duration-300">
         
         {/* Brand Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-48 h-16 rounded-2xl overflow-hidden shadow-sm border border-slate-100 mb-4 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center bg-white p-1">
+          <div className="w-48 h-16 rounded-2xl overflow-hidden shadow-sm border border-slate-200 mb-4 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center bg-white p-1">
             <img
               src={bhatiyaLogo}
               alt="Bhaatiya Logo"
               className="w-full h-full object-contain"
             />
           </div>
-          <h2 className="text-2xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent tracking-tight font-sleek uppercase text-center">
+          <h2 className="text-2xl font-black text-[#173254] tracking-tight font-sleek uppercase text-center">
             Bhatia Enterprises
           </h2>
           <p className="text-slate-400 text-xs mt-1.5 font-semibold tracking-wide">Master System Platform</p>
@@ -272,7 +272,7 @@ const LoginPage = () => {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/80 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none text-slate-800 placeholder-slate-400 text-sm font-medium transition-all duration-200"
+                className="w-full pl-11 pr-4 py-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/80 rounded-2xl focus:border-[#173254] focus:ring-4 focus:ring-blue-100 outline-none text-slate-800 placeholder-slate-400 text-sm font-medium transition-all duration-200"
               />
               <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             </div>
@@ -291,7 +291,7 @@ const LoginPage = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full pl-11 pr-11 py-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/80 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none text-slate-800 placeholder-slate-400 text-sm font-medium transition-all duration-200"
+                className="w-full pl-11 pr-11 py-3 bg-slate-50/50 hover:bg-slate-50 border border-slate-200/80 rounded-2xl focus:border-[#173254] focus:ring-4 focus:ring-blue-100 outline-none text-slate-800 placeholder-slate-400 text-sm font-medium transition-all duration-200"
               />
               <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <button
@@ -307,7 +307,7 @@ const LoginPage = () => {
           <div className="pt-2 flex flex-col gap-3">
             <button
               type="submit"
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl font-bold hover:opacity-95 transition-all shadow-lg shadow-blue-500/15 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-4 bg-[#173254] hover:bg-[#10243e] text-white rounded-2xl font-bold transition-all shadow-md active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
               disabled={isLoginLoading}
             >
               {isLoginLoading ? (
@@ -323,7 +323,7 @@ const LoginPage = () => {
             <button
               type="button"
               onClick={() => setShowForgotModal(true)}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors text-center mt-1"
+              className="text-xs font-semibold text-[#173254] hover:underline transition-colors text-center mt-1"
             >
               Forgot Password?
             </button>

@@ -5,13 +5,13 @@ import supabase from "../../SupabaseClient";
 import systemRegistry from "../registry/systemRegistry";
 
 const SYSTEM_COLORS = {
-  "checklist-delegation": { bg: "bg-blue-50", border: "border-blue-100", icon: "text-blue-600", badge: "bg-blue-100 text-blue-700" },
-  "mis-summary":          { bg: "bg-violet-50", border: "border-violet-100", icon: "text-violet-600", badge: "bg-violet-100 text-violet-700" },
-  "hr-fms":               { bg: "bg-emerald-50", border: "border-emerald-100", icon: "text-emerald-600", badge: "bg-emerald-100 text-emerald-700" },
-  "whatsapp-management":  { bg: "bg-green-50", border: "border-green-100", icon: "text-green-600", badge: "bg-green-100 text-green-700" },
+  "checklist-delegation": { bg: "bg-white", border: "border-slate-200", icon: "text-[#173254]", badge: "bg-slate-100 text-[#173254]" },
+  "mis-summary":          { bg: "bg-white", border: "border-slate-200", icon: "text-[#173254]", badge: "bg-slate-100 text-[#173254]" },
+  "hr-fms":               { bg: "bg-white", border: "border-slate-200", icon: "text-[#173254]", badge: "bg-slate-100 text-[#173254]" },
+  "whatsapp-management":  { bg: "bg-white", border: "border-slate-200", icon: "text-[#173254]", badge: "bg-slate-100 text-[#173254]" },
 };
 
-const FALLBACK_COLOR = { bg: "bg-gray-50", border: "border-gray-100", icon: "text-gray-500", badge: "bg-gray-100 text-gray-600" };
+const FALLBACK_COLOR = { bg: "bg-white", border: "border-slate-200", icon: "text-[#173254]", badge: "bg-slate-100 text-[#173254]" };
 
 export default function CoreDashboard() {
   const navigate = useNavigate();
@@ -73,14 +73,14 @@ export default function CoreDashboard() {
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-8">
 
       {/* ── Profile Card ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* Top gradient strip */}
-        <div className="h-24 bg-gradient-to-r from-blue-600 to-purple-600" />
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Top navy banner */}
+        <div className="h-24 bg-[#173254]" />
 
         <div className="px-6 pb-6">
           {/* Avatar row */}
           <div className="flex items-end gap-4 -mt-12 mb-4">
-            <div className="w-20 h-20 rounded-2xl ring-4 ring-white shadow-md bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden shrink-0">
+            <div className="w-20 h-20 rounded-2xl ring-4 ring-white shadow-md bg-[#173254] flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
               {profileImg ? (
                 <img src={profileImg} alt={username} className="w-full h-full object-cover" />
               ) : (
@@ -88,8 +88,8 @@ export default function CoreDashboard() {
               )}
             </div>
             <div className="mb-1">
-              <h1 className="text-xl font-black text-gray-900 leading-tight">{username || "User"}</h1>
-              <span className="inline-block mt-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 uppercase tracking-wide">
+              <h1 className="text-xl font-black text-slate-900 leading-tight">{username || "User"}</h1>
+              <span className="inline-block mt-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-[#173254] border border-slate-200 uppercase tracking-wide">
                 {roleLabel}
               </span>
             </div>

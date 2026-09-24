@@ -3,6 +3,43 @@
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-sleek: "Outfit", sans-serif;
+
+  /* Theme override: Remap purple, violet & indigo to corporate Navy Blue & clean neutrals */
+  --color-purple-50: #f8fafc;
+  --color-purple-100: #f1f5f9;
+  --color-purple-200: #e2e8f0;
+  --color-purple-300: #cbd5e1;
+  --color-purple-400: #94a3b8;
+  --color-purple-500: #1e40af;
+  --color-purple-600: #173254;
+  --color-purple-700: #10243e;
+  --color-purple-800: #0d1e33;
+  --color-purple-900: #081321;
+  --color-purple-950: #040910;
+
+  --color-violet-50: #f8fafc;
+  --color-violet-100: #f1f5f9;
+  --color-violet-200: #e2e8f0;
+  --color-violet-300: #cbd5e1;
+  --color-violet-400: #94a3b8;
+  --color-violet-500: #1e40af;
+  --color-violet-600: #173254;
+  --color-violet-700: #10243e;
+  --color-violet-800: #0d1e33;
+  --color-violet-900: #081321;
+  --color-violet-950: #040910;
+
+  --color-indigo-50: #f8fafc;
+  --color-indigo-100: #f1f5f9;
+  --color-indigo-200: #e2e8f0;
+  --color-indigo-300: #cbd5e1;
+  --color-indigo-400: #94a3b8;
+  --color-indigo-500: #1e40af;
+  --color-indigo-600: #173254;
+  --color-indigo-700: #10243e;
+  --color-indigo-800: #0d1e33;
+  --color-indigo-900: #081321;
+  --color-indigo-950: #040910;
 }
 
 @keyframes toast-slide-in {
@@ -44,15 +81,52 @@
 
 
 .gradient-bg {
-    background: linear-gradient(to right, #9333EA, #DB2777);
+    background: linear-gradient(to right, #173254, #1e3a8a);
 }
 
 .gradient-bg2 {
-    background: linear-gradient(to right, #f10303, #f4cedf);
+    background: linear-gradient(to right, #173254, #1e40af);
 }
 
 .gradient-bg:hover {
-    background: linear-gradient(to right, #7E22CE, #BE185D);
+    background: linear-gradient(to right, #10243e, #173254);
+}
+
+/* Corporate Navy Blue & Crisp White Theme Overrides */
+[class*="from-purple-600"][class*="to-pink-600"],
+[class*="from-purple-600"][class*="to-indigo-600"],
+[class*="from-indigo-600"][class*="to-purple-600"],
+[class*="from-indigo-600"][class*="to-pink-600"],
+[class*="from-blue-600"][class*="to-purple-600"],
+[class*="from-purple-600"][class*="to-indigo-700"] {
+    background-image: none !important;
+    background-color: #173254 !important;
+    color: #ffffff !important;
+}
+
+[class*="hover:from-purple-700"][class*="hover:to-pink-700"]:hover,
+[class*="hover:from-purple-700"][class*="hover:to-indigo-700"]:hover,
+[class*="hover:from-indigo-700"][class*="hover:to-purple-700"]:hover {
+    background-image: none !important;
+    background-color: #10243e !important;
+    color: #ffffff !important;
+}
+
+/* Modals, banners, and card headers previously on purple-pink gradients */
+[class*="from-purple-50"][class*="to-pink-50"],
+[class*="from-purple-50"][class*="to-indigo-50"],
+[class*="from-purple-50"][class*="to-purple-100"],
+[class*="from-blue-50"][class*="to-purple-50"],
+[class*="from-blue-100"][class*="to-purple-100"] {
+    background-image: none !important;
+    background-color: #f8fafc !important;
+}
+
+/* Text clipping gradient titles become crisp solid corporate navy */
+.bg-clip-text.text-transparent {
+    background-image: none !important;
+    -webkit-text-fill-color: #173254 !important;
+    color: #173254 !important;
 }
 
 /* Improve scrolling performance for large tables */
