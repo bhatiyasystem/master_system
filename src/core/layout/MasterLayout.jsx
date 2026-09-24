@@ -487,40 +487,61 @@ export default function MasterLayout({ darkMode, toggleDarkMode, _showLayout = t
   const purchasePendingCounts = usePurchasePendingCounts();
   const checklistDelegationPendingCounts = useChecklistDelegationPendingCounts();
   const hrFmsPendingCounts = useHrFmsPendingCounts();
-  const pendingCountsBySystem = {
-    purchase: {
-      total: purchasePendingCounts.total,
-   items: {
-        Approvals: purchasePendingCounts.approvalPending,
-        "Purchase Order": purchasePendingCounts.poPending,
-        Delivery: purchasePendingCounts.deliveryPending,
-        Receiving: purchasePendingCounts.receivingPending,
-        "Payment Approval": purchasePendingCounts.paymentApprovalPending,
-        Payment: purchasePendingCounts.paymentPending,
+  const pendingCountsBySystem = useMemo(() => {
+    let newpetePendingExpenses = 0;
+    try {
+      const raw = localStorage.getItem('pcb_expenses');
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          newpetePendingExpenses = list.filter((e) => e.status === 'Pending').length;
+        }
+      }
+    } catch {
+      // Ignore localStorage parse errors for newpete
+    }
+
+    return {
+      purchase: {
+        total: purchasePendingCounts.total,
+        items: {
+          Approvals: purchasePendingCounts.approvalPending,
+          "Purchase Order": purchasePendingCounts.poPending,
+          Delivery: purchasePendingCounts.deliveryPending,
+          Receiving: purchasePendingCounts.receivingPending,
+          "Payment Approval": purchasePendingCounts.paymentApprovalPending,
+          Payment: purchasePendingCounts.paymentPending,
+        },
       },
-    },
-    "checklist-delegation": {
-      total: checklistDelegationPendingCounts.total,
-      items: {
-        Delegation: checklistDelegationPendingCounts.delegationPending,
-        Task: checklistDelegationPendingCounts.taskPending,
-        "Admin Approval": checklistDelegationPendingCounts.adminApprovalPending,
+      "checklist-delegation": {
+        total: checklistDelegationPendingCounts.total,
+        items: {
+          Delegation: checklistDelegationPendingCounts.delegationPending,
+          Task: checklistDelegationPendingCounts.taskPending,
+          "Admin Approval": checklistDelegationPendingCounts.adminApprovalPending,
+        },
       },
-    },
-    "hr-fms": {
-      total: hrFmsPendingCounts.total,
-      items: {
-        "Leave Management": hrFmsPendingCounts.leaveManagementPending,
-        Advance: hrFmsPendingCounts.advancePending,
-        Puttha: hrFmsPendingCounts.putthaPending,
-        "Find Enquiry": hrFmsPendingCounts.findEnquiryPending,
-        "Call Tracker": hrFmsPendingCounts.callTrackerPending,
-        "After Joining Work": hrFmsPendingCounts.afterJoiningWorkPending,
-        Leaving: hrFmsPendingCounts.leavingPending,
-        "After Leaving Work": hrFmsPendingCounts.afterLeavingWorkPending,
+      "hr-fms": {
+        total: hrFmsPendingCounts.total,
+        items: {
+          "Leave Management": hrFmsPendingCounts.leaveManagementPending,
+          Advance: hrFmsPendingCounts.advancePending,
+          Puttha: hrFmsPendingCounts.putthaPending,
+          "Find Enquiry": hrFmsPendingCounts.findEnquiryPending,
+          "Call Tracker": hrFmsPendingCounts.callTrackerPending,
+          "After Joining Work": hrFmsPendingCounts.afterJoiningWorkPending,
+          Leaving: hrFmsPendingCounts.leavingPending,
+          "After Leaving Work": hrFmsPendingCounts.afterLeavingWorkPending,
+        },
       },
-    },
-  };
+      newpete: {
+        total: newpetePendingExpenses,
+        items: {
+          Expenses: newpetePendingExpenses,
+        },
+      },
+    };
+  }, [purchasePendingCounts, checklistDelegationPendingCounts, hrFmsPendingCounts]);
 
   const getSystemPendingTotal = (sysId) => pendingCountsBySystem[sysId]?.total || 0;
   const getItemPendingCount = (sysId, label) => pendingCountsBySystem[sysId]?.items?.[label] || 0;

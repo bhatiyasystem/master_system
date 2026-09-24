@@ -437,16 +437,52 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                     return (
                         <div key={vendorName} className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white">
                             <div 
-                                className="flex flex-wrap items-center justify-between gap-2 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 p-3.5 cursor-pointer hover:bg-gray-50 transition-colors"
                                 onClick={() => toggleVendor(vendorName)}
                             >
-                                <div className="flex items-center gap-1.5 text-left flex-1">
-                                    {expanded[vendorName] ? <ChevronDown size={15} className="text-gray-500" /> : <ChevronRight size={15} className="text-gray-500" />}
+                                <div className="flex items-center gap-1.5 text-left flex-shrink-0 min-w-fit">
+                                    {expanded[vendorName] ? <ChevronDown size={15} className="text-gray-500 flex-shrink-0" /> : <ChevronRight size={15} className="text-gray-500 flex-shrink-0" />}
                                     <span className="text-[14px] font-bold text-[#173254]">{vendorName}</span>
-                                    <span className="text-[11.5px] text-gray-500">— {list.length} pending PO(s)</span>
+                                    <span className="text-[11.5px] text-gray-500 whitespace-nowrap">— {list.length} pending PO(s)</span>
                                 </div>
+
+                                {!expanded[vendorName] && (
+                                    <div className="flex-1 overflow-x-auto min-w-0 px-3">
+                                        <table className="w-full text-left text-[11.5px]">
+                                            <thead>
+                                                <tr className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                                    <th className="pb-1 px-3 font-bold">PO No.</th>
+                                                    <th className="pb-1 px-3 font-bold">Date</th>
+                                                    <th className="pb-1 px-3 font-bold">PO Delay</th>
+                                                    <th className="pb-1 px-3 font-bold">Planned Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {list.map((po) => {
+                                                    const delay = po.poDate ? Math.max(0, Math.floor((Date.now() - new Date(po.poDate).getTime()) / 86400000)) : 0;
+                                                    return (
+                                                        <tr key={po.id} className="hover:text-blue-900 transition-colors">
+                                                            <td className="py-0.5 px-3 font-semibold text-[#173254] whitespace-nowrap">{po.poNo}</td>
+                                                            <td className="py-0.5 px-3 text-gray-600 whitespace-nowrap">{po.poDate || '—'}</td>
+                                                            <td className="py-0.5 px-3 whitespace-nowrap">
+                                                                <span className={delay > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+                                                                    {delay} {delay === 1 ? 'day' : 'days'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-0.5 px-3 whitespace-nowrap text-gray-700">
+                                                                {renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
                                 <button
-                                    className="rounded-lg bg-[#173254] px-4 py-2 text-xs font-bold text-white hover:bg-[#10243e] flex items-center gap-1.5 transition-colors"
+                                    type="button"
+                                    className="rounded-lg bg-[#173254] px-4 py-2 text-xs font-bold text-white hover:bg-[#10243e] flex items-center gap-1.5 transition-colors flex-shrink-0 ml-auto"
                                     onClick={(e) => { e.stopPropagation(); onLogDelivery(list); }}
                                 >
                                     <Truck size={14} /> Log Delivery

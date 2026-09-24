@@ -157,14 +157,25 @@ const CACHE_KEY = 'hrFmsPendingCountsCache';
 
 function readCache() {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    const raw = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.total === 'number') {
+        return parsed;
+      }
+    }
   } catch {
     return null;
   }
+  return null;
 }
 
 function writeCache(counts) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(counts));
+  } catch {
+    // Storage quota or private mode fallback
+  }
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify(counts));
   } catch {
@@ -172,29 +183,69 @@ function writeCache(counts) {
   }
 }
 
-// Same exact counting logic as before (fetchHrFmsPendingCounts is untouched).
-// Only change: show last-known counts instantly from cache while the real
-// fetch runs in the background, and poll far less aggressively so this
-// (layout-level, runs on every page) hook stops hammering the network.
-export function useHrFmsPendingCounts(pollMs = 300000) {
-  const cached = readCache();
-  const [counts, setCounts] = useState(cached || EMPTY_COUNTS);
+// Module-level state & listener registry for deduplication across components
+let currentCounts = readCache() || EMPTY_COUNTS;
+const listeners = new Set();
+let inFlightPromise = null;
 
-  const refresh = useCallback(() => {
-    fetchHrFmsPendingCounts()
-      .then((result) => {
-        setCounts(result);
-        writeCache(result);
-      })
-      .catch(() => {});
-  }, []);
+function broadcastCounts(newCounts) {
+  currentCounts = newCounts;
+  writeCache(newCounts);
+  listeners.forEach((fn) => {
+    try {
+      fn(newCounts);
+    } catch {
+      // Ignore listener notification error
+    }
+  });
+}
+
+export function refreshHrFmsPendingCounts() {
+  if (inFlightPromise) return inFlightPromise;
+  inFlightPromise = fetchHrFmsPendingCounts()
+    .then((result) => {
+      if (result && typeof result.total === 'number') {
+        broadcastCounts(result);
+      }
+      return result;
+    })
+    .catch((err) => {
+      console.warn('Failed to refresh HR FMS pending counts:', err);
+      return currentCounts;
+    })
+    .finally(() => {
+      inFlightPromise = null;
+    });
+  return inFlightPromise;
+}
+
+// Shows last-known counts instantly from cache across tabs/restarts (0ms).
+// Deduplicates in-flight calls and polls every 5 minutes in background.
+export function useHrFmsPendingCounts(pollMs = 300000) {
+  const [counts, setCounts] = useState(() => readCache() || currentCounts);
 
   useEffect(() => {
-    refresh();
-    if (!pollMs) return undefined;
-    const id = setInterval(refresh, pollMs);
-    return () => clearInterval(id);
-  }, [refresh, pollMs]);
+    const freshFromCache = readCache();
+    if (freshFromCache) {
+      setCounts(freshFromCache);
+      currentCounts = freshFromCache;
+    }
+
+    listeners.add(setCounts);
+    refreshHrFmsPendingCounts();
+
+    if (!pollMs) {
+      return () => {
+        listeners.delete(setCounts);
+      };
+    }
+
+    const id = setInterval(refreshHrFmsPendingCounts, pollMs);
+    return () => {
+      listeners.delete(setCounts);
+      clearInterval(id);
+    };
+  }, [pollMs]);
 
   return counts;
 }
