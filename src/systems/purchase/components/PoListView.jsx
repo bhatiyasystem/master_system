@@ -120,7 +120,7 @@ export default function PoListView({ onRevise }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date', ''].map((h) => (
+                {['Action', 'PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -137,7 +137,7 @@ export default function PoListView({ onRevise }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date', ''].map((h) => (
+                {['Action', 'PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -154,7 +154,7 @@ export default function PoListView({ onRevise }) {
           <table className="w-full text-[12.6px]">
             <thead>
               <tr className="bg-gray-50 text-gray-500">
-                {['PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date', ''].map((h) => (
+                {['Action', 'PO No.', 'Date', 'Vendor', 'Items', 'Grand Total', 'Revision', 'Planned Date'].map((h) => (
                   <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                     {h}
                   </th>
@@ -164,15 +164,6 @@ export default function PoListView({ onRevise }) {
             <tbody>
               {rows.map((po) => (
                 <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-2.5 py-2 font-semibold">{po.poNo}</td>
-                  <td className="px-2.5 py-2">{po.poDate}</td>
-                  <td className="px-2.5 py-2">{po.vendor.name}</td>
-                  <td className="px-2.5 py-2">{po.items.length}</td>
-                  <td className="px-2.5 py-2 font-semibold">₹ {fmt(po.grandTotal)}</td>
-                  <td className="px-2.5 py-2">
-                    <RevisionChip revision={po.revision} />
-                  </td>
-                  <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                   <td className="whitespace-nowrap px-2.5 py-2">
                     <button
                       className="mr-1 rounded-lg border border-[#173254] px-2.5 py-1 text-xs font-semibold text-[#173254]"
@@ -189,6 +180,15 @@ export default function PoListView({ onRevise }) {
                       Revise
                     </button>
                   </td>
+                  <td className="px-2.5 py-2 font-semibold">{po.poNo}</td>
+                  <td className="px-2.5 py-2">{po.poDate}</td>
+                  <td className="px-2.5 py-2">{po.vendor.name}</td>
+                  <td className="px-2.5 py-2">{po.items.length}</td>
+                  <td className="px-2.5 py-2 font-semibold">₹ {fmt(po.grandTotal)}</td>
+                  <td className="px-2.5 py-2">
+                    <RevisionChip revision={po.revision} />
+                  </td>
+                  <td className="px-2.5 py-2">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                 </tr>
               ))}
             </tbody>

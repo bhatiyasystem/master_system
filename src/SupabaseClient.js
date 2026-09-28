@@ -12,8 +12,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseURL = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseURL = import.meta.env.VITE_SUPABASE_URL || 'https://sffvmdjtaxkfusgvgjbf.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_d08mS6BZwdJgaAuC2deEFg_4TBm0GcS';
 
 const supabase = createClient(supabaseURL, supabaseKey, {
   realtime: { params: { eventsPerSecond: 10 } },

@@ -406,7 +406,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                     <table className="w-full text-[12.6px]">
                         <thead>
                             <tr className="bg-gray-50 text-gray-500">
-                                {['PO No.', 'Date', 'Items', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'PO PDF'].map((h) => (
+                                {['Action', 'PO No.', 'Date', 'Items', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
                                     <th key={h} className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">{h}</th>
                                 ))}
                             </tr>
@@ -421,7 +421,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                     <table className="w-full text-[12.6px]">
                         <thead>
                             <tr className="bg-gray-50 text-gray-500">
-                                {['PO No.', 'Date', 'Items', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'PO PDF'].map((h) => (
+                                {['Action', 'PO No.', 'Date', 'Items', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
                                     <th key={h} className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">{h}</th>
                                 ))}
                             </tr>
@@ -493,7 +493,7 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                                     <table className="w-full text-[12.6px]">
                                         <thead>
                                             <tr className="bg-gray-50 text-gray-500">
-                                                {['PO No.', 'Date', 'Item', 'Qty', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date', 'PO PDF'].map((h) => (
+                                                {['Action', 'PO No.', 'Date', 'Item', 'Qty', 'Category', 'Unit', 'Parent Group', 'PO Delay', 'Planned Date'].map((h) => (
                                                     <th
                                                         key={h}
                                                         className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide"
@@ -521,15 +521,6 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                                                 if (poItems.length === 0) {
                                                     return [(
                                                         <tr key={po.id} className="border-t border-gray-100 hover:bg-gray-50">
-                                                            <td className="px-3 py-2.5 font-semibold text-[#173254]">{po.poNo}</td>
-                                                            <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                                            <td className="px-3 py-2.5 text-gray-400 italic">—</td>
-                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
-                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
-                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
-                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
-                                                            <td className="px-3 py-2.5"><span className={delay > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{delay}</span></td>
-                                                            <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                                                             <td className="px-3 py-2.5 whitespace-nowrap">
                                                                 <button
                                                                     type="button"
@@ -539,6 +530,15 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                                                                     View PDF
                                                                 </button>
                                                             </td>
+                                                            <td className="px-3 py-2.5 font-semibold text-[#173254]">{po.poNo}</td>
+                                                            <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
+                                                            <td className="px-3 py-2.5 text-gray-400 italic">—</td>
+                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
+                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
+                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
+                                                            <td className="px-3 py-2.5 text-gray-400">—</td>
+                                                            <td className="px-3 py-2.5"><span className={delay > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{delay}</span></td>
+                                                            <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                                                         </tr>
                                                     )];
                                                 }
@@ -553,15 +553,6 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                                                             key={`${po.id}-${item.id || idx}`}
                                                             className="border-t border-gray-100 hover:bg-gray-50"
                                                         >
-                                                            <td className="px-3 py-2.5 font-semibold text-[#173254]">{po.poNo}</td>
-                                                            <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
-                                                            <td className="px-3 py-2.5 font-medium text-gray-800">{item.productName || item.name || '—'}</td>
-                                                            <td className="px-3 py-2.5 text-gray-700">{item.orderedQty ?? '—'}</td>
-                                                            <td className="px-3 py-2.5 text-gray-700">{category}</td>
-                                                            <td className="px-3 py-2.5 text-gray-700">{unit}</td>
-                                                            <td className="px-3 py-2.5 text-gray-700">{parentGroup}</td>
-                                                            <td className="px-3 py-2.5"><span className={delay > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{delay}</span></td>
-                                                            <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                                                             <td className="px-3 py-2.5 whitespace-nowrap">
                                                                 <button
                                                                     type="button"
@@ -571,6 +562,15 @@ function PendingDeliveryPanel({ pos, deliveries, indents, tatTracking, tatMins, 
                                                                     View PDF
                                                                 </button>
                                                             </td>
+                                                            <td className="px-3 py-2.5 font-semibold text-[#173254]">{po.poNo}</td>
+                                                            <td className="px-3 py-2.5 text-gray-600">{po.poDate}</td>
+                                                            <td className="px-3 py-2.5 font-medium text-gray-800">{item.productName || item.name || '—'}</td>
+                                                            <td className="px-3 py-2.5 text-gray-700">{item.orderedQty ?? '—'}</td>
+                                                            <td className="px-3 py-2.5 text-gray-700">{category}</td>
+                                                            <td className="px-3 py-2.5 text-gray-700">{unit}</td>
+                                                            <td className="px-3 py-2.5 text-gray-700">{parentGroup}</td>
+                                                            <td className="px-3 py-2.5"><span className={delay > 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}>{delay}</span></td>
+                                                            <td className="px-3 py-2.5">{renderPlannedDateCell(tatTracking[po.id], po.createdAt, tatMins)}</td>
                                                         </tr>
                                                     );
                                                 });

@@ -474,7 +474,7 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
         <table className="w-full text-[12.6px]">
           <thead>
             <tr className="bg-gray-50 text-gray-500">
-              {['S.No', 'Product Name', 'Category', 'Vendor', 'Parent Group', 'Shelf Capacity', 'Max Level Qty', 'ROL Qty', 'Qty', 'Units', 'Actions'].map((h) => (
+              {['Actions', 'S.No', 'Product Name', 'Category', 'Vendor', 'Parent Group', 'Shelf Capacity', 'Max Level Qty', 'ROL Qty', 'Qty', 'Units'].map((h) => (
                 <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                   {h}
                 </th>
@@ -493,6 +493,47 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
                 const isEditing = editAll || editingRowIdx === idx;
                 return (
                   <tr key={idx} className={`border-t border-gray-100 transition ${isEditing ? 'bg-amber-50/40' : 'hover:bg-gray-50/60'}`}>
+                    <td className="whitespace-nowrap px-1.5 py-1.5 text-center">
+                      {editingRowIdx === idx && !editAll ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            className="rounded bg-[#173254] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs"
+                            onClick={() => doneEditRow(idx)}
+                          >
+                            Done
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 shadow-xs"
+                            onClick={() => cancelEditRow(idx)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1.5">
+                          {!editAll && (
+                            <button
+                              type="button"
+                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
+                              onClick={() => startEditRow(idx)}
+                              title="Edit item inline"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="rounded-md border border-rose-300 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+                            onClick={() => removeItem(idx)}
+                            title="Delete"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-2.5 py-1.5 font-medium text-gray-900">
                       {idx + 1}
                       {it.isExtra && <span className="ml-1.5 inline-block rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">Extra</span>}
@@ -608,47 +649,6 @@ export default function PoCreateView({ draft, onDone, onCancel }) {
                         />
                       ) : (
                         <span className="whitespace-nowrap text-gray-600 block px-1">{it.units || '—'}</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-1.5 py-1.5 text-center">
-                      {editingRowIdx === idx && !editAll ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            className="rounded bg-[#173254] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#122842] shadow-xs"
-                            onClick={() => doneEditRow(idx)}
-                          >
-                            Done
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 shadow-xs"
-                            onClick={() => cancelEditRow(idx)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-1.5">
-                          {!editAll && (
-                            <button
-                              type="button"
-                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
-                              onClick={() => startEditRow(idx)}
-                              title="Edit item inline"
-                            >
-                              Edit
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="rounded-md border border-rose-300 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
-                            onClick={() => removeItem(idx)}
-                            title="Delete"
-                          >
-                            &times;
-                          </button>
-                        </div>
                       )}
                     </td>
                   </tr>

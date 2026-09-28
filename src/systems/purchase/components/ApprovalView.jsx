@@ -631,6 +631,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
         <table className="w-full border-collapse text-[11.5px]">
           <thead>
             <tr className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 text-gray-600">
+              <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[65px]">Action</th>
               <th className="w-7 px-1.5 py-2 text-center">
                 <input
                   type="checkbox"
@@ -651,7 +652,6 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
               <th className="px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[48px]">Shelf Cap</th>
               <th className="px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[50px]">Max Qty</th>
               <th className="px-1 py-2 text-right text-[10px] font-bold uppercase tracking-wide min-w-[50px]">ROL Qty</th>
-              <th className="px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wide min-w-[65px]">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -667,6 +667,36 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                 const cur = rowEdits[i.dbId] || {};
                 return (
                   <tr key={i.dbId} className={`border-b border-gray-100 transition ${isEditing ? 'bg-amber-50/40' : 'hover:bg-gray-50/80'}`}>
+                    <td className="px-1.5 py-1.5 text-center">
+                      {isEditing ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            className="rounded bg-[#173254] px-1.5 py-0.5 text-[10.5px] font-semibold text-white hover:bg-[#122842] shadow-xs disabled:opacity-60"
+                            onClick={() => saveRow(i.dbId)}
+                            disabled={rowSaving[i.dbId]}
+                          >
+                            {rowSaving[i.dbId] ? '…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10.5px] text-gray-700 hover:bg-gray-100 shadow-xs"
+                            onClick={() => cancelEditRow(i.dbId)}
+                            disabled={rowSaving[i.dbId]}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded-md border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
+                          onClick={() => startEditRow(i)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
                     <td className="w-7 px-1.5 py-1.5 text-center">
                       <input
                         type="checkbox"
@@ -708,7 +738,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                       {isEditing ? (
                         <input
                           type="text"
-                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          className="w-full rounded border border-gray-300 px-1.5 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
                           value={cur.category ?? ''}
                           onChange={(e) => updateRowEditField(i.dbId, 'category', e.target.value)}
                         />
@@ -720,7 +750,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                       {isEditing ? (
                         <input
                           type="text"
-                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          className="w-full rounded border border-gray-300 px-1.5 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
                           value={cur.vendor ?? ''}
                           onChange={(e) => updateRowEditField(i.dbId, 'vendor', e.target.value)}
                         />
@@ -732,7 +762,7 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                       {isEditing ? (
                         <input
                           type="text"
-                          className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
+                          className="w-full rounded border border-gray-300 px-1.5 py-0.5 text-xs font-medium focus:border-blue-500 focus:outline-none"
                           value={cur.parentGroup ?? ''}
                           onChange={(e) => updateRowEditField(i.dbId, 'parentGroup', e.target.value)}
                         />
@@ -798,36 +828,6 @@ function CategoryApprovalModal({ parentGroup, category, items, vendors = [], sav
                         />
                       ) : (
                         <span>{i.rolQty != null && i.rolQty !== '' ? i.rolQty : '—'}</span>
-                      )}
-                    </td>
-                    <td className="px-1.5 py-1.5 text-center">
-                      {isEditing ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            className="rounded bg-[#173254] px-1.5 py-0.5 text-[10.5px] font-semibold text-white hover:bg-[#122842] shadow-xs disabled:opacity-60"
-                            onClick={() => saveRow(i.dbId)}
-                            disabled={rowSaving[i.dbId]}
-                          >
-                            {rowSaving[i.dbId] ? '…' : 'Save'}
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[10.5px] text-gray-700 hover:bg-gray-100 shadow-xs"
-                            onClick={() => cancelEditRow(i.dbId)}
-                            disabled={rowSaving[i.dbId]}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="rounded-md border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-100 hover:text-[#173254] transition shadow-xs"
-                          onClick={() => startEditRow(i)}
-                        >
-                          Edit
-                        </button>
                       )}
                     </td>
                   </tr>
@@ -947,7 +947,7 @@ function HistoryPanel({ indents }) {
         <table className="w-full text-[12.6px]">
           <thead>
             <tr className="bg-gray-50 text-gray-500">
-              {['Unique No.', 'Item Details', 'Category', 'Vendor', 'Order Qty', 'Approved Qty', 'Difference', 'Current Status', 'Remarks', 'Decided At', ''].map((h) => (
+              {['Action', 'Unique No.', 'Item Details', 'Category', 'Vendor', 'Order Qty', 'Approved Qty', 'Difference', 'Current Status', 'Remarks', 'Decided At'].map((h) => (
                 <th key={h} className="whitespace-nowrap border-b border-gray-200 px-2.5 py-2 text-left text-[10.3px] font-bold uppercase tracking-wide">
                   {h}
                 </th>
@@ -959,6 +959,11 @@ function HistoryPanel({ indents }) {
               <tr><td colSpan={11} className="px-2.5 py-10 text-center text-gray-500">No approval decisions recorded yet.</td></tr>
             ) : rows.map((i) => (
               <tr key={i.dbId} className="border-t border-gray-100 hover:bg-gray-50">
+                <td className="px-2.5 py-2">
+                  <button className="rounded-lg border border-[#173254] px-2.5 py-1 text-xs font-semibold text-[#173254]" onClick={() => setTimelineItem(i)}>
+                    Timeline
+                  </button>
+                </td>
                 <td className="px-2.5 py-2 font-semibold">{i.id}</td>
                 <td className="px-2.5 py-2">{i.itemDetails}</td>
                 <td className="px-2.5 py-2">{i.category}</td>
@@ -971,11 +976,6 @@ function HistoryPanel({ indents }) {
                 <td className="px-2.5 py-2"><StatusBadge status={i.status} /></td>
                 <td className="max-w-[160px] whitespace-normal px-2.5 py-2">{i.remarks || '—'}</td>
                 <td className="px-2.5 py-2">{i.decidedAt ? new Date(i.decidedAt).toLocaleString('en-IN') : '—'}</td>
-                <td className="px-2.5 py-2">
-                  <button className="rounded-lg border border-[#173254] px-2.5 py-1 text-xs font-semibold text-[#173254]" onClick={() => setTimelineItem(i)}>
-                    Timeline
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>

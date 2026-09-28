@@ -5,7 +5,6 @@ import * as Lucide from 'lucide-react';
 import supabase from '../../SupabaseClient';
 import CreateIndentFormModal from '../../systems/purchase/components/CreateIndentFormModal';
 import NewPeteSettings from '../../systems/newpete/src/pages/Settings';
-import { reserveIndentNumbers } from '../../systems/purchase/services/purchaseService';
 
 const VENDOR_FIELDS = [
     { key: 'name', label: 'Vendor Name', placeholder: 'Enter vendor name', required: true },
@@ -27,7 +26,7 @@ const TRANSPORTER_FIELDS = [
 ];
 
 function getTableFields(config) {
-    if (config.table === 'purchase_indents') {
+    if (config.table === 'purchase_master_items' || config.table === 'purchase_indents') {
         const itemDetailsField = config.fields.find(f => f.key === 'item_details');
         const otherFields = config.fields.filter(f => f.key !== 'item_details');
         if (itemDetailsField) {
@@ -68,14 +67,14 @@ const CONFIG = {
     vendor: { table: 'vendors', fields: VENDOR_FIELDS, label: 'Vendor', pluralLabel: 'Vendors' },
     transporter: { table: 'transporters', fields: TRANSPORTER_FIELDS, label: 'Transporter', pluralLabel: 'Transporters' },
     indent: {
-        table: 'purchase_indents',
+        table: 'purchase_master_items',
         fields: [
             { key: 'item_details', label: 'Item Name', placeholder: 'Enter item name', required: true },
             { key: 'online_item_name', label: 'Item Name for online portal', placeholder: 'Enter item name for online portal' },
             { key: 'vendor', label: 'Vendor Name', placeholder: 'Enter vendor name', comboTable: 'vendors', comboColumn: 'name' },
-            { key: 'category', label: 'Category', placeholder: 'Enter category', comboTable: 'purchase_indents', comboColumn: 'category' },
-            { key: 'unit', label: 'Unit', placeholder: 'Enter unit', comboTable: 'purchase_indents', comboColumn: 'unit' },
-            { key: 'parent_group', label: 'Parent Group', placeholder: 'Enter parent group', comboTable: 'purchase_indents', comboColumn: 'parent_group' },
+            { key: 'category', label: 'Category', placeholder: 'Enter category', comboTable: 'purchase_master_items', comboColumn: 'category' },
+            { key: 'unit', label: 'Unit', placeholder: 'Enter unit', comboTable: 'purchase_master_items', comboColumn: 'unit' },
+            { key: 'parent_group', label: 'Parent Group', placeholder: 'Enter parent group', comboTable: 'purchase_master_items', comboColumn: 'parent_group' },
             { key: 'shelf_capacity', label: 'Shelf Capacity', placeholder: 'Enter shelf capacity' },
             { key: 'max_level_qty', label: 'Max Level Qty', placeholder: 'Enter max level qty' },
             { key: 'rol_qty', label: 'Reorder Level', placeholder: 'Enter reorder level' },
@@ -183,24 +182,11 @@ function MasterDataPanel({ type }) {
     async function handleDelete(row) {
         if (!window.confirm(`Delete this ${config.label.toLowerCase()}?`)) return;
         try {
-            if (type === 'indent') {
-                const { data, error } = await supabase
-                    .from('purchase_indents')
-                    .update({ hide_in_master: true })
-                    .eq('item_details', row.item_details)
-                    .select();
-                if (error) throw error;
-                if (!data || data.length === 0) {
-                    setError('Delete blocked — no row was updated.');
-                    return;
-                }
-            } else {
-                const { data, error } = await supabase.from(config.table).delete().eq('id', row.id).select();
-                if (error) throw error;
-                if (!data || data.length === 0) {
-                    setError('Delete blocked — no row was removed. This is usually a Supabase Row Level Security policy preventing deletes on this table.');
-                    return;
-                }
+            const { data, error } = await supabase.from(config.table).delete().eq('id', row.id).select();
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                setError('Delete blocked — no row was removed. This is usually a Supabase Row Level Security policy preventing deletes on this table.');
+                return;
             }
             load();
         } catch (err) {
@@ -229,7 +215,6 @@ function MasterDataPanel({ type }) {
                 let query = supabase.from(config.table).select('*');
                 if (type === 'indent') {
                     query = query
-                        .or('hide_in_master.eq.false,hide_in_master.is.null')
                         .order('item_details', { ascending: true })
                         .range(from, from + pageSize - 1);
                 } else {
@@ -245,20 +230,7 @@ function MasterDataPanel({ type }) {
                 from += pageSize;
             }
 
-            if (type === 'indent') {
-                const seen = new Set();
-                const distinctData = [];
-                allData.forEach(row => {
-                    const norm = String(row.item_details || '').trim().toLowerCase();
-                    if (norm && !seen.has(norm)) {
-                        seen.add(norm);
-                        distinctData.push(row);
-                    }
-                });
-                setRows(distinctData);
-            } else {
-                setRows(allData);
-            }
+            setRows(allData);
         } catch (err) {
             setError(err.message || `Failed to load ${config.pluralLabel.toLowerCase()}.`);
         } finally {
@@ -310,11 +282,11 @@ function MasterDataPanel({ type }) {
                         });
                         return obj;
                     })
-                    .filter((obj) => obj.name);
+                    .filter((obj) => obj.name || obj.item_details);
 
                 if (payload.length === 0) throw new Error('No valid rows found — make sure the header row matches the expected columns.');
 
-                const { error } = await supabase.from(config.table).insert(payload);
+                const { error } = await supabase.from(config.table).upsert(payload, { onConflict: config.table === 'purchase_master_items' ? 'item_details' : undefined });
                 if (error) throw error;
 
                 setImportResult({ type: 'success', text: `Imported ${payload.length} ${config.pluralLabel.toLowerCase()} successfully.` });
@@ -705,16 +677,16 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
         setSaving(true);
         try {
             let error;
-            if (config.table === 'purchase_indents') {
+            if (config.table === 'purchase_master_items') {
                 if (payload.order_formula !== undefined && payload.order_formula !== '') {
-                    payload.order_qty = payload.order_formula;
+                    payload.order_formula = String(payload.order_formula);
                 }
                 if (payload.rol_qty !== undefined && payload.rol_qty !== '') {
-                    payload.reorder_level = payload.rol_qty;
+                    payload.reorder_level = Number(payload.rol_qty) || 0;
                 }
 
                 // Numeric sanitation for Postgres
-                const numFields = ['shelf_capacity', 'max_level_qty', 'rol_qty', 'reorder_level', 'order_qty', 'min_order_qty'];
+                const numFields = ['shelf_capacity', 'max_level_qty', 'rol_qty', 'reorder_level', 'min_order_qty'];
                 numFields.forEach((k) => {
                     if (payload[k] !== undefined) {
                         if (payload[k] === '' || payload[k] === null) {
@@ -725,26 +697,11 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                     }
                 });
 
-                payload.hide_in_master = false;
-
                 if (record) {
-                    const query = supabase.from('purchase_indents').update(payload);
-                    const res = record.item_details
-                        ? await query.eq('item_details', record.item_details)
-                        : await query.eq('id', record.id);
+                    const res = await supabase.from('purchase_master_items').update(payload).eq('id', record.id);
                     error = res.error;
                 } else {
-                    const year = new Date().getFullYear();
-                    const reserved = await reserveIndentNumbers(year, 1);
-                    const uniqueNo = reserved[0]?.reserved_no || reserved[0]?.unique_no;
-                    if (!uniqueNo) throw new Error('Failed to reserve indent number for new master item.');
-                    payload.unique_no = uniqueNo;
-                    const hasOrder = payload.order_qty && Number(payload.order_qty) > 0;
-                    payload.status = hasOrder ? 'Pending' : 'Rejected';
-                    payload.remarks = hasOrder ? null : 'Master Item created without order';
-                    payload.created_by = localStorage.getItem('user-id') || null;
-                    payload.import_batch_id = crypto.randomUUID();
-                    const res = await supabase.from('purchase_indents').insert(payload);
+                    const res = await supabase.from('purchase_master_items').insert(payload);
                     error = res.error;
                 }
             } else {
@@ -1097,9 +1054,6 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                 let from = 0;
                 while (true) {
                     let query = supabase.from(table).select(targetColumn);
-                    if (table === 'purchase_indents') {
-                        query = query.or('hide_in_master.eq.false,hide_in_master.is.null');
-                    }
                     const { data, error } = await query.range(from, from + 999);
                     if (error) throw error;
                     if (!data || !data.length) break;
