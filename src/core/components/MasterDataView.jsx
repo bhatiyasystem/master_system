@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+
 import { createPortal } from 'react-dom';
 import * as XLSX from 'xlsx';
 import * as Lucide from 'lucide-react';
@@ -103,13 +104,13 @@ export default function MasterDataView() {
     const [type, setType] = useState('vendor');
 
     return (
-        <div className="bg-white rounded-3xl border border-blue-100 p-6 sha0dow-sm">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-6 bg-white border border-blue-100 rounded-3xl sha0dow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                 <div>
                     <h2 className="text-xl font-bold text-gray-800">Master Data</h2>
                     <p className="text-xs text-gray-400">Manage vendor and transporter details used across the platform</p>
                 </div>
-                <div className="flex bg-gray-50 border border-gray-150 rounded-2xl p-1">
+                <div className="flex p-1 border bg-gray-50 border-gray-150 rounded-2xl">
                     <button
                         onClick={() => setType('vendor')}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${type === 'vendor' ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'
@@ -302,7 +303,7 @@ function MasterDataPanel({ type }) {
 
     return (
         <div>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
                 {type === 'indent' ? (
                     <button
                         type="button"
@@ -355,7 +356,7 @@ function MasterDataPanel({ type }) {
                         placeholder="Search users by name..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50/50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                        className="w-full py-3 pl-10 pr-4 text-xs font-semibold transition-all border bg-gray-50/50 border-gray-150 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                     />
                 </div>
             </div>
@@ -372,16 +373,16 @@ function MasterDataPanel({ type }) {
             {error && <div className="mb-4 text-xs font-semibold text-rose-600">{error}</div>}
 
             {loading ? (
-                <div className="py-10 text-center text-sm text-gray-500">Loading {config.pluralLabel.toLowerCase()}…</div>
+                <div className="py-10 text-sm text-center text-gray-500">Loading {config.pluralLabel.toLowerCase()}…</div>
             ) : filteredRows.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">
+                <div className="py-10 text-sm text-center text-gray-500">
                     {searchTerm.trim() ? `No ${config.pluralLabel.toLowerCase()} match "${searchTerm}".` : `No ${config.pluralLabel.toLowerCase()} added yet.`}
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <div className="overflow-x-auto border border-gray-200 rounded-xl">
                     <table className="w-full text-[12.6px]">
                         <thead>
-                            <tr className="bg-gray-50 text-gray-500">
+                            <tr className="text-gray-500 bg-gray-50">
                                 <th className="whitespace-nowrap border-b border-gray-200 px-3 py-2.5 text-left text-[10.3px] font-bold uppercase tracking-wide">
                                     Action
                                 </th>
@@ -425,10 +426,10 @@ function MasterDataPanel({ type }) {
                                                                     href={imgSrc}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="block w-9 h-9 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 hover:opacity-80 transition shadow-xs flex-shrink-0"
+                                                                    className="flex-shrink-0 block overflow-hidden transition border border-gray-200 rounded-lg shadow-xs w-9 h-9 bg-gray-50 hover:opacity-80"
                                                                     title={`View image ${i + 1}`}
                                                                 >
-                                                                    <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                                                                    <img src={imgSrc} alt="" className="object-cover w-full h-full" />
                                                                 </a>
                                                             ))}
                                                             {imgs.length > 3 && (
@@ -458,7 +459,7 @@ function MasterDataPanel({ type }) {
                                         if (f.key === 'item_description') {
                                             return (
                                                 <td key={f.key} className="px-3 py-2 text-gray-700 max-w-[180px]" title={val}>
-                                                    <span className="truncate block">{val || '—'}</span>
+                                                    <span className="block truncate">{val || '—'}</span>
                                                 </td>
                                             );
                                         }
@@ -531,13 +532,13 @@ function FieldFormatModal({ config, onClose, onDownloadTemplate, onUploadClick }
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
                 {/* Header — sticky */}
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 flex justify-between items-center flex-shrink-0">
+                <div className="flex items-center justify-between flex-shrink-0 px-6 py-5 bg-gradient-to-r from-purple-600 to-indigo-600">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/20 rounded-xl p-2.5">
                             <Lucide.Table size={22} className="text-white" />
                         </div>
                         <div>
-                            <h3 className="font-black text-white text-lg">Field Format</h3>
+                            <h3 className="text-lg font-black text-white">Field Format</h3>
                             <p className="text-[11px] font-bold text-white/80 uppercase tracking-wider">Required CSV Structure</p>
                         </div>
                     </div>
@@ -547,15 +548,15 @@ function FieldFormatModal({ config, onClose, onDownloadTemplate, onUploadClick }
                 </div>
 
                 {/* Scrollable body */}
-                <div className="overflow-y-auto flex-1 px-6 py-5">
-                    <div className="mb-4 flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                <div className="flex-1 px-6 py-5 overflow-y-auto">
+                    <div className="flex items-center gap-2 mb-4 text-xs font-bold tracking-wide text-gray-500 uppercase">
                         <Lucide.Info size={14} />
                         Column header alignment: provide data according to format below
                     </div>
 
                     <div className={`grid gap-3 mb-5`} style={{ gridTemplateColumns: `repeat(${config.fields.length}, minmax(0,1fr))` }}>
                         {config.fields.map((f) => (
-                            <div key={f.key} className="rounded-xl bg-gray-50 border border-gray-150 p-3">
+                            <div key={f.key} className="p-3 border rounded-xl bg-gray-50 border-gray-150">
                                 <div className="text-[11px] font-black text-gray-800 uppercase mb-1">{f.label}</div>
                                 <div className={`inline-block text-[9px] font-bold uppercase px-1.5 py-0.5 rounded mb-2 ${f.required ? 'bg-rose-100 text-rose-600' : 'bg-gray-200 text-gray-500'}`}>
                                     {f.required ? 'Required' : 'Optional'}
@@ -741,15 +742,15 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose}></div>
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] border border-blue-50 overflow-hidden">
                 {/* Header — sticky */}
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 flex justify-between items-center border-b border-blue-50 flex-shrink-0">
-                    <h3 className="font-black text-gray-900 text-lg">{record ? 'Edit' : 'Add'} {config.label}</h3>
+                <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 border-blue-50">
+                    <h3 className="text-lg font-black text-gray-900">{record ? 'Edit' : 'Add'} {config.label}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
                         <Lucide.X size={20} />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
                     {/* Scrollable fields */}
-                    <div className="overflow-y-auto flex-1 px-6 py-5">
+                    <div className="flex-1 px-6 py-5 overflow-y-auto">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                             {config.fields.map((f) => (
                                 <div key={f.key} className={`space-y-1 ${f.multi || f.key === 'address' || f.key === 'item_description' || f.key === 'image_url' ? 'col-span-2' : ''}`}>
@@ -766,13 +767,13 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                                         value={val}
                                                         onChange={(e) => updateMulti(f.key, i, e.target.value)}
                                                         placeholder={f.label}
-                                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                                        className="w-full px-4 py-3 text-xs font-semibold transition-all border bg-gray-50 border-gray-150 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                                                     />
                                                     {form[f.key].length > 1 && (
                                                         <button
                                                             type="button"
                                                             onClick={() => removeMultiRow(f.key, i)}
-                                                            className="shrink-0 text-gray-400 hover:text-rose-500"
+                                                            className="text-gray-400 shrink-0 hover:text-rose-500"
                                                             title={`Remove ${f.label}`}
                                                         >
                                                             <Lucide.X size={16} />
@@ -793,7 +794,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                         <select
                                             value={form[f.key]}
                                             onChange={(e) => update(f.key, e.target.value)}
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                            className="w-full px-4 py-3 text-xs font-semibold transition-all border bg-gray-50 border-gray-150 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                                         >
                                             <option value="" disabled>Select {f.label}</option>
                                             {f.options.map((opt) => (
@@ -822,21 +823,21 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                             value={form[f.key]}
                                             onChange={(e) => update(f.key, e.target.value)}
                                             placeholder={f.placeholder}
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all resize-none"
+                                            className="w-full px-4 py-3 text-xs font-semibold transition-all border resize-none bg-gray-50 border-gray-150 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                                         />
                                     ) : f.type === 'image' || f.key === 'image_url' ? (
                                         <div className="space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 {(Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : [])).map((imgSrc, imgIdx) => (
-                                                    <div key={imgIdx} className="relative w-14 h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex-shrink-0 group shadow-xs">
-                                                        <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                                                    <div key={imgIdx} className="relative flex-shrink-0 overflow-hidden border border-gray-200 shadow-xs w-14 h-14 rounded-xl bg-gray-50 group">
+                                                        <img src={imgSrc} alt="" className="object-cover w-full h-full" />
                                                         <button
                                                             type="button"
                                                             onClick={() => {
                                                                 const list = Array.isArray(form[f.key]) ? form[f.key] : (form[f.key] ? [form[f.key]] : []);
                                                                 update(f.key, list.filter((_, i) => i !== imgIdx));
                                                             }}
-                                                            className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="absolute inset-0 flex items-center justify-center text-white transition-opacity opacity-0 bg-black/60 group-hover:opacity-100"
                                                             title="Remove image"
                                                         >
                                                             <Lucide.X size={15} />
@@ -896,7 +897,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                                             }
                                                         }
                                                     }}
-                                                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-150 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                                    className="flex-1 px-3 py-2 text-xs font-semibold transition-all border bg-gray-50 border-gray-150 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                                                 />
                                                 <button
                                                     type="button"
@@ -908,7 +909,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                                             el.value = '';
                                                         }
                                                     }}
-                                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                                                    className="px-3 py-2 text-xs font-bold text-gray-700 transition bg-gray-100 hover:bg-gray-200 rounded-xl"
                                                 >
                                                     Add URL
                                                 </button>
@@ -920,7 +921,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                                             value={form[f.key]}
                                             onChange={(e) => update(f.key, e.target.value)}
                                             placeholder={f.placeholder || ''}
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                                            className="w-full px-4 py-3 text-xs font-semibold transition-all border bg-gray-50 border-gray-150 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                                         />
                                     )}
                                 </div>
@@ -931,7 +932,7 @@ function AddRecordModal({ config, record, onClose, onSaved, zClass = 'fixed inse
                     </div>
 
                     {/* Footer — sticky */}
-                    <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+                    <div className="flex justify-end flex-shrink-0 gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
                         <button
                             type="button"
                             onClick={onClose}
@@ -982,7 +983,7 @@ function TransporterComboField({ table, value, onChange }) {
     const inputCls = 'w-full px-4 py-3 bg-gray-50 border border-gray-150 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all';
 
     if (loadingOpts) {
-        return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-150 rounded-2xl">Loading transporters…</div>;
+        return <div className="px-4 py-3 text-xs text-gray-400 border bg-gray-50 border-gray-150 rounded-2xl">Loading transporters…</div>;
     }
 
     return (
@@ -1010,7 +1011,7 @@ function TransporterComboField({ table, value, onChange }) {
                         No transporters found.{' '}
                         <button
                             type="button"
-                            className="text-blue-600 font-bold hover:underline"
+                            className="font-bold text-blue-600 hover:underline"
                             onClick={() => setShowAddTransporter(true)}
                         >
                             Add one now
@@ -1102,7 +1103,7 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
     );
 
     if (loading) {
-        return <div className="px-4 py-3 text-xs text-gray-400 bg-gray-50 border border-gray-155 rounded-2xl animate-pulse">Loading options...</div>;
+        return <div className="px-4 py-3 text-xs text-gray-400 border bg-gray-50 border-gray-155 rounded-2xl animate-pulse">Loading options...</div>;
     }
 
     return (
@@ -1121,12 +1122,12 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                         }
                     }}
                     placeholder={placeholder || `Search or enter ${label || column}...`}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-155 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all pr-10"
+                    className="w-full px-4 py-3 pr-10 text-xs font-semibold transition-all border bg-gray-50 border-gray-155 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
                 <button
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute text-gray-400 transition-colors right-3 hover:text-gray-600"
                 >
                     <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1153,7 +1154,7 @@ function ComboSelect({ table, column, value, onChange, label, placeholder, disab
                             </button>
                         ))
                     ) : (
-                        <div className="px-4 py-3 text-xs text-gray-400 font-medium italic">
+                        <div className="px-4 py-3 text-xs italic font-medium text-gray-400">
                             {disableCustom ? 'No matching records' : 'No matches (press Enter to use custom value)'}
                         </div>
                     )}
