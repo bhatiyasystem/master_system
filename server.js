@@ -64,6 +64,7 @@ app.get('/api/attendance', async (req, res) => {
     );
     res.json({ day, month, year, status, count: rows.length, rows });
   } catch (err) {
+    console.error(`[API /attendance error (day ${day}/${month}/${year})]:`, err.message);
     res.status(502).json({ error: err.message });
   }
 });
@@ -90,6 +91,7 @@ app.get('/api/attendance/without-filter', async (req, res) => {
     );
     res.json({ day, month, year, count: rows.length, rows });
   } catch (err) {
+    console.error(`[API /attendance/without-filter error (day ${day}/${month}/${year})]:`, err.message);
     res.status(502).json({ error: err.message });
   }
 });
@@ -116,6 +118,7 @@ app.get('/api/attendance/range', async (req, res) => {
     );
     res.json({ from, to, status, count: rows.length, rows });
   } catch (err) {
+    console.error(`[API /attendance/range error (${from} to ${to})]:`, err.message);
     res.status(502).json({ error: err.message });
   }
 });

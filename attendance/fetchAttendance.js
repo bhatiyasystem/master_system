@@ -19,6 +19,15 @@ export async function fetchAttendanceLog(client, { day, month, year, status = 'A
     },
   });
 
+  // If the session has expired, eSSL returns a redirect stub or login page with HTTP 200
+  if (typeof response.data === 'string' && (
+    response.data.includes('StaffloginDialog') ||
+    response.data.includes('window.location') ||
+    (response.data.includes('redirect') && !response.data.includes('ob_gCH'))
+  )) {
+    throw new Error('Session expired or redirected to login page on portal.');
+  }
+
   const initialResult = parseAttendanceTable(response.data);
   const allRows = [...initialResult.rows];
 

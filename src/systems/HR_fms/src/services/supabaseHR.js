@@ -37,8 +37,13 @@ export const STATUS_PAY_VALUE = {
   'L': 0,
   'WOP': 1,
   '½P': 0.5,
+  '0.5P': 0.5,
+  'HD': 0.5,
   'WO': 1,
   'A': 0,
+  'CL': 1,
+  'PL': 1,
+  'SL': 1,
 };
 
 export const STATUS_COLORS = {
@@ -48,8 +53,13 @@ export const STATUS_COLORS = {
   'HP': '#6366f1',
   'H': '#8b5cf6',
   'L': '#f59e0b',
+  'CL': '#f59e0b',
+  'PL': '#d97706',
+  'SL': '#b45309',
   'WOP': '#3b82f6',
   '½P': '#84cc16',
+  '0.5P': '#84cc16',
+  'HD': '#84cc16',
   'WO': '#94a3b8',
   'A': '#ef4444',
   '-': '#94a3b8',
@@ -62,8 +72,13 @@ export const STATUS_LABELS = {
   'HP': 'Holiday Present',
   'H': 'Public Holiday',
   'L': 'Leave',
+  'CL': 'Casual Leave',
+  'PL': 'Privilege Leave',
+  'SL': 'Sick Leave',
   'WOP': 'Weekly Off Present',
   '½P': 'Half Day',
+  '0.5P': 'Half Day',
+  'HD': 'Half Day',
   'WO': 'Weekly Off',
   'A': 'Absent',
   '-': 'No Data',
@@ -129,7 +144,6 @@ export function fillDailyStatusFromSummary(emp, year, month) {
 
   // For the current month/year: Do NOT generate proxy/default attendance data.
   // Fetch attendance only through today. Keep all subsequent days blank.
-  // Never convert missing data into P, A, WO, or any other status.
   if (isCurrentMonth) {
     const result = { ...existingDaily };
     for (let d = limitDay + 1; d <= daysInMonth; d++) {
@@ -141,6 +155,13 @@ export function fillDailyStatusFromSummary(emp, year, month) {
     return result;
   }
 
+  // If daily entries (1..31) are already populated (e.g. from biometric sync or daily Excel columns),
+  // return existing daily status directly so actual daily punches are preserved.
+  const populatedDayKeys = Object.keys(existingDaily).filter(k => k !== '_meta' && !isNaN(parseInt(k, 10)) && parseInt(k, 10) >= 1 && parseInt(k, 10) <= 31);
+  if (populatedDayKeys.length > 0) {
+    return { ...existingDaily };
+  }
+
   const totalPresent = parseFloat(emp.total_present ?? emp.total_p) || 0;
   const totalAbsent = parseFloat(emp.total_absent ?? emp.total_a) || 0;
   const totalHoliday = parseFloat(emp.total_holiday ?? emp.total_h) || 0;
@@ -149,7 +170,7 @@ export function fillDailyStatusFromSummary(emp, year, month) {
 
   const leaveObj = calculateRowLeaveStats(emp);
 
-  const hasSummaryMetrics = (totalPresent > 0 || totalAbsent > 0 || totalHoliday > 0 || totalWO > 0 || totalWOP > 0 || leaveObj.totalLeave > 0 || populatedDays > 0);
+  const hasSummaryMetrics = (totalPresent > 0 || totalAbsent > 0 || totalHoliday > 0 || totalWO > 0 || totalWOP > 0 || leaveObj.totalLeave > 0);
 
   if (!hasSummaryMetrics) {
     if (isCurrentMonth) {
@@ -627,22 +648,22 @@ export async function saveAttendanceRows(uploadId, employees, year, month, compa
   }
   const rows = employees.map(emp => ({
     upload_id: uploadId,
-    year,
-    month,
+    year: parseInt(year, 10),
+    month: parseInt(month, 10),
     company_name: 'Default',
     department: 'Default',
-    sl_no: emp.sl_no,
-    emp_code: emp.emp_code,
-    emp_name: emp.emp_name,
+    sl_no: parseInt(emp.sl_no, 10) || 1,
+    emp_code: String(emp.emp_code),
+    emp_name: String(emp.emp_name),
     daily_status: emp.daily_status,
-    total_present: emp.total_present,
-    total_absent: emp.total_absent,
-    total_leave: emp.total_leave,
-    total_holiday: emp.total_holiday,
-    total_half_present: emp.total_half_present,
-    total_wo: emp.total_wo,
-    total_wop: emp.total_wop,
-    payable_days: emp.payable_days,
+    total_present: Math.round(Number(emp.total_present) || 0),
+    total_absent: Math.round(Number(emp.total_absent) || 0),
+    total_leave: Math.round(Number(emp.total_leave) || 0),
+    total_holiday: Math.round(Number(emp.total_holiday) || 0),
+    total_half_present: Math.round(Number(emp.total_half_present) || 0),
+    total_wo: Math.round(Number(emp.total_wo) || 0),
+    total_wop: Math.round(Number(emp.total_wop) || 0),
+    payable_days: Number(emp.payable_days) || 0,
     total_ot: emp.total_ot || '00:00',
   }));
 
@@ -2705,13 +2726,18 @@ export async function syncAttendanceFromPortal(year, month) {
 
   const results = await fetchWithConcurrencyLimit(dayQueries, 3, (day) =>
     fetch(`${backendUrl}attendance?day=${day}&month=${month}&year=${year}`)
-      .then(res => {
+      .then(async res => {
         if (!res.ok) {
-          throw new Error(`Failed to fetch day ${day}: status ${res.status}`);
+          let errorMsg = `Failed to fetch day ${day} (status ${res.status})`;
+          try {
+            const errData = await res.json();
+            if (errData?.error) errorMsg += `: ${errData.error}`;
+          } catch {}
+          throw new Error(errorMsg);
         }
         return res.json();
       })
-      .then(json => json.rows || [])
+      .then(json => (json.rows || []).map(r => ({ ...r, _day: day })))
   );
 
   const esslRows = results.flat();
@@ -2723,8 +2749,15 @@ export async function syncAttendanceFromPortal(year, month) {
   const employeesMap = {};
 
   esslRows.forEach(row => {
-    const empCode = String(row['Emp Code'] || row['EmpCode'] || row['emp_code'] || '').trim();
-    const empName = String(row['Emp Name'] || row['EmpName'] || row['emp_name'] || '').trim();
+    const empCode = String(
+      row['Emp Code'] || row['EmpCode'] || row['emp_code'] ||
+      row['Employee Code'] || row['EmployeeCode'] || row['Employee ID'] ||
+      row['Enroll No'] || row['Card No'] || ''
+    ).trim();
+    const empName = String(
+      row['Emp Name'] || row['EmpName'] || row['emp_name'] ||
+      row['Employee Name'] || row['EmployeeName'] || row['Name'] || ''
+    ).trim();
     if (!empCode || !empName) return;
 
     if (!employeesMap[empCode]) {
@@ -2735,11 +2768,54 @@ export async function syncAttendanceFromPortal(year, month) {
       };
     }
 
-    const dateStr = String(row['Attendance Date'] || row['AttendanceDate'] || row['Date'] || row['date'] || '').trim();
-    const dayMatch = /^(\d+)/.exec(dateStr);
-    if (dayMatch) {
-      const dayNum = parseInt(dayMatch[1], 10);
-      const statusVal = String(row.Status || row.status || '').trim();
+    let dayNum = row._day;
+    if (!dayNum) {
+      const dateStr = String(row['Attendance Date'] || row['AttendanceDate'] || row['Date'] || row['date'] || '').trim();
+      const ymdMatch = /^\d{4}[-/](\d{1,2})[-/](\d{1,2})/.exec(dateStr);
+      const dmyMatch = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/.exec(dateStr);
+      if (ymdMatch) {
+        dayNum = parseInt(ymdMatch[2], 10);
+      } else if (dmyMatch) {
+        dayNum = parseInt(dmyMatch[1], 10);
+      } else {
+        const m = /^(\d{1,2})/.exec(dateStr);
+        if (m) dayNum = parseInt(m[1], 10);
+      }
+    }
+
+    if (dayNum && dayNum >= 1 && dayNum <= 31) {
+      const rawStatus = String(row.Status || row.status || row['Attendance Status'] || '').trim();
+      let statusVal = 'A';
+      const upperStatus = rawStatus.toUpperCase();
+
+      if (upperStatus === 'P' || upperStatus === 'PRESENT') {
+        statusVal = 'P';
+      } else if (upperStatus === 'P(OD)' || upperStatus === 'OD' || upperStatus === 'OFFICIAL DUTY') {
+        statusVal = 'P(OD)';
+      } else if (upperStatus === 'HP' || upperStatus === 'HOLIDAY PRESENT') {
+        statusVal = 'HP';
+      } else if (upperStatus === 'WOP' || upperStatus === 'WEEKLY OFF PRESENT' || upperStatus === 'WEEKLYOFFPRESENT') {
+        statusVal = 'WOP';
+      } else if (upperStatus === 'WO' || upperStatus === 'WEEKLY OFF' || upperStatus === 'WEEKLYOFF') {
+        statusVal = 'WO';
+      } else if (upperStatus === 'H' || upperStatus === 'HOLIDAY') {
+        statusVal = 'H';
+      } else if (upperStatus === 'CL' || upperStatus === 'CASUAL LEAVE') {
+        statusVal = 'CL';
+      } else if (upperStatus === 'PL' || upperStatus === 'PRIVILEGE LEAVE') {
+        statusVal = 'PL';
+      } else if (upperStatus === 'SL' || upperStatus === 'SICK LEAVE') {
+        statusVal = 'SL';
+      } else if (upperStatus === 'L' || upperStatus === 'LEAVE') {
+        statusVal = 'L';
+      } else if (upperStatus === '½P' || upperStatus === '0.5P' || upperStatus === 'HALF DAY' || upperStatus === 'HD') {
+        statusVal = '½P';
+      } else if (upperStatus === 'A' || upperStatus === 'ABSENT') {
+        statusVal = 'A';
+      } else if (rawStatus) {
+        statusVal = rawStatus;
+      }
+
       employeesMap[empCode].daily_status[dayNum] = statusVal;
       employeesMap[empCode].daily_status._meta[dayNum] = {
         ot: row['Over Time'] || row['OverTime'] || row['OT'] || row['ot'] || '00:00',
@@ -2764,22 +2840,57 @@ export async function syncAttendanceFromPortal(year, month) {
     let totalOTMinutes = 0;
     let totalLate = 0;
     let totalEarly = 0;
+    let totalCL = 0;
+    let totalPL = 0;
+    let totalSL = 0;
+    let totalOtherLeave = 0;
 
-    Object.entries(emp.daily_status).forEach(([key, val]) => {
-      if (key === '_meta' || !val) return;
+    // Fill Sundays as Weekly Off (WO) if not explicitly set
+    for (let d = 1; d <= lastDay; d++) {
+      const isSunday = new Date(year, month - 1, d).getDay() === 0;
+      if (!emp.daily_status[d] && isSunday) {
+        emp.daily_status[d] = 'WO';
+      }
+    }
+
+    for (let d = 1; d <= lastDay; d++) {
+      const val = emp.daily_status[d];
+      if (!val) continue;
       const code = String(val).trim();
 
       const payVal = STATUS_PAY_VALUE[code] !== undefined ? STATUS_PAY_VALUE[code] : 0;
       payableDays += payVal;
 
-      if (code === 'P' || code === 'p' || code === 'P(OD)') totalPresent++;
-      else if (code === 'A') totalAbsent++;
-      else if (code === 'L' || code === 'CL' || code === 'PL' || code === 'SL') totalLeave++;
-      else if (code === 'H') totalHoliday++;
-      else if (code === 'HP') totalHalfPresent++;
-      else if (code === 'WO') totalWO++;
-      else if (code === 'WOP') totalWOP++;
-    });
+      if (code === 'P' || code === 'p' || code === 'P(OD)') {
+        totalPresent++;
+      } else if (code === 'A') {
+        totalAbsent++;
+      } else if (code === 'CL') {
+        totalLeave++;
+        totalCL++;
+      } else if (code === 'PL') {
+        totalLeave++;
+        totalPL++;
+      } else if (code === 'SL') {
+        totalLeave++;
+        totalSL++;
+      } else if (code === 'L') {
+        totalLeave++;
+        totalOtherLeave++;
+      } else if (code === 'H') {
+        totalHoliday++;
+      } else if (code === 'HP') {
+        totalHalfPresent++;
+      } else if (code === '½P' || code === '0.5P' || code === 'HD') {
+        totalHalfPresent++;
+        totalPresent++;
+      } else if (code === 'WO') {
+        totalWO++;
+      } else if (code === 'WOP') {
+        totalWOP++;
+        totalPresent++;
+      }
+    }
 
     Object.entries(emp.daily_status._meta).forEach(([_, mVal]) => {
       if (mVal) {
@@ -2798,11 +2909,11 @@ export async function syncAttendanceFromPortal(year, month) {
     const otMins = totalOTMinutes % 60;
     const totalOT = `${String(otHours).padStart(2, '0')}:${String(otMins).padStart(2, '0')}`;
 
-    emp.daily_status._meta.total_cl = 0;
-    emp.daily_status._meta.total_pl = 0;
-    emp.daily_status._meta.total_sl = 0;
+    emp.daily_status._meta.total_cl = totalCL;
+    emp.daily_status._meta.total_pl = totalPL;
+    emp.daily_status._meta.total_sl = totalSL;
     emp.daily_status._meta.total_hp = totalHalfPresent;
-    emp.daily_status._meta.total_other_leave = 0;
+    emp.daily_status._meta.total_other_leave = totalOtherLeave;
     emp.daily_status._meta.total_leave = totalLeave;
     emp.daily_status._meta.total_present = totalPresent;
     emp.daily_status._meta.payable_days = payableDays;
