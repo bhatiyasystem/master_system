@@ -8,16 +8,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-let cachedClientPromise = null;
+let cachedClient = null;
+let clientCreatedAt = 0;
+const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-function getClient() {
-  if (!cachedClientPromise) {
-    cachedClientPromise = getAuthenticatedClient().catch(err => {
-      cachedClientPromise = null;
-      throw err;
-    });
+async function getClient(forceRefresh = false) {
+  const now = Date.now();
+  if (!cachedClient || forceRefresh || (now - clientCreatedAt > SESSION_TTL_MS)) {
+    cachedClient = await getAuthenticatedClient();
+    clientCreatedAt = Date.now();
   }
-  return cachedClientPromise;
+  return cachedClient;
 }
 
 async function runWithAuth(fn) {
@@ -26,8 +27,7 @@ async function runWithAuth(fn) {
     return await fn(client);
   } catch (err) {
     console.warn('Request failed, retrying with fresh authentication...', err.message);
-    cachedClientPromise = null;
-    const client = await getClient();
+    const client = await getClient(true);
     return await fn(client);
   }
 }

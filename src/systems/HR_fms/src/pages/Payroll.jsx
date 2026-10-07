@@ -899,15 +899,11 @@ const Payroll = () => {
       const employees = await fetchEmployees();
 
       const activeEmployees = employees
-        ? employees.filter(e => {
-            const isActive = !e.status || String(e.status).trim().toLowerCase() === 'active';
-            const isEligible = isEmployeeEligibleForPayroll(e, targetYear, targetMonth);
-            return isActive && isEligible;
-          })
+        ? employees.filter(e => isEmployeeEligibleForPayroll(e, targetYear, targetMonth))
         : [];
 
       if (!attendance.length && !activeEmployees.length) {
-        throw new Error('No attendance data or active employees found for this month.');
+        throw new Error('No attendance data or eligible employees found for this month.');
       }
 
       const employeeMap = {};

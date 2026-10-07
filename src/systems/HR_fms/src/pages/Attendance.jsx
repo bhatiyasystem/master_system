@@ -30,6 +30,7 @@ import {
   formatOtDisplay
 } from "../services/supabaseHR";
 import { fillDailyStatusFromSummary } from "../services/supabaseHR";
+import supabase from "../services/supabaseHRClient";
 import { getPreviousProcessingPeriod } from "../utils/dateUtils";
 
 // ── Upload Zone ───────────────────────────────────────────────────────────────
@@ -296,9 +297,28 @@ const AttendanceMonthly = () => {
 
       const { uploadMeta, employees } = parseAttendanceExcel(rawRows);
 
+      // Map strictly with Employee Management employees
+      const { data: dbEmps } = await supabase
+        .from("employees")
+        .select("employee_id, name");
+      const dbEmpMap = {};
+      (dbEmps || []).forEach(e => {
+        if (e.employee_id) dbEmpMap[String(e.employee_id).trim().toLowerCase()] = e;
+      });
+
+      const matchedEmployees = (employees || [])
+        .filter(emp => dbEmpMap[String(emp.emp_code || '').trim().toLowerCase()])
+        .map(emp => {
+          const dbE = dbEmpMap[String(emp.emp_code || '').trim().toLowerCase()];
+          return {
+            ...emp,
+            emp_name: dbE?.name || emp.emp_name
+          };
+        });
+
       const errors = [];
-      if (employees.length === 0) {
-        errors.push("No attendance rows found. Upload an attendance Excel file with employee data.");
+      if (matchedEmployees.length === 0) {
+        errors.push("No matching employees found in Employee Management. Please ensure employee codes match.");
       }
       if (!uploadMeta.period_from) {
         errors.push("Could not detect pay period from the file. Ensure the period row is present.");
@@ -313,7 +333,7 @@ const AttendanceMonthly = () => {
             period_from: `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`,
             period_to: `${filterYear}-${String(filterMonth).padStart(2, "0")}-${new Date(filterYear, filterMonth, 0).getDate()}`
           },
-          employees,
+          employees: matchedEmployees,
           year: filterYear,
           month: filterMonth,
           fileName: file.name

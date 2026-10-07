@@ -13,8 +13,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const hrSupabaseURL = import.meta.env.VITE_HR_SUPABASE_URL;
-const hrSupabaseKey = import.meta.env.VITE_HR_SUPABASE_ANON_KEY;
+const hrSupabaseURL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HR_SUPABASE_URL) || (typeof process !== 'undefined' && process.env?.VITE_HR_SUPABASE_URL);
+const hrSupabaseKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HR_SUPABASE_ANON_KEY) || (typeof process !== 'undefined' && process.env?.VITE_HR_SUPABASE_ANON_KEY);
 
 // Safe to expose for browser diagnostics; this is the public project URL, not a key.
 export const hrSupabaseProjectUrl = hrSupabaseURL || '';
