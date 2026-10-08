@@ -162,7 +162,7 @@ const Puttha = () => {
 
         if (rows.length === 0) throw new Error('No valid rows found — check the header row matches the expected columns.');
 
-        const { error } = await supabase.from('putthas').insert(rows);
+        const { error } = await supabase.from('hr_putthas').insert(rows);
         if (error) throw error;
 
         toast.success(`Imported ${rows.length} puttha entr${rows.length === 1 ? 'y' : 'ies'} successfully.`);

@@ -332,7 +332,7 @@ const Advance = () => {
           throw new Error("No valid rows found — check the header row matches the expected columns.");
 
         const loanRows = rows.map(({ monthly_deduction, remaining_amount, ...row }) => row);
-        const { data: insertedRows, error } = await supabase.from("salary_advances").insert(loanRows).select();
+        const { data: insertedRows, error } = await supabase.from("hr_salary_advances").insert(loanRows).select();
 
         if (error) {
           console.error("Supabase Insert Error:", error);
@@ -576,7 +576,7 @@ const Advance = () => {
             // Bug 3 fix: per-employee upsert instead of delete-all-then-insert
             // Fetch existing records for this month to find matches by employee_id
             const { data: existingForMonth } = await supabase
-              .from("advances")
+              .from("hr_advances")
               .select("id, employee_id, remaining_amount, amount")
               .gte("date", startDate)
               .lte("date", endDate);
@@ -592,7 +592,7 @@ const Advance = () => {
               if (matchedExisting) {
                 // Update existing record; preserve remaining_amount
                 await supabase
-                  .from("advances")
+                  .from("hr_advances")
                   .update({
                     amount: row.amount,
                     monthly_deduction: row.amount,
@@ -608,7 +608,7 @@ const Advance = () => {
               } else {
                 // Insert new record only
                 await supabase
-                  .from("advances")
+                  .from("hr_advances")
                   .insert({
                     ...row,
                     monthly_deduction: row.amount,
@@ -745,7 +745,7 @@ const Advance = () => {
 
           // Bug 3 fix: per-employee upsert instead of delete-all-then-insert
           const { data: existingForMonth2 } = await supabase
-            .from("advances")
+            .from("hr_advances")
             .select("id, employee_id, remaining_amount, amount")
             .gte("date", startDate)
             .lte("date", endDate);
@@ -760,7 +760,7 @@ const Advance = () => {
             const matchedExisting = existingMap2[empIdKey];
             if (matchedExisting) {
               await supabase
-                .from("advances")
+                .from("hr_advances")
                 .update({
                   amount: row.amount,
                   monthly_deduction: row.amount,
@@ -774,7 +774,7 @@ const Advance = () => {
                 .eq("id", matchedExisting.id);
             } else {
               await supabase
-                .from("advances")
+                .from("hr_advances")
                 .insert({
                   ...row,
                   monthly_deduction: row.amount,

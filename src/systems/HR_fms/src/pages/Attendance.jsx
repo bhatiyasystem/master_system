@@ -299,7 +299,7 @@ const AttendanceMonthly = () => {
 
       // Map strictly with Employee Management employees
       const { data: dbEmps } = await supabase
-        .from("employees")
+        .from("hr_employees")
         .select("employee_id, name");
       const dbEmpMap = {};
       (dbEmps || []).forEach(e => {

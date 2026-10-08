@@ -465,7 +465,7 @@ const Employee = () => {
             search: searchTerm,
             status: currentStatus
           }),
-          supabase.from('employees').select('id', { count: 'exact', head: true }).eq('status', otherStatus)
+          supabase.from('hr_employees').select('id', { count: 'exact', head: true }).eq('status', otherStatus)
         ]);
 
         if (isMounted) {
@@ -513,7 +513,7 @@ const Employee = () => {
           search: searchTerm,
           status: currentStatus
         }),
-        supabase.from('employees').select('id', { count: 'exact', head: true }).eq('status', otherStatus)
+        supabase.from('hr_employees').select('id', { count: 'exact', head: true }).eq('status', otherStatus)
       ]);
 
       setEmployees(res.data || []);

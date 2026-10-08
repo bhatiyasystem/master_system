@@ -126,7 +126,7 @@ export function fillDailyStatus(emp, year, month) {
  */
 export async function fetchEmployeesRoster(selectedDate) {
   const { data, error } = await hrSupabase
-    .from('employees')
+    .from('hr_employees')
     .select('*')
     .order('name', { ascending: true });
 
@@ -486,13 +486,13 @@ export async function fetchMonthlyAggregates(year, month) {
   // 3. employee_breaks across the entire month
   const [monthlyRes, employeesRes, breaksRes] = await Promise.all([
     hrSupabase
-      .from('attendance_monthly')
+      .from('hr_attendance_monthly')
       .select('*')
       .eq('year', year)
       .eq('month', month)
       .order('emp_name', { ascending: true }),
     hrSupabase
-      .from('employees')
+      .from('hr_employees')
       .select('employee_id, name, date_of_joining, date_of_leaving, status'),
     hrSupabase
       .from('employee_breaks')

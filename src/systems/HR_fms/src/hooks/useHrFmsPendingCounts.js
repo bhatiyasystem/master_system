@@ -39,8 +39,8 @@ function getIndex(headers, name) {
 async function fetchHrFmsPendingCounts() {
   const [leaveRaw, advRes, putRes, indentRaw, enquiryRaw, followUpRaw, joiningRaw, leavingRaw] = await Promise.all([
     fetchSheet('Leave Management'),
-    supabase.from('advances').select('id', { count: 'exact', head: true }).eq('status', 'Pending'),
-    supabase.from('putthas').select('id', { count: 'exact', head: true }).eq('status', 'Pending'),
+    supabase.from('hr_advances').select('id', { count: 'exact', head: true }).eq('status', 'Pending'),
+    supabase.from('hr_putthas').select('id', { count: 'exact', head: true }).eq('status', 'Pending'),
     fetchSheet('INDENT'),
     fetchSheet('ENQUIRY'),
     fetchSheet('Follow - Up'),

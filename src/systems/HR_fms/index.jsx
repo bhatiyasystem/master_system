@@ -54,7 +54,7 @@ function HrFmsPageWrapper({ children }) {
         if (!empId && masterUsername) {
           try {
             const { data } = await supabase
-              .from('employees')
+              .from('hr_employees')
               .select('employee_id')
               .or(`name.ilike.%${masterUsername}%,employee_id.ilike.%${masterUsername}%`)
               .limit(1)
@@ -190,21 +190,9 @@ systemRegistry.register({
     },
     {
       label: 'Attendance Records',
+      href: '/dashboard/hr-attendance',
       icon: 'Book',
       showFor: ['admin', 'HOD'],
-      isSubmenu: true,
-      subItems: [
-        {
-          href: '/dashboard/hr-attendance',
-          label: 'Monthly Attendance',
-          showFor: ['admin', 'HOD'],
-        }
-        // {
-        //   href: '/dashboard/hr-attendancedaily',
-        //   label: 'Daily Attendance',
-        //   showFor: ['admin', 'HOD'],
-        // },
-      ],
     },
     {
       label: 'Payroll',

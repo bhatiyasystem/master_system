@@ -611,7 +611,7 @@ export function parseAttendanceExcel(rawRows) {
 
 export async function createUploadRecord({ periodFrom, periodTo, companyName, department, printedOn, fileName, uploadedBy, year, month }) {
   const { data, error } = await supabase
-    .from('attendance_uploads')
+    .from('hr_attendance_uploads')
     .insert({
       period_from: periodFrom,
       period_to: periodTo,
@@ -633,7 +633,7 @@ export async function createUploadRecord({ periodFrom, periodTo, companyName, de
 
 export async function updateUploadRecord(id, updates) {
   const { data, error } = await supabase
-    .from('attendance_uploads')
+    .from('hr_attendance_uploads')
     .update(updates)
     .eq('id', id)
     .select()
@@ -644,7 +644,7 @@ export async function updateUploadRecord(id, updates) {
 
 export async function fetchUploads({ year, month } = {}) {
   let query = supabase
-    .from('attendance_uploads')
+    .from('hr_attendance_uploads')
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -706,7 +706,7 @@ export async function saveAttendanceRows(uploadId, employees, year, month, compa
   // Upsert: update on conflict (same emp_code, year, month, company)
   try {
     const { data, error } = await supabase
-      .from('attendance_monthly')
+      .from('hr_attendance_monthly')
       .upsert(rows, {
         onConflict: 'emp_code,year,month,company_name',
         ignoreDuplicates: false,
@@ -723,7 +723,7 @@ export async function saveAttendanceRows(uploadId, employees, year, month, compa
       console.warn('total_ot column missing in attendance_monthly, falling back without total_ot:', err.message);
       const fallbackRows = rows.map(({ total_ot, ...rest }) => rest);
       const { data: fallbackData, error: fallbackErr } = await supabase
-        .from('attendance_monthly')
+        .from('hr_attendance_monthly')
         .upsert(fallbackRows, {
           onConflict: 'emp_code,year,month,company_name',
           ignoreDuplicates: false,
@@ -739,7 +739,7 @@ export async function saveAttendanceRows(uploadId, employees, year, month, compa
 
 export async function fetchAttendanceMonthly({ year, month, companyName, empCode } = {}) {
   let query = supabase
-    .from('attendance_monthly')
+    .from('hr_attendance_monthly')
     .select('*')
     .order('sl_no', { ascending: true });
 
@@ -760,7 +760,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
   // 1. Try updating by primary key ID if idOrEmpCode is numeric or numeric string
   if (idOrEmpCode && (typeof idOrEmpCode === 'number' || (typeof idOrEmpCode === 'string' && !isNaN(idOrEmpCode)))) {
     const { data: updated, error } = await supabase
-      .from('attendance_monthly')
+      .from('hr_attendance_monthly')
       .update({
         payable_days_override: parsedDays,
         override_reason: reason,
@@ -784,7 +784,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
 
   if (!attRecord && empCode) {
     const { data: existing } = await supabase
-      .from('attendance_monthly')
+      .from('hr_attendance_monthly')
       .select('*')
       .eq('emp_code', empCode)
       .eq('year', year)
@@ -793,7 +793,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
 
     if (existing) {
       const { data: updated } = await supabase
-        .from('attendance_monthly')
+        .from('hr_attendance_monthly')
         .update({
           payable_days_override: parsedDays,
           override_reason: reason,
@@ -805,7 +805,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
       attRecord = updated;
     } else {
       const { data: inserted } = await supabase
-        .from('attendance_monthly')
+        .from('hr_attendance_monthly')
         .insert({
           emp_code: empCode,
           year,
@@ -830,7 +830,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
     const totalDaysInMonth = new Date(finalYear, finalMonth, 0).getDate();
 
     const { data: emp } = await supabase
-      .from('employees')
+      .from('hr_employees')
       .select('employee_id, name, salary, puttha_status')
       .eq('employee_id', finalEmpCode)
       .maybeSingle();
@@ -839,7 +839,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
     const earnedBasic = parseFloat(((monthlySalary / totalDaysInMonth) * parsedDays).toFixed(2));
 
     const { data: existingPayroll } = await supabase
-      .from('payroll')
+      .from('hr_payroll')
       .select('*')
       .eq('emp_code', finalEmpCode)
       .eq('year', finalYear)
@@ -855,7 +855,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
       const netSalary = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
       await supabase
-        .from('payroll')
+        .from('hr_payroll')
         .update({
           payable_days: parsedDays,
           basic_salary: monthlySalary,
@@ -884,7 +884,7 @@ export async function updatePayableDaysOverride(idOrEmpCode, overrideDays, reaso
 
 export async function fetchSalaryConfigs({ empCode, activeOnly = true } = {}) {
   let query = supabase
-    .from('employee_salary_config')
+    .from('hr_employee_salary_config')
     .select('*')
     .order('effective_from', { ascending: false });
 
@@ -898,7 +898,7 @@ export async function fetchSalaryConfigs({ empCode, activeOnly = true } = {}) {
 
 export async function upsertSalaryConfig(config) {
   const { data, error } = await supabase
-    .from('employee_salary_config')
+    .from('hr_employee_salary_config')
     .upsert(config, { onConflict: 'emp_code,effective_from' })
     .select()
     .single();
@@ -908,7 +908,7 @@ export async function upsertSalaryConfig(config) {
 
 export async function deactivateSalaryConfig(id) {
   const { error } = await supabase
-    .from('employee_salary_config')
+    .from('hr_employee_salary_config')
     .update({ is_active: false })
     .eq('id', id);
   if (error) throw error;
@@ -1051,7 +1051,7 @@ export async function revertAdvanceDeduction(empCode, revertAmount) {
   if (revertAmount <= 0) return;
 
   const { data: advs, error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .select('*')
     .eq('employee_id', empCode)
     .in('status', ['Approved', 'Fully Paid'])
@@ -1074,7 +1074,7 @@ export async function revertAdvanceDeduction(empCode, revertAmount) {
     const newStatus = newRemaining > 0 ? 'Approved' : adv.status;
 
     await supabase
-      .from('advances')
+      .from('hr_advances')
       .update({
         remaining_amount: newRemaining,
         status: newStatus,
@@ -1090,7 +1090,7 @@ export async function deductAdvanceAmount(empCode, deductAmount) {
   if (deductAmount <= 0) return;
 
   const { data: advs, error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .select('*')
     .eq('employee_id', empCode)
     .in('status', ['Approved', 'Pending'])
@@ -1109,7 +1109,7 @@ export async function deductAdvanceAmount(empCode, deductAmount) {
     remainingToDeduct -= dec;
 
     await supabase
-      .from('advances')
+      .from('hr_advances')
       .update({
         remaining_amount: newRemaining,
         status: newRemaining <= 0 ? 'Fully Paid' : 'Approved',
@@ -1125,7 +1125,7 @@ export async function revertSalaryAdvanceDeduction(empCode, revertAmount) {
   if (revertAmount <= 0) return;
 
   const { data: advs, error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .select('*')
     .eq('employee_id', empCode)
     .in('status', ['Approved', 'Deducted'])
@@ -1145,7 +1145,7 @@ export async function revertSalaryAdvanceDeduction(empCode, revertAmount) {
     remainingToRevert -= toRestore;
 
     await supabase
-      .from('salary_advances')
+      .from('hr_salary_advances')
       .update({
         remaining_amount: newRemaining,
         status: newRemaining > 0 ? 'Approved' : adv.status,
@@ -1162,7 +1162,7 @@ export async function deductLoanAmount(empCode, deductAmount, payrollId = null) 
   if (deductAmount <= 0) return;
 
   const { data: loans, error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .select('*')
     .eq('employee_id', empCode)
     .in('status', ['Approved', 'Pending'])
@@ -1181,7 +1181,7 @@ export async function deductLoanAmount(empCode, deductAmount, payrollId = null) 
     remainingToDeduct -= dec;
 
     await supabase
-      .from('salary_advances')
+      .from('hr_salary_advances')
       .update({
         remaining_amount: newRemaining,
         status: newRemaining <= 0 ? 'Deducted' : 'Approved',
@@ -1216,7 +1216,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
 
   // Fetch database attendance_monthly records for this month to guarantee capturing payable_days_override
   const { data: dbAttRows } = await supabase
-    .from('attendance_monthly')
+    .from('hr_attendance_monthly')
     .select('emp_code, payable_days, payable_days_override, total_ot, ot_hours')
     .eq('year', year)
     .eq('month', month);
@@ -1264,7 +1264,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
 
   // Fetch existing payrolls to skip paid records
   const { data: existingPayrolls, error: existingPayrollsError } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('id, emp_code, advance_deduction, loan_deduction, salary_advance_deduction, status')
     .eq('year', year)
     .eq('month', month);
@@ -1274,9 +1274,9 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
   // Source 2: salary_advances table -> Payroll Loan Deduction
   // Source 3: putthas table -> Puttha pricing
   const [advancesRes, putthasRes, salAdvsRes] = await Promise.all([
-    supabase.from('advances').select('*').in('status', ['Approved', 'Pending']).order('date', { ascending: true }),
-    supabase.from('putthas').select('total_price').eq('status', 'Approved').gte('date', startDate).lte('date', endDate),
-    supabase.from('salary_advances').select('*').in('status', ['Approved', 'Pending']).order('date', { ascending: true })
+    supabase.from('hr_advances').select('*').in('status', ['Approved', 'Pending']).order('date', { ascending: true }),
+    supabase.from('hr_putthas').select('total_price').eq('status', 'Approved').gte('date', startDate).lte('date', endDate),
+    supabase.from('hr_salary_advances').select('*').in('status', ['Approved', 'Pending']).order('date', { ascending: true })
   ]);
 
   const allAdvances = advancesRes.data || [];
@@ -1424,7 +1424,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
 
   if (ineligibleEmpCodes.length > 0) {
     await supabase
-      .from('payroll')
+      .from('hr_payroll')
       .delete()
       .in('emp_code', ineligibleEmpCodes)
       .eq('year', year)
@@ -1437,7 +1437,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
   // Upsert payroll rows in single bulk batch
   const dbRows = payrollRows.map(({ earned_basic, ...rest }) => rest);
   const { data, error } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .upsert(dbRows, { onConflict: 'emp_code,year,month' })
     .select();
 
@@ -1456,7 +1456,7 @@ export async function generatePayrollBatch(attendanceRows, employeeMap, targetYe
 
 export async function fetchPayroll({ year, month, status, empCode } = {}) {
   let query = supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .order('emp_name', { ascending: true });
 
@@ -1477,7 +1477,7 @@ export async function fetchEmployeesPaginated({ page = 1, pageSize = 50, search 
   const to = page * pageSize - 1;
 
   let query = supabase
-    .from('employees')
+    .from('hr_employees')
     .select('*', { count: 'exact' })
     .order('name', { ascending: true });
 
@@ -1507,7 +1507,7 @@ export async function fetchAttendanceMonthlyPaginated({ year, month, page = 1, p
 
   // 1. Fetch all employees from Employee Management
   const { data: emps, error: empsErr } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .select('employee_id, name, status, date_of_joining, date_of_leaving')
     .order('name', { ascending: true });
 
@@ -1521,7 +1521,7 @@ export async function fetchAttendanceMonthlyPaginated({ year, month, page = 1, p
   });
 
   let query = supabase
-    .from('attendance_monthly')
+    .from('hr_attendance_monthly')
     .select('*')
     .order('emp_name', { ascending: true });
 
@@ -1659,13 +1659,13 @@ export async function fetchAttendanceMonthlyPaginated({ year, month, page = 1, p
 
 export async function fetchAttendanceMonthlyStats({ year, month, search = '' } = {}) {
   const { data: emps } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .select('employee_id');
 
   const validCodes = new Set((emps || []).map(e => String(e.employee_id).trim().toLowerCase()));
 
   let query = supabase
-    .from('attendance_monthly')
+    .from('hr_attendance_monthly')
     .select('emp_code, total_present, total_absent, total_holiday, total_wo, total_wop, total_leave, payable_days, payable_days_override, total_ot, ot_hours, daily_status');
 
   if (year) query = query.eq('year', year);
@@ -1684,7 +1684,7 @@ export async function fetchPayrollPaginated({ year, month, status, statusNot, em
   const to = page * pageSize - 1;
 
   let query = supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*', { count: 'exact' })
     .order('emp_name', { ascending: true });
 
@@ -1708,7 +1708,7 @@ export async function fetchPayrollPaginated({ year, month, status, statusNot, em
     const empSalaryMap = {};
     if (empCodes.length > 0) {
       const { data: emps, error: empsErr } = await supabase
-        .from('employees')
+        .from('hr_employees')
         .select('employee_id, puttha_status, salary')
         .in('employee_id', empCodes);
 
@@ -1748,7 +1748,7 @@ export async function fetchPayrollPaginated({ year, month, status, statusNot, em
 
     // Fetch attendance_monthly to check if OT or payable_days need syncing
     const { data: attRows } = await supabase
-      .from('attendance_monthly')
+      .from('hr_attendance_monthly')
       .select('emp_code, total_ot, ot_hours, payable_days, payable_days_override')
       .eq('year', year)
       .eq('month', month);
@@ -1809,7 +1809,7 @@ export async function fetchPayrollPaginated({ year, month, status, statusNot, em
     if (needsRecalc && year && month) {
       await recalculateMonthPutthaAndPayroll(year, month);
       let refetchQuery = supabase
-        .from('payroll')
+        .from('hr_payroll')
         .select('*', { count: 'exact' })
         .order('emp_name', { ascending: true });
 
@@ -1883,7 +1883,7 @@ export async function fetchAdvancesPaginated({ page = 1, pageSize = 50, search =
   const to = page * pageSize - 1;
 
   let query = supabase
-    .from('advances')
+    .from('hr_advances')
     .select('*', { count: 'exact' })
     .order('date', { ascending: false });
 
@@ -1914,7 +1914,7 @@ export async function fetchSalaryConfigsPaginated({ page = 1, pageSize = 50, sea
   const to = page * pageSize - 1;
 
   let query = supabase
-    .from('employee_salary_config')
+    .from('hr_employee_salary_config')
     .select('*', { count: 'exact' })
     .order('emp_name', { ascending: true });
 
@@ -1944,7 +1944,7 @@ export async function updateRemainingBalancesForEmployee(empCode, advanceDeducti
 export async function updatePayrollRow(id, updates) {
   // Fetch current record first to check status/details if needed
   const { data: current, error: fetchError } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .eq('id', id)
     .single();
@@ -1990,7 +1990,7 @@ export async function updatePayrollRow(id, updates) {
   }
 
   const { data, error } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .update(payload)
     .eq('id', id)
     .select()
@@ -2039,7 +2039,7 @@ export async function updatePayrollStatus(ids, status) {
     return results;
   }
   const { data, error } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .update({ status, updated_at: new Date().toISOString() })
     .in('id', ids)
     .select();
@@ -2062,7 +2062,7 @@ export function getMonthNumber(monthName) {
 
 export async function fetchEmployees() {
   const { data, error } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .select('*')
     .order('name', { ascending: true });
   if (error) throw error;
@@ -2078,7 +2078,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
   // Fetch total approved puttha amount for this month
   const { data: putthas } = await supabase
-    .from('putthas')
+    .from('hr_putthas')
     .select('total_price')
     .gte('date', startDate)
     .lte('date', endDate);
@@ -2090,7 +2090,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
   // Fetch all payroll rows for this year and month
   const { data: payrollRows, error } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .eq('year', year)
     .eq('month', month);
@@ -2099,7 +2099,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
 
   // Fetch monthly attendance to get latest OT and payable days per employee
   const { data: attRows } = await supabase
-    .from('attendance_monthly')
+    .from('hr_attendance_monthly')
     .select('emp_code, total_ot, ot_hours, payable_days, payable_days_override')
     .eq('year', year)
     .eq('month', month);
@@ -2146,7 +2146,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
   const empSalaryMap = {};
   if (empCodes.length > 0) {
     const { data: emps, error: empsErr } = await supabase
-      .from('employees')
+      .from('hr_employees')
       .select('employee_id, salary')
       .in('employee_id', empCodes);
 
@@ -2184,7 +2184,7 @@ export async function recalculateMonthPutthaAndPayroll(year, month) {
     const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
     await supabase
-      .from('payroll')
+      .from('hr_payroll')
       .update({
         basic_salary: basicSalary,
         payable_days: presentDays,
@@ -2204,7 +2204,7 @@ export async function syncPayrollForEmployeeSalary(empCode, salary) {
   const _empBaseSalary = parseFloat(salary) || 0;
 
   const { data: payrollRows, error } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .eq('emp_code', empCode);
 
@@ -2229,7 +2229,7 @@ export async function syncPayrollForEmployeeSalary(empCode, salary) {
     const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
     await supabase
-      .from('payroll')
+      .from('hr_payroll')
       .update({
         basic_salary: basicSalary,
         ot_hours: otHours,
@@ -2245,7 +2245,7 @@ export async function syncPayrollForEmployeeSalary(empCode, salary) {
 export async function syncPayrollForEmployeePutthaStatus(empCode, putthaStatus) {
   if (!empCode) return;
   const { data: payrollRows, error } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .eq('emp_code', empCode);
 
@@ -2253,7 +2253,7 @@ export async function syncPayrollForEmployeePutthaStatus(empCode, putthaStatus) 
     for (const row of payrollRows) {
       if (row.status === 'paid') continue;
       await supabase
-        .from('payroll')
+        .from('hr_payroll')
         .update({ puttha_status: putthaStatus || 'Yes' })
         .eq('id', row.id);
 
@@ -2270,7 +2270,7 @@ export async function syncAttendanceAndPayrollForEmployeeStatus(employee) {
   const pad = (n) => String(n).padStart(2, '0');
 
   const { data: attRows } = await supabase
-    .from('attendance_monthly')
+    .from('hr_attendance_monthly')
     .select('*')
     .eq('emp_code', empCode);
 
@@ -2285,8 +2285,8 @@ export async function syncAttendanceAndPayrollForEmployeeStatus(employee) {
 
     // If employee left before this month started or joined after this month ended
     if ((dolStr && dolStr < monthStart) || (dojStr && dojStr > monthEnd)) {
-      await supabase.from('attendance_monthly').delete().eq('id', row.id);
-      await supabase.from('payroll').delete().eq('emp_code', empCode).eq('year', year).eq('month', month).neq('status', 'paid');
+      await supabase.from('hr_attendance_monthly').delete().eq('id', row.id);
+      await supabase.from('hr_payroll').delete().eq('emp_code', empCode).eq('year', year).eq('month', month).neq('status', 'paid');
       continue;
     }
 
@@ -2331,7 +2331,7 @@ export async function syncAttendanceAndPayrollForEmployeeStatus(employee) {
         else if (code === 'WOP') { totalWOP++; totalPresent++; }
       }
 
-      await supabase.from('attendance_monthly').update({
+      await supabase.from('hr_attendance_monthly').update({
         daily_status: ds,
         total_present: totalPresent,
         total_absent: totalAbsent,
@@ -2346,7 +2346,7 @@ export async function syncAttendanceAndPayrollForEmployeeStatus(employee) {
 
       // Sync draft payroll row for this month
       const { data: payRow } = await supabase
-        .from('payroll')
+        .from('hr_payroll')
         .select('*')
         .eq('emp_code', empCode)
         .eq('year', year)
@@ -2363,7 +2363,7 @@ export async function syncAttendanceAndPayrollForEmployeeStatus(employee) {
         const rawNet = Math.max(0, grossSalary - totalDeductions);
         const netSalary = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
-        await supabase.from('payroll').update({
+        await supabase.from('hr_payroll').update({
           payable_days: payableDays,
           basic_salary: monthlySalary,
           earned_basic: earnedBasic,
@@ -2378,7 +2378,7 @@ export async function syncAttendanceAndPayrollForEmployeeStatus(employee) {
 
 export async function upsertEmployee(employee) {
   const { data, error } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .upsert(employee, { onConflict: 'employee_id' })
     .select()
     .single();
@@ -2404,7 +2404,7 @@ export async function upsertEmployee(employee) {
 // Directly update an employee's puttha status by employee_id (source of truth for payroll)
 export async function updateEmployeePutthaStatus(employeeId, status) {
   const { data, error } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .update({ puttha_status: status })
     .eq('employee_id', employeeId)
     .select();
@@ -2424,7 +2424,7 @@ export async function updateEmployeePutthaStatus(employeeId, status) {
 
 export async function bulkUpsertEmployees(employees) {
   const { data, error } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .upsert(employees, { onConflict: 'employee_id' })
     .select();
   if (error) throw error;
@@ -2452,7 +2452,7 @@ export async function bulkUpsertEmployees(employees) {
 
 export async function deleteEmployee(id) {
   const { error } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .delete()
     .eq('id', id);
   if (error) throw error;
@@ -2462,7 +2462,7 @@ export async function deleteEmployee(id) {
 
 export async function fetchAdvances() {
   const { data, error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .select('*')
     .order('date', { ascending: false });
   if (error) throw error;
@@ -2474,7 +2474,7 @@ export async function syncPayrollForEmployeeSalaryAdvance(empCode) {
 
   const empCodeKey = String(empCode).trim();
   const { data: advs } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .select('*')
     .eq('employee_id', empCodeKey)
     .in('status', ['Approved', 'Pending']);
@@ -2487,7 +2487,7 @@ export async function syncPayrollForEmployeeSalaryAdvance(empCode) {
     }, 0);
 
   const { data: payrollRows } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .eq('emp_code', empCodeKey);
 
@@ -2508,7 +2508,7 @@ export async function syncPayrollForEmployeeSalaryAdvance(empCode) {
     const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
     await supabase
-      .from('payroll')
+      .from('hr_payroll')
       .update({
         advance: totalActiveAdvance,
         salary_advance_deduction: advDedToUse,
@@ -2542,7 +2542,7 @@ export async function upsertAdvance(advance) {
   }
 
   const { data, error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .upsert(advance)
     .select()
     .single();
@@ -2561,7 +2561,7 @@ export async function upsertAdvance(advance) {
 
 export async function updateAdvanceStatus(id, status) {
   const { data, error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
@@ -2581,13 +2581,13 @@ export async function updateAdvanceStatus(id, status) {
 
 export async function deleteAdvance(id) {
   const { data: existing } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .select('employee_id')
     .eq('id', id)
     .single();
 
   const { error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .delete()
     .eq('id', id);
   if (error) throw error;
@@ -2608,7 +2608,7 @@ export async function syncPayrollForEmployeeAdvance(empCode) {
 
   const empCodeKey = String(empCode).trim();
   const { data: salAdvs } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .select('*')
     .eq('employee_id', empCodeKey)
     .in('status', ['Approved', 'Pending']);
@@ -2621,7 +2621,7 @@ export async function syncPayrollForEmployeeAdvance(empCode) {
     }, 0);
 
   const { data: payrollRows } = await supabase
-    .from('payroll')
+    .from('hr_payroll')
     .select('*')
     .eq('emp_code', empCodeKey);
 
@@ -2640,7 +2640,7 @@ export async function syncPayrollForEmployeeAdvance(empCode) {
     const newNet = rawNet > 0 ? Math.ceil(rawNet / 10) * 10 : 0;
 
     await supabase
-      .from('payroll')
+      .from('hr_payroll')
       .update({
         loan_deduction: totalLoanMonthlyDed,
         total_deductions: newTotalDed,
@@ -2654,7 +2654,7 @@ export async function syncPayrollForEmployeeAdvance(empCode) {
 
 export async function fetchEmployeeLoanBalance(employeeId) {
   const { data, error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .select('amount, remaining_amount, status, deduction')
     .eq('employee_id', employeeId)
     .in('status', ['Approved', 'Pending']);
@@ -2672,7 +2672,7 @@ export async function fetchEmployeeLoanBalance(employeeId) {
 
 export async function fetchEmployeeAdvanceBalance(employeeId) {
   const { data, error } = await supabase
-    .from('advances')
+    .from('hr_advances')
     .select('amount, remaining_amount, status, deduction')
     .eq('employee_id', employeeId)
     .in('status', ['Approved', 'Pending']);
@@ -2692,7 +2692,7 @@ export async function fetchSalaryAdvances() {
   console.log('[Loan] Supabase project:', hrSupabaseProjectUrl);
   console.log('[Loan] Fetching table: salary_advances');
   const { data, error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .select('*')
     .order('date', { ascending: false });
   console.log('[Loan] Raw response:', data);
@@ -2724,7 +2724,7 @@ export async function upsertSalaryAdvance(advance) {
   }
 
   const { data, error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .upsert(advance)
     .select()
     .single();
@@ -2743,7 +2743,7 @@ export async function upsertSalaryAdvance(advance) {
 
 export async function updateSalaryAdvanceStatus(id, status) {
   const { data, error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
@@ -2763,13 +2763,13 @@ export async function updateSalaryAdvanceStatus(id, status) {
 
 export async function deleteSalaryAdvance(id) {
   const { data: existing } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .select('employee_id')
     .eq('id', id)
     .single();
 
   const { error } = await supabase
-    .from('salary_advances')
+    .from('hr_salary_advances')
     .delete()
     .eq('id', id);
   if (error) throw error;
@@ -2791,9 +2791,9 @@ export async function deleteSalaryAdvance(id) {
  */
 export async function fetchPayslipData(empCode, year, month) {
   const [{ data: payroll }, { data: employee }, { data: attendance }] = await Promise.all([
-    supabase.from('payroll').select('*').eq('emp_code', empCode).eq('year', year).eq('month', month).maybeSingle(),
-    supabase.from('employees').select('*').eq('employee_id', empCode).maybeSingle(),
-    supabase.from('attendance_monthly').select('*').eq('emp_code', empCode).eq('year', year).eq('month', month).maybeSingle(),
+    supabase.from('hr_payroll').select('*').eq('emp_code', empCode).eq('year', year).eq('month', month).maybeSingle(),
+    supabase.from('hr_employees').select('*').eq('employee_id', empCode).maybeSingle(),
+    supabase.from('hr_attendance_monthly').select('*').eq('emp_code', empCode).eq('year', year).eq('month', month).maybeSingle(),
   ]);
   return { payroll, employee, attendance };
 }
@@ -2824,7 +2824,7 @@ export async function savePayslip({ payrollId, empCode, empName, year, month, pd
 
   // Upsert record in payslips table
   const { data, error } = await supabase
-    .from('payslips')
+    .from('hr_payslips')
     .upsert({
       payroll_id: payrollId,
       emp_code: empCode,
@@ -2843,7 +2843,7 @@ export async function savePayslip({ payrollId, empCode, empName, year, month, pd
 
 export async function fetchPayslips({ year, month, empCode } = {}) {
   let query = supabase
-    .from('payslips')
+    .from('hr_payslips')
     .select('*')
     .order('emp_name', { ascending: true });
 
@@ -2858,7 +2858,7 @@ export async function fetchPayslips({ year, month, empCode } = {}) {
 
 export async function deletePayslip(id) {
   const { error } = await supabase
-    .from('payslips')
+    .from('hr_payslips')
     .delete()
     .eq('id', id);
   if (error) throw error;
@@ -2868,7 +2868,7 @@ export async function deletePayslip(id) {
 
 export async function fetchPutthas({ empCode, status, startDate, endDate } = {}) {
   let query = supabase
-    .from('putthas')
+    .from('hr_putthas')
     .select('*')
     .order('date', { ascending: false });
 
@@ -2884,7 +2884,7 @@ export async function fetchPutthas({ empCode, status, startDate, endDate } = {})
 
 export async function upsertPuttha(puttha) {
   const { data, error } = await supabase
-    .from('putthas')
+    .from('hr_putthas')
     .upsert(puttha)
     .select()
     .single();
@@ -2894,7 +2894,7 @@ export async function upsertPuttha(puttha) {
 
 export async function updatePutthaStatus(id, status) {
   const { data, error } = await supabase
-    .from('putthas')
+    .from('hr_putthas')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
@@ -2905,7 +2905,7 @@ export async function updatePutthaStatus(id, status) {
 
 export async function deletePuttha(id) {
   const { error } = await supabase
-    .from('putthas')
+    .from('hr_putthas')
     .delete()
     .eq('id', id);
   if (error) throw error;
@@ -2979,7 +2979,7 @@ export async function syncAttendanceFromPortal(year, month) {
   }
 
   const { data: dbEmployees } = await supabase
-    .from('employees')
+    .from('hr_employees')
     .select('employee_id, name, date_of_joining, date_of_leaving, status');
 
   const dbEmpMap = {};

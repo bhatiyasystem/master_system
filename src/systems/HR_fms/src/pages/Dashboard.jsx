@@ -36,22 +36,22 @@ const Dashboard = () => {
 
         // Individual timing trackers for dev mode metrics
         const t1 = performance.now();
-        const totalPromise = supabase.from('employees').select('id', { count: 'exact', head: true }).then(r => ({ res: r, dur: performance.now() - t1 }));
+        const totalPromise = supabase.from('hr_employees').select('id', { count: 'exact', head: true }).then(r => ({ res: r, dur: performance.now() - t1 }));
 
         const t2 = performance.now();
-        const activePromise = supabase.from('employees').select('id', { count: 'exact', head: true }).eq('status', 'active').then(r => ({ res: r, dur: performance.now() - t2 }));
+        const activePromise = supabase.from('hr_employees').select('id', { count: 'exact', head: true }).eq('status', 'active').then(r => ({ res: r, dur: performance.now() - t2 }));
 
         const t3 = performance.now();
-        const leftPromise = supabase.from('employees').select('id', { count: 'exact', head: true }).neq('status', 'active').then(r => ({ res: r, dur: performance.now() - t3 }));
+        const leftPromise = supabase.from('hr_employees').select('id', { count: 'exact', head: true }).neq('status', 'active').then(r => ({ res: r, dur: performance.now() - t3 }));
 
         const t4 = performance.now();
-        const leaveMonthPromise = supabase.from('employees').select('id', { count: 'exact', head: true }).gte('date_of_leaving', startOfMonthStr).then(r => ({ res: r, dur: performance.now() - t4 }));
+        const leaveMonthPromise = supabase.from('hr_employees').select('id', { count: 'exact', head: true }).gte('date_of_leaving', startOfMonthStr).then(r => ({ res: r, dur: performance.now() - t4 }));
 
         const t5 = performance.now();
-        const empDataPromise = supabase.from('employees').select('status, date_of_joining, date_of_leaving, designation').then(r => ({ res: r, dur: performance.now() - t5 }));
+        const empDataPromise = supabase.from('hr_employees').select('status, date_of_joining, date_of_leaving, designation').then(r => ({ res: r, dur: performance.now() - t5 }));
 
         const t6 = performance.now();
-        const attendanceSummaryPromise = supabase.from('attendance_monthly').select('id', { count: 'exact', head: true }).eq('year', currentYear).eq('month', currentMonth + 1).then(r => ({ res: r, dur: performance.now() - t6 }));
+        const attendanceSummaryPromise = supabase.from('hr_attendance_monthly').select('id', { count: 'exact', head: true }).eq('year', currentYear).eq('month', currentMonth + 1).then(r => ({ res: r, dur: performance.now() - t6 }));
 
         const [totalObj, activeObj, leftObj, leaveMonthObj, empDataObj, attSummaryObj] = await Promise.all([
           totalPromise, activePromise, leftPromise, leaveMonthPromise, empDataPromise, attendanceSummaryPromise
