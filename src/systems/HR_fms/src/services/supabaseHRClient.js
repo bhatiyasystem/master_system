@@ -13,18 +13,20 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const hrSupabaseURL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HR_SUPABASE_URL) || (typeof process !== 'undefined' && process.env?.VITE_HR_SUPABASE_URL);
-const hrSupabaseKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HR_SUPABASE_ANON_KEY) || (typeof process !== 'undefined' && process.env?.VITE_HR_SUPABASE_ANON_KEY);
+const rawHRUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HR_SUPABASE_URL) || (typeof process !== 'undefined' && process.env?.VITE_HR_SUPABASE_URL) || '';
+const rawHRKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_HR_SUPABASE_ANON_KEY) || (typeof process !== 'undefined' && process.env?.VITE_HR_SUPABASE_ANON_KEY) || '';
+
+const fallbackUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) || 'https://sffvmdjtaxkfusgvgjbf.supabase.co';
+const fallbackKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) || 'sb_publishable_d08mS6BZwdJgaAuC2deEFg_4TBm0GcS';
+
+const isInvalidUrl = !rawHRUrl || rawHRUrl === 'YOUR_HR_FMS_SUPABASE_URL_HERE' || rawHRUrl.includes('vgmhuuzskijnvsagzrzq');
+const isInvalidKey = !rawHRKey || rawHRKey.includes('TP0_P7TRbf5cz9p9Hm15hg_MXt4gBSD');
+
+const hrSupabaseURL = (isInvalidUrl ? fallbackUrl : rawHRUrl).replace(/\/+$/, '');
+const hrSupabaseKey = isInvalidKey ? fallbackKey : rawHRKey;
 
 // Safe to expose for browser diagnostics; this is the public project URL, not a key.
 export const hrSupabaseProjectUrl = hrSupabaseURL || '';
-
-if (!hrSupabaseURL || hrSupabaseURL === 'YOUR_HR_FMS_SUPABASE_URL_HERE') {
-  console.warn(
-    '[HR FMS] ⚠ Supabase not configured.\n' +
-    'Add VITE_HR_SUPABASE_URL and VITE_HR_SUPABASE_ANON_KEY to your .env file.'
-  );
-}
 
 const hrSupabase = createClient(hrSupabaseURL || '', hrSupabaseKey || '', {
   auth: {
