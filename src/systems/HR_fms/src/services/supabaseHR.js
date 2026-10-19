@@ -632,9 +632,11 @@ export async function createUploadRecord({ periodFrom, periodTo, companyName, de
 }
 
 export async function updateUploadRecord(id, updates) {
+  // Exclude columns that do not exist in the hr_attendance_uploads schema
+  const { total_rows, processed_rows, ...safeUpdates } = updates;
   const { data, error } = await supabase
     .from('hr_attendance_uploads')
-    .update(updates)
+    .update(safeUpdates)
     .eq('id', id)
     .select()
     .single();
@@ -3242,8 +3244,6 @@ export async function syncAttendanceFromPortal(year, month) {
 
   await updateUploadRecord(uploadRecord.id, {
     status: 'processed',
-    total_rows: employees.length,
-    processed_rows: employees.length,
   });
 
   return { count: employees.length };

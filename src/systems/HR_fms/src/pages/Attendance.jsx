@@ -369,9 +369,7 @@ const AttendanceMonthly = () => {
       await saveAttendanceRows(uploadRecord.id, employees, year, month, uploadMeta.company_name, uploadMeta.department);
 
       await updateUploadRecord(uploadRecord.id, {
-        status: "processed",
-        total_rows: employees.length,
-        processed_rows: employees.length
+        status: "processed"
       });
 
       setUploadResult({ success: true, count: employees.length, meta: uploadMeta, year, month });
