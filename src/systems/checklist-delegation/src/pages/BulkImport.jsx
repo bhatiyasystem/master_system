@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Users, ArrowLeft, Database, CheckCircle2, ChevronRight, Upload, Table, Layers, X, Info, Download, Loader2 } from 'lucide-react';
+import { ClipboardList, Users, ArrowLeft, Database, CheckCircle2, ChevronRight, Upload, Table, Layers, Layout, X, Info, Download, Loader2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { useMagicToast } from '../context/MagicToastContext';
 import AdminLayout from '../components/layout/AdminLayout';
